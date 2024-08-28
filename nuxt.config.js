@@ -46,4 +46,15 @@ export default {
 
   // Build Configuration: https://go.nuxtjs.dev/config-build
   build: {},
+
+  serverMiddleware: [
+    { path: '/api', handler: '~/server/api/index.js' }
+  ],
+
+  watchers: {
+    webpack: {
+      ignored: '/node_modules/',
+      poll: 1000
+    }
+  },
 }
