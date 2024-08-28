@@ -1,29 +1,18 @@
 const express = require('express')
 const bcrypt = require('bcrypt')
 const db = require('../models')
+const { isNotAuthenticated } = require('../middleware/auth')
 
 const router = express.Router()
 
-router.get('/test/msg', (req, res) => {
-    const msg = 'hello from the server! change!!! hihi'
-    res.json({ msg })
-})
-
-router.post('/register', async (req, res) => {
+router.post('/register', isNotAuthenticated, async (req, res) => {
     try {
         const { username, email, password } = req.body
 
         const existingUser = await db.User.findOne({ email })
         if (existingUser) return res.status(500).json({ message: '이미 사용 중인 이메일입니다.'})
 
-        const saltRounds = 10
-        const hashedPassword = await bcrypt.hash(password, saltRounds)
-
-        const newUser = new User({
-            username,
-            email,
-            password: hashedPassword
-        })
+        const newUser = new db.User({ username, email, password })
 
         await newUser.save()
 
@@ -34,7 +23,7 @@ router.post('/register', async (req, res) => {
     }
 })
 
-router.post('/login', async (req, res) => {
+router.post('/login', isNotAuthenticated, async (req, res) => {
     try {
         const { email, password } = req.body
         const user = await db.User.findOne({ email })
@@ -44,11 +33,21 @@ router.post('/login', async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password)
         if (!isMatch) return res.status(400).json({ message: '비밀번호가 일치하지 않습니다.'})
 
-        res.json({ message: '로그인 성공', user: { id: user._id, username: user.username, email: user.email }})
+        req.session.userId = user._id
+        req.session.username = user.username
+
+        res.json({ message: '로그인 성공' })
     } catch (err) {
         console.error('로그인 에러', err)
         res.status(500).json({ message: '서버 오류가 발생했습니다.'})
     }
+})
+
+router.post('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) return res.status(500).json({ message: '로그아웃 처리 중 오류 발상'})
+        res.json({ message: '로그아웃 되었습니다.'})
+    })
 })
 
 module.exports = router

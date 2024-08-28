@@ -14,10 +14,12 @@
   },
   "dependencies": {
     "@nuxtjs/axios": "^5.13.6",
+    "@nuxtjs/toast": "^3.3.1",
     "bcrypt": "^5.1.1",
     "core-js": "^3.25.3",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "express-session": "^1.18.0",
     "mongodb": "^6.8.0",
     "mongoose": "^8.5.4",
     "nuxt": "^2.15.8",
@@ -35,6 +37,7 @@
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-nuxt": "^4.0.0",
     "eslint-plugin-vue": "^9.5.1",
+    "nodemon": "^3.1.4",
     "postcss": "^8.4.17",
     "prettier": "^2.7.1"
   }
