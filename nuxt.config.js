@@ -1,3 +1,5 @@
+const session = require('express-session')
+
 export default {
   // Global page headers: https://go.nuxtjs.dev/config-head
   head: {
@@ -43,6 +45,7 @@ export default {
   axios: {
     // Workaround to avoid enforcing hard-coded localhost:3000: https://github.com/nuxt-community/axios-module/issues/308
     baseURL: '/',
+    credentials: true
   },
 
   toast: {
@@ -54,7 +57,15 @@ export default {
   build: {},
 
   serverMiddleware: [
-    { path: '/api', handler: '~/server/api/index.js' }
+    session({
+      secret: 'dibe2_secret',
+      resave: false,
+      saveUninitialized: true,
+      cookie: {
+          maxAge: 24 * 60 * 60 * 1000
+      }
+    }),
+    { path: '/api', handler: '~/server/api/index.js' },
   ],
 
   watchers: {
@@ -63,4 +74,8 @@ export default {
       poll: 1000
     }
   },
+
+  router: {
+    middleware: 'auth'
+  }
 }

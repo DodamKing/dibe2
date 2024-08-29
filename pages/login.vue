@@ -103,13 +103,16 @@ export default {
             this.isSubmitting = true
 
             try {
-                const response = await this.$axios.$post('/api/users/login', {
+                const result = await this.$store.dispatch('auth/login', {
                     email: this.email,
                     password: this.password
                 })
-                this.$toast.success('로그인에 성공했습니다.')
-                console.log('로그인 성공:', response)
-                this.$router.push('/')
+
+                if (result.success) {
+                    this.$toast.success(result.message)
+                    this.$router.push('/')
+                } 
+                else this.$toast.error(result.message)
             } catch (error) {
                 console.error('로그인 실패:', error)
                 this.handleLoginError(error)

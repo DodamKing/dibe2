@@ -5,6 +5,10 @@ const { isNotAuthenticated } = require('../middleware/auth')
 
 const router = express.Router()
 
+router.get('/test', (req, res) => {
+    res.json({ message: 'test'})
+})
+
 router.post('/register', isNotAuthenticated, async (req, res) => {
     try {
         const { username, email, password } = req.body
@@ -28,18 +32,21 @@ router.post('/login', isNotAuthenticated, async (req, res) => {
         const { email, password } = req.body
         const user = await db.User.findOne({ email })
 
-        if (!user) return res.status(400).json({ message: '사용자를 찾을 수 없습니다.'})
+        if (!user) return res.json({ message: '사용자를 찾을 수 없습니다.', code: 2})
         
         const isMatch = await bcrypt.compare(password, user.password)
-        if (!isMatch) return res.status(400).json({ message: '비밀번호가 일치하지 않습니다.'})
+        if (!isMatch) return res.json({ message: '비밀번호가 일치하지 않습니다.', code: 3})
 
-        req.session.userId = user._id
-        req.session.username = user.username
+        req.session.user = {
+            userId: user._id,
+            username: user.username,
+            email: user.email
+        }
 
-        res.json({ message: '로그인 성공' })
+        res.json({ message: '로그인 성공', user: { userId: user._id, username: user.username, email: user.email }, code: 1})
     } catch (err) {
         console.error('로그인 에러', err)
-        res.status(500).json({ message: '서버 오류가 발생했습니다.'})
+        res.status(500).json({ message: '서버 오류가 발생했습니다.', code: 4})
     }
 })
 
@@ -48,6 +55,12 @@ router.post('/logout', (req, res) => {
         if (err) return res.status(500).json({ message: '로그아웃 처리 중 오류 발상'})
         res.json({ message: '로그아웃 되었습니다.'})
     })
+})
+
+router.get('/me', (req, res) => {
+    const user = req.session.user
+    if (!user) return res.status(401).json({ user: null })
+    res.json({ user })
 })
 
 module.exports = router

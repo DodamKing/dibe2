@@ -1,6 +1,6 @@
 <template>
 	<div class="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white">
-		<header class="bg-gradient-to-r from-purple-800 to-blue-700 shadow-lg p-4">
+		<!-- <header class="bg-gradient-to-r from-purple-800 to-blue-700 shadow-lg p-4">
 			<div class="container mx-auto flex justify-between items-center">
 				<h1 class="text-2xl font-bold text-white">DIBE2</h1>
 				<div class="relative">
@@ -9,7 +9,8 @@
 					<i class="fas fa-search absolute right-3 top-3 text-gray-300"></i>
 				</div>
 			</div>
-		</header>
+		</header> -->
+		<AppHeader />
 
 		<main class="container mx-auto p-4 sm:p-6 pb-24">
 			<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
@@ -77,10 +78,12 @@
 
 <script>
 import MusicPlayer from '~/components/MusicPlayer.vue'
+import AppHeader from '~/components/AppHeader.vue';
 
 export default {
 	components: {
-		MusicPlayer
+		MusicPlayer,
+		AppHeader
 	},
 	data() {
 		return {

@@ -10,32 +10,22 @@ module.exports = {
     },
 
     sessionCheckMiddleware: (req, res, next) => {
-        console.log('Session:', req.session);
-        console.log('User ID:', req.session.userId);
-
         // 공개 경로 목록
-        const publicPaths = ['/login', '/register', '/api/login', '/api/register', '/favicon.ico'];
+        const publicPaths = ['/users/login', '/users/register'];
 
-        // API 경로 확인
-        const isApiRequest = req.path.startsWith('/api/');
-
-        if (!req.session || typeof req.session.userId === 'undefined') {
+        if (!req.session || typeof req.session.user === 'undefined') {
             if (publicPaths.includes(req.path) || req.path.startsWith('/public/')) {
                 // 공개 경로는 통과
                 return next();
-            } else if (isApiRequest) {
-                // API 요청의 경우 JSON 응답
-                return res.status(401).json({ message: '인증이 필요합니다.' });
             } else {
                 // 그 외의 경우 로그인 페이지로 리다이렉트
-                return res.redirect('/login');
+                return res.status(401).json({ message: '사용자 인증이 필요합니다.'})
             }
         }
 
         // 세션이 있는 경우
         if (publicPaths.includes(req.path) && req.path !== '/logout') {
-            // 이미 로그인한 사용자가 로그인/회원가입 페이지에 접근하는 경우
-            return res.redirect('/');  // 홈페이지 또는 대시보드로 리다이렉트
+            return res.json()
         }
 
         next();
