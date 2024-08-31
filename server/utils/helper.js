@@ -29,7 +29,7 @@ module.exports = {
         
             const rows = $('.list > tbody > tr').toArray();
             for (const element of rows) {
-                const rank = $(element).find('.ranking').text().trim();
+                const rank = $(element).find('.ranking > strong').text().trim();
                 const title = $(element).find('.title').text().trim();
                 const artist = $(element).find('.artist').text().trim();
                 const album = $(element).find('.album').text().trim();

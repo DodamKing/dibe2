@@ -77,5 +77,9 @@ export default {
 
   router: {
     middleware: 'auth'
+  },
+
+  server: {
+    host: '0.0.0.0'
   }
 }
