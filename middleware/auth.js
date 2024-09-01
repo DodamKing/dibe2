@@ -1,5 +1,13 @@
 export default function({ store, redirect, route }) {
-    if (!store.state.auth.loggedIn && route.path !== '/login') return redirect('/login')
+    const publicPages = ['/login', '/register'];
+    const isPublicPage = publicPages.includes(route.path);
+    const isLoggedIn = store.state.auth.loggedIn;
 
-    if (store.state.auth.loggedIn && route.path === '/login') return redirect('/')
+    if (!isLoggedIn && !isPublicPage) {
+        return redirect('/login');
+    }
+
+    if (isLoggedIn && isPublicPage) {
+        return redirect('/');
+    }
 }

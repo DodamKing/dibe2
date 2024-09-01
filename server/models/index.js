@@ -2,6 +2,7 @@ const mongoose = require('mongoose')
 
 const User = require('./User')
 const Chart = require('./Chart')
+const Song = require('./Song')
 
 mongoose.connect(process.env.MONGODB_URI)
 
@@ -15,5 +16,6 @@ mongoose.connection.on('error', (err) => {
 
 module.exports = {
     User,
-    Chart
+    Chart,
+    Song
 }

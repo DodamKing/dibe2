@@ -47,9 +47,23 @@
                     </div>
                 </div>
 
-                <div class="mt-6 grid grid-cols-2 gap-3">
-                    <SocialLoginButton provider="kakao" icon="comment" @login="socialLogin" />
-                    <SocialLoginButton provider="google" icon="google" @login="socialLogin" />
+                <div class="mt-6 flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-4">
+                    <SocialLoginButton 
+                        provider="kakao" 
+                        icon="comment" 
+                        @login="socialLogin"
+                        class="flex-1 py-3 px-4 rounded-full text-black bg-yellow-400 hover:bg-yellow-500 transition duration-300"
+                    >
+                        카카오로 로그인
+                    </SocialLoginButton>
+                    <SocialLoginButton 
+                        provider="google" 
+                        icon="google" 
+                        @login="socialLogin"
+                        class="flex-1 py-3 px-4 rounded-full text-gray-900 bg-white hover:bg-gray-100 transition duration-300"
+                    >
+                        Google로 로그인
+                    </SocialLoginButton>
                 </div>
             </div>
 

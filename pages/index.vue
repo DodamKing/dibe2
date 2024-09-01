@@ -68,7 +68,7 @@
 					<ul class="flex-grow overflow-y-auto custom-scrollbar p-4 space-y-3">
 						<li v-for="song in queue" :key="song.id"
 							class="flex items-center p-3 rounded-lg bg-gray-700 bg-opacity-50 hover:bg-opacity-70 transition-colors duration-200">
-							<img :src="song.albumCover" :alt="song.title"
+							<img :src="song.coverUrl" :alt="song.title"
 								class="w-12 h-12 object-cover rounded-lg mr-4 shadow-md">
 							<div class="flex-grow min-w-0">
 								<p class="font-medium text-white truncate">{{ song.title }}</p>
@@ -86,6 +86,7 @@
 </template>
 
 <script>
+import { mapState, mapActions } from 'vuex'
 import MusicPlayer from '~/components/MusicPlayer.vue'
 import AppHeader from '~/components/AppHeader.vue';
 
@@ -93,6 +94,9 @@ export default {
 	components: {
 		MusicPlayer,
 		AppHeader
+	},
+	computed: {
+		...mapState('player', ['queue', 'currentTrack'])
 	},
 	data() {
 		return {
@@ -105,24 +109,26 @@ export default {
 				{ id: 3, name: '운동할 때', cover: 'https://via.placeholder.com/200x200' },
 				{ id: 4, name: 'K-Pop Hits', cover: 'https://via.placeholder.com/200x200' }
 			],
-			currentTrack: {
-				id: 1,
-				title: 'Dynamite',
-				artist: 'BTS',
-				albumCover: 'https://via.placeholder.com/200x200'
-			},
-			queue: [
-				{ id: 1, title: '밤편지', artist: '아이유', albumCover: 'https://via.placeholder.com/100x100' },
-				{ id: 2, title: 'Spring Day', artist: 'BTS', albumCover: 'https://via.placeholder.com/100x100' },
-				{ id: 3, title: 'Blueming', artist: '아이유', albumCover: 'https://via.placeholder.com/100x100' }
-			]
+			// currentTrack: {
+			// 	id: 1,
+			// 	title: 'Dynamite',
+			// 	artist: 'BTS',
+			// 	albumCover: 'https://via.placeholder.com/200x200'
+			// },
+			// queue: []
 		}
 	},
 	methods: {
-		addToPlaylist(song) {
-			// 플레이리스트에 추가하는 로직 구현
-			console.log('Added to playlist:', song.title)
-		},
+		...mapActions('player', ['addToPlaylist', 'setCurrentTrack']),
+		// async addToPlaylist(song) {
+		// 	try {
+		// 		const { songData } = await this.$axios.$get(`/api/songs/songdata?title=${song.title}&artist=${song.artist}`)
+		// 		this.queue.push(songData)
+		// 		console.log('Added to playlist:', songData)
+		// 	} catch (err) {
+
+		// 	}
+		// },
 		toggleQueue() {
 			this.showQueue = !this.showQueue;
 		},
