@@ -28,16 +28,18 @@ router.get('/chart', async (req, res) => {
 
 router.get('/stream/:songId', async (req, res) => {
     const { songId } = req.params
-    console.log(songId);
-    
     const youtubeUrl = await services.songService.getYoutubeUrlbySongId(songId)
     
-    // const youtubeUrl = 'https://www.youtube.com/watch?v=hFTs6HbtxbE'
     try {
-        const audioStream  = await services.songService.getAudioStream(youtubeUrl)
+        // const audioStream  = await services.songService.getAudioStream(youtubeUrl)
+        const { audioStream, duration, contentLength } = await services.songService.getAudioStream(youtubeUrl)
 
         res.setHeader('Content-Type', 'audio/mp3')
         res.setHeader('Transfer-Encoding', 'chunked')
+
+        res.setHeader('X-Content-Duration', duration);
+        res.setHeader('Content-Length', contentLength);
+        res.setHeader('Accept-Ranges', 'bytes');
 
         audioStream.pipe(res)
     } catch (err) {

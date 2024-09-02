@@ -7,7 +7,11 @@ export const state = () => ({
     isPlaying: false,
     currentTime: 0,
     duration: 0,
-    volume: 1
+    volume: 1,
+    shuffleOn: false,
+    repeatOn: false,
+    originalQueue: [],
+    isLoading: false
 })
 
 export const mutations = {
@@ -31,6 +35,26 @@ export const mutations = {
     },
     SET_VOLUME(state, volume) {
         state.volume = volume;
+    },
+    SET_SHUFFLE(state, shuffleOn) {
+        state.shuffleOn = shuffleOn
+    },
+    SET_REPEAT(state, repeatOn) {
+        state.repeatOn = repeatOn
+    },
+    SHUFFLE_QUEUE(state) {
+        state.originalQueue = [...state.queue]
+
+        for (let i = state.queue.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [state.queue[i], state.queue[j]] = [state.queue[j], state.queue[i]];
+        }
+    },
+    RESTORE_ORIGINAL_QUEUE(state) {
+        state.queue = [...state.originalQueue]
+    },
+    SET_IS_LOADING(state, isLoading) {
+        state.isLoading = isLoading
     }
 }
 
@@ -51,12 +75,15 @@ export const actions = {
 
     async play({ commit, state }) {
         if (state.currentTrack) {
+            commit('SET_IS_LOADING', true)
             try {
                 const url = `/api/songs/stream/${state.currentTrack._id}`
                 await audioPlayer.play(url)
                 commit('SET_IS_PLAYING', true)
             } catch (error) {
                 console.error('Failed to play track:', error)
+            } finally {
+                commit('SET_IS_LOADING', false)
             }
         }
     },
@@ -70,6 +97,10 @@ export const actions = {
         const currentIndex = state.queue.findIndex(track => track._id === state.currentTrack?._id)
         if (currentIndex < state.queue.length - 1) {
             commit('SET_CURRENT_TRACK', state.queue[currentIndex + 1])
+            dispatch('play')
+        } else if (state.repeatOn) {
+            // 반복 재생이 켜져 있으면 첫 번째 트랙으로 돌아감
+            commit('SET_CURRENT_TRACK', state.queue[0])
             dispatch('play')
         } else {
             // 큐의 마지막 곡이었을 경우
@@ -101,9 +132,10 @@ export const actions = {
         commit('SET_VOLUME', volume);
     },
 
-    seek({ state }, time) {
+    seek({ commit, state, dispatch }, time) {
         if (state.currentTrack) {
             audioPlayer.seek(time);
+            commit('SET_CURRENT_TIME', time)
         }
     },
 
@@ -111,7 +143,13 @@ export const actions = {
         audioPlayer.init();
         // audioPlayer.setVolume(state.volume)
         audioPlayer.setOnTrackEndedCallback(() => {
-            dispatch('playNext');
+            if (state.repeatOn && !state.shuffleOn) {
+                // 한 곡 반복 재생
+                dispatch('seek', 0);
+                dispatch('play');
+            } else {
+                dispatch('playNext');
+            }
         });
         audioPlayer.setOnTimeUpdateCallback((currentTime, duration) => {
             dispatch('updateTrackProgress', { currentTime, duration });
@@ -122,6 +160,21 @@ export const actions = {
         commit('SET_CURRENT_TIME', currentTime);
         commit('SET_DURATION', duration);
     },
+
+    toggleShuffle({ commit, state }) {
+        const shuffleOn = !state.shuffleOn
+        commit('SET_SHUFFLE', shuffleOn)
+        if (shuffleOn) {
+            commit('SHUFFLE_QUEUE')
+        } else {
+            commit('RESTORE_ORIGINAL_QUEUE')
+        }
+    },
+
+    toggleRepeat({ commit, state }) {
+        commit('SET_REPEAT', !state.repeatOn)
+    },
+
 }
 
 export const getters = {

@@ -136,7 +136,13 @@ module.exports = {
             const info = await ytdl.getInfo(youtubeUrl)
             const audioFormat  = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly'})
 
-            return ytdl(youtubeUrl, { format: audioFormat })
+            // return ytdl(youtubeUrl, { format: audioFormat })
+            const result = {
+                audioStream: ytdl(youtubeUrl, { format: audioFormat }),
+                duration: parseInt(info.videoDetails.lengthSeconds),
+                contentLength: audioFormat.contentLength
+            } 
+            return result
         } catch (err) {
             console.error('오티오 스트림 추출 중 에러 발생:', err)
             throw err

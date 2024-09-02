@@ -1,58 +1,100 @@
 <template>
     <div class="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-purple-800 to-blue-700 shadow-lg">
         <div class="container mx-auto px-4 py-2">
-            <div class="flex items-center justify-between">
-                <div v-if="currentTrack" class="flex items-center flex-1">
-                    <img :src="currentTrack.coverUrl" :alt="currentTrack.title"
-                        class="w-14 h-14 object-cover rounded-lg mr-3">
-                    <div class="mr-3">
-                        <p class="font-medium truncate text-white">{{ currentTrack.title }}</p>
-                        <p class="text-sm text-gray-200 truncate">{{ currentTrack.artist }}</p>
+            <div class="flex flex-row items-center justify-between h-14 sm:h-12"> <!-- Fixed height container -->
+                <!-- Track Info -->
+                <div class="flex items-center w-1/3 sm:w-1/4 h-full"> <!-- Added h-full -->
+                    <div v-if="currentTrack" class="flex items-center w-full h-full"> <!-- Added h-full -->
+                        <div class="relative w-10 h-10 sm:w-12 sm:h-12 mr-2 sm:mr-3 flex-shrink-0">
+                            <img :src="currentTrack.coverUrl" :alt="currentTrack.title"
+                                class="w-full h-full object-cover rounded-lg">
+                            <div v-if="isLoading"
+                                class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
+                                <div
+                                    class="animate-spin rounded-full h-4 w-4 sm:h-6 sm:w-6 border-t-2 border-b-2 border-white">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mr-2 sm:mr-3 truncate">
+                            <p class="font-medium truncate text-white text-sm sm:text-base">{{ currentTrack.title }}</p>
+                            <p class="text-xs sm:text-sm text-gray-200 truncate">{{ currentTrack.artist }}</p>
+                        </div>
+                    </div>
+                    <div v-else class="flex items-center w-full h-full text-white text-sm sm:text-base">
+                        재생할 곡을 선택해주세요
                     </div>
                 </div>
-                <div v-else class="flex items-center flex-1">
-                    재생할 곡을 선택해주세요
-                </div>
-                <div class="flex items-center space-x-4">
-                    <button class="text-gray-200 hover:text-white focus:outline-none" aria-label="이전 곡"
+
+                <!-- Playback Controls -->
+                <div class="flex items-center justify-center space-x-2 sm:space-x-4 w-1/3 sm:w-1/2">
+                    <button class="text-gray-200 hover:text-white focus:outline-none hidden sm:block" aria-label="이전 곡"
                         @click="playPrevious" :disabled="!hasPreviousTrack">
-                        <i class="fas fa-step-backward text-xl" :class="{ 'opacity-50': !hasPreviousTrack }"></i>
+                        <i class="fas fa-step-backward text-lg sm:text-xl"
+                            :class="{ 'opacity-50': !hasPreviousTrack }"></i>
                     </button>
                     <button
-                        class="bg-white text-purple-800 rounded-full w-12 h-12 flex items-center justify-center hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
-                        aria-label="재생/일시정지" @click="togglePlay">
-                        <i :class="['fas', isPlaying ? 'fa-pause' : 'fa-play', 'text-xl', isPlaying ? '' : 'ml-1']"></i>
+                        class="bg-white text-purple-800 rounded-full w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
+                        aria-label="재생/일시정지" @click="togglePlay" :disabled="isLoading">
+                        <i
+                            :class="['fas', isPlaying ? 'fa-pause' : 'fa-play', 'text-base sm:text-lg', isPlaying ? '' : 'ml-0.5']"></i>
                     </button>
-                    <button class="text-gray-200 hover:text-white focus:outline-none" aria-label="다음 곡" 
+                    <button class="text-gray-200 hover:text-white focus:outline-none" aria-label="다음 곡"
                         @click="playNext" :disabled="!hasNextTrack">
-                        <i class="fas fa-step-forward text-xl" :class="{ 'opacity-50': !hasNextTrack }"></i>
+                        <i class="fas fa-step-forward text-lg sm:text-xl" :class="{ 'opacity-50': !hasNextTrack }"></i>
                     </button>
+                </div>
+
+                <!-- Additional Controls -->
+                <div class="flex items-center justify-end space-x-2 sm:space-x-4 w-1/3 sm:w-1/4">
+                    <button class="text-gray-200 hover:text-white focus:outline-none hidden sm:block"
+                        @click="toggleShuffle" :class="{ 'text-white': shuffleOn }">
+                        <i class="fas fa-random text-lg"></i>
+                    </button>
+                    <button class="text-gray-200 hover:text-white focus:outline-none hidden sm:block"
+                        @click="toggleRepeat" :class="{ 'text-white': repeatOn }">
+                        <i class="fas fa-redo text-lg"></i>
+                    </button>
+                    <div class="hidden sm:flex items-center space-x-1">
+                        <button class="text-gray-200 hover:text-white focus:outline-none" @click="toggleMute">
+                            <i
+                                :class="['fas', volume === 0 ? 'fa-volume-mute' : volume < 0.5 ? 'fa-volume-down' : 'fa-volume-up', 'text-lg']"></i>
+                        </button>
+                        <div class="relative w-20 h-1">
+                            <div class="absolute inset-y-0 left-0 bg-gray-600 bg-opacity-50 rounded-full w-full h-1">
+                            </div>
+                            <div class="absolute inset-y-0 left-0 bg-white rounded-full h-1"
+                                :style="{ width: `${volume * 100}%` }"></div>
+                            <input type="range" min="0" max="1" step="0.01" :value="volume" @input="onVolumeChange"
+                                class="w-full appearance-none bg-transparent h-1 rounded-full focus:outline-none absolute inset-0 opacity-0">
+                        </div>
+                    </div>
                     <button class="text-gray-200 hover:text-white focus:outline-none" aria-label="재생 목록"
                         @click="$emit('toggle-queue')">
-                        <i class="fas fa-list text-xl"></i>
+                        <i class="fas fa-list text-lg"></i>
                     </button>
                 </div>
             </div>
-            <!-- <div class="mt-2 flex items-center space-x-2 text-sm text-gray-200">
-                <span>{{ formatTime(currentTime) }}</span>
-                <div class="flex-1 bg-gray-600 bg-opacity-50 rounded-full h-1">
-                    <div class="bg-white h-1 rounded-full" :style="{ width: `${progress}%` }"></div>
+            <div class="mt-1 flex items-center space-x-2 text-xs text-gray-200">
+                <span class="w-8 text-right">{{ formatTime(currentTime) }}</span>
+                <div class="flex-1 relative group" @mousedown="startSeek" @mousemove="updateSeek" @mouseup="endSeek"
+                    @mouseleave="endSeek" @touchstart="startSeek" @touchmove="updateSeek" @touchend="endSeek">
+                    <div
+                        class="absolute inset-y-0 left-0 bg-gray-600 bg-opacity-50 rounded-full w-full h-1 group-hover:h-2 transition-all duration-200">
+                    </div>
+                    <div class="absolute inset-y-0 left-0 bg-white rounded-full transition-all duration-100 ease-out h-1 group-hover:h-2"
+                        :style="{ width: `${progress}%` }"></div>
+                    <div v-if="isDragging"
+                        class="absolute top-0 transform -translate-y-full bg-white text-purple-800 px-1 py-0.5 rounded text-xs"
+                        :style="{ left: `${dragProgress}%` }">
+                        {{ formatTime(dragTime) }}
+                    </div>
+                    <input type="range" min="0" :max="duration" :value="currentTime"
+                        class="appearance-none w-full h-1 group-hover:h-2 bg-transparent rounded-full outline-none focus:outline-none active:outline-none absolute inset-0 z-10 opacity-0 cursor-pointer">
                 </div>
-                <span>{{ formatTime(duration) }}</span>
-            </div> -->
-            <div class="mt-2 flex items-center space-x-2 text-sm text-gray-200">
-                <span>{{ formatTime(currentTime) }}</span>
-                <input type="range" min="0" :max="duration" :value="currentTime" @input="onSeek" 
-                    class="flex-1 appearance-none bg-gray-600 bg-opacity-50 h-1 rounded-full">
-                <span>{{ formatTime(duration) }}</span>
+                <span class="w-8">{{ formatTime(duration) }}</span>
             </div>
-            <!-- <div class="mt-2 flex items-center space-x-2 text-sm text-gray-200">
-                <i class="fas fa-volume-down"></i>
-                <input type="range" min="0" max="1" step="0.01" :value="volume" @input="onVolumeChange" 
-                    class="w-24 appearance-none bg-gray-600 bg-opacity-50 h-1 rounded-full">
-                <i class="fas fa-volume-up"></i>
-            </div> -->
         </div>
+        <div v-if="isLoading" class="absolute bottom-0 left-0 w-full h-0.5 bg-white animate-pulse"></div>
     </div>
 </template>
 
@@ -61,40 +103,91 @@ import { mapState, mapActions, mapGetters } from 'vuex'
 
 export default {
     computed: {
-        ...mapState('player', ['currentTrack', 'isPlaying', 'queue', 'currentTime', 'duration', 'volume']),
+        ...mapState('player', ['currentTrack', 'isPlaying', 'currentTime', 'duration', 'volume', 'shuffleOn', 'repeatOn', 'isLoading']),
         ...mapGetters('player', ['hasPreviousTrack', 'hasNextTrack']),
         progress() {
             return this.duration > 0 ? (this.currentTime / this.duration) * 100 : 0
         }
     },
     methods: {
-        ...mapActions('player', ['setCurrentTrack', 'play', 'pause', 'playNext', 'playPrevious', 'seek', 'setVolume']),
+        ...mapActions('player', ['play', 'pause', 'playNext', 'playPrevious', 'seek', 'setVolume', 'toggleShuffle', 'toggleRepeat']),
 
         togglePlay() {
-            if (this.isPlaying) {
-                this.pause()
-            } else {
-                this.play()
+            if (!this.isLoading) {
+                this.isPlaying ? this.pause() : this.play()
             }
         },
 
         formatTime(seconds) {
+            if (isNaN(seconds) || seconds === null) return '00:00'
             const mins = Math.floor(seconds / 60)
             const secs = Math.floor(seconds % 60)
-            return `${mins}:${secs.toString().padStart(2, '0')}`
-        },
-
-        onSeek(event) {
-            this.seek(Number(event.target.value))
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
         },
 
         onVolumeChange(event) {
             this.setVolume(Number(event.target.value))
+        },
+
+        toggleMute() {
+            if (this.volume > 0) {
+                this.previousVolume = this.volume
+                this.setVolume(0)
+            } else {
+                this.setVolume(this.previousVolume || 0.5)
+            }
+        },
+
+        startSeek(event) {
+            this.isDragging = true;
+            this.updateSeekPosition(event);
+        },
+
+        updateSeek(event) {
+            if (this.isDragging) {
+                this.updateSeekPosition(event);
+            }
+        },
+
+        endSeek() {
+            if (this.isDragging) {
+                this.isDragging = false;
+                this.seek(this.dragTime);
+            }
+        },
+
+        updateSeekPosition(event) {
+            const rect = event.target.getBoundingClientRect()
+            const clientX = event.touches ? event.touches[0].clientX : event.clientX
+            const x = clientX - rect.left
+            this.dragProgress = (x / rect.width) * 100
+            this.dragTime = (this.dragProgress / 100) * this.duration
+        },
+
+        async seek(time) {
+            await this.$store.dispatch('player/seek', time);
+        }
+    },
+
+    data() {
+        return {
+            previousVolume: null,
+            isDragging: false,
+            dragProgress: 0,
+            dragTime: 0
         }
     },
 
     mounted() {
         this.$store.dispatch('player/initAudioPlayer')
+    },
+
+    watch: {
+        currentTrack() {
+            // Reset currentTime and duration when track changes
+            this.$store.commit('player/SET_CURRENT_TIME', 0)
+            this.$store.commit('player/SET_DURATION', 0)
+        }
     }
 }
 </script>
@@ -102,24 +195,67 @@ export default {
 <style scoped>
 input[type="range"] {
     -webkit-appearance: none;
+    appearance: none;
     background: transparent;
+    cursor: pointer;
 }
 
 input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    height: 16px;
-    width: 16px;
-    border-radius: 50%;
-    background: white;
-    cursor: pointer;
-    margin-top: -6px;
+    appearance: none;
+    width: 0;
+    height: 0;
 }
 
 input[type="range"]::-moz-range-thumb {
-    height: 16px;
-    width: 16px;
-    border-radius: 50%;
-    background: white;
+    width: 0;
+    height: 0;
+    border: 0;
+}
+
+input[type="range"]:focus {
+    outline: none;
+}
+
+input[type="range"]::-ms-track {
+    width: 100%;
     cursor: pointer;
+    background: transparent;
+    border-color: transparent;
+    color: transparent;
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: .5;
+    }
+}
+
+.group:hover input[type="range"] {
+    height: 0.5rem;
 }
 </style>

@@ -106,7 +106,7 @@ export default {
             this.errors.password = this.password.length < 8 ? '비밀번호는 8자 이상이어야 합니다.' : ''
         },
         async login() {
-            // this.validateEmail()
+            this.validateEmail()
             this.validatePassword()
 
             if (this.errors.email || this.errors.password) {
