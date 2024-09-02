@@ -6,24 +6,48 @@
 			<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
 				<div
 					class="bg-gray-800 bg-opacity-70 rounded-lg shadow-lg p-4 sm:p-6 transition-transform duration-300">
-					<h2 class="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-purple-300">인기 차트</h2>
-					<div class="h-[350px] sm:h-[450px] overflow-y-auto pr-2 custom-scrollbar">
-						<ul class="space-y-3 sm:space-y-4">
-							<li v-for="song in popularChart" :key="song.rank"
-								class="flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors duration-200">
-								<span class="mr-2 sm:mr-4 text-lg sm:text-2xl font-bold text-purple-400 w-6 sm:w-8">{{
-									song.rank }}</span>
-								<img :src="song.coverUrl" :alt="song.title"
-									class="w-10 h-10 sm:w-16 sm:h-16 object-cover rounded-lg mr-2 sm:mr-4 shadow-md">
-								<div class="flex-grow min-w-0">
-									<p class="font-medium text-sm sm:text-lg truncate">{{ song.title }}</p>
-									<p class="text-xs sm:text-sm text-gray-300 truncate">{{ song.artist }}</p>
-								</div>
-								<button
-									class="ml-2 text-gray-400 hover:text-purple-400 transition-colors duration-200 flex-shrink-0"
-									@click="addToPlaylist(song)">
-									<i class="fas fa-plus-circle text-base sm:text-xl"></i>
+					<div class="sticky top-0 z-10 pb-4">
+						<div class="flex justify-between items-center">
+							<h2 class="text-xl sm:text-2xl font-semibold text-purple-300">인기 차트</h2>
+							<div class="flex space-x-2">
+								<button @click="selectAll"
+									class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-3 rounded text-sm">
+									{{ allSelected ? '전체 해제' : '전체 선택' }}
 								</button>
+								<button @click="addSelectedToPlaylist"
+									:disabled="selectedSongs.length === 0 || isAdding"
+									class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed w-24">
+									{{ isAdding ? '추가 중...' : `추가 (${selectedSongs.length})` }}
+								</button>
+							</div>
+						</div>
+					</div>
+					<div class="h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+						<ul class="space-y-3">
+							<li v-for="song in popularChart" :key="`${song.title}-${song.artist}`"
+								class="flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors duration-200">
+								<input type="checkbox" :checked="isSongSelected(song)"
+									@change="toggleSongSelection(song)"
+									class="mr-2 form-checkbox h-4 w-4 text-purple-600" />
+								<span class="mr-2 text-lg font-bold text-purple-400 w-6">
+									{{ song.rank }}
+								</span>
+								<img :src="song.coverUrl" :alt="song.title"
+									class="w-10 h-10 object-cover rounded-lg mr-2 shadow-md" />
+								<div class="flex-grow min-w-0 mr-2">
+									<p class="font-medium text-sm truncate">{{ song.title }}</p>
+									<p class="text-xs text-gray-300 truncate">{{ song.artist }}</p>
+								</div>
+								<div class="flex-shrink-0 flex space-x-1">
+									<!-- <button class="text-gray-400 hover:text-purple-400 transition-colors duration-200"
+										@click="addToPlaylist(song)">
+										<i class="fas fa-plus-circle text-base"></i>
+									</button> -->
+									<button class="text-gray-400 hover:text-blue-400 transition-colors duration-200"
+										@click="showPlaylistSelection(song)">
+										<i class="fas fa-list text-base"></i>
+									</button>
+								</div>
 							</li>
 						</ul>
 					</div>
@@ -32,14 +56,16 @@
 				<div class="lg:col-span-2">
 					<div
 						class="bg-gray-800 bg-opacity-70 rounded-lg shadow-lg p-4 sm:p-6 transition-transform duration-300">
-						<h2 class="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-blue-300">내 플레이리스트</h2>
+						<h2 class="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-blue-300 pb-4">내 플레이리스트</h2>
 						<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-							<div v-for="playlist in myPlaylists" :key="playlist.id" class="relative group cursor-pointer">
+							<div v-for="playlist in myPlaylists" :key="playlist.id"
+								class="relative group cursor-pointer">
 								<img :src="playlist.cover" :alt="playlist.name"
 									class="w-full aspect-square object-cover rounded-lg shadow-md transition-transform duration-300 group-hover:scale-105">
 								<div
 									class="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center p-2 sm:p-4">
-									<p class="font-medium text-center text-sm sm:text-lg truncate">{{ playlist.name }}</p>
+									<p class="font-medium text-center text-sm sm:text-lg truncate">{{ playlist.name }}
+									</p>
 								</div>
 							</div>
 						</div>
@@ -51,52 +77,84 @@
 		<MusicPlayer :current-track="currentTrack" @toggle-queue="toggleQueue"
 			class="sticky bottom-0 left-0 right-0 z-40" />
 
-		<transition name="slide-up">
-			<div v-if="showQueue" class="fixed inset-0 bg-black bg-opacity-50 z-50" @click="toggleQueue">
-				<div class="absolute bottom-0 left-0 right-0 bg-gradient-to-b from-gray-900 to-gray-800 shadow-lg rounded-t-xl max-h-[80vh] overflow-hidden flex flex-col"
-					@click.stop>
-					<div class="p-4 bg-gray-800">
-						<div class="w-12 h-1 bg-gray-600 rounded-full mx-auto mb-4"></div>
-						<div class="flex justify-between items-center mb-4">
-							<h2 class="text-xl font-semibold text-purple-300">재생 목록</h2>
-							<button class="text-gray-400 hover:text-white transition-colors duration-200"
-								@click="toggleQueue">
-								<i class="fas fa-times"></i>
-							</button>
-						</div>
-					</div>
-					<ul class="flex-grow overflow-y-auto custom-scrollbar p-4 space-y-3">
-						<li v-for="song in queue" :key="song.id"
-							class="flex items-center p-3 rounded-lg bg-gray-700 bg-opacity-50 hover:bg-opacity-70 transition-colors duration-200">
-							<img :src="song.coverUrl" :alt="song.title"
-								class="w-12 h-12 object-cover rounded-lg mr-4 shadow-md">
-							<div class="flex-grow min-w-0">
-								<p class="font-medium text-white truncate">{{ song.title }}</p>
-								<p class="text-sm text-gray-300 truncate">{{ song.artist }}</p>
-							</div>
-							<button class="text-gray-400 hover:text-white transition-colors duration-200 p-2">
-								<i class="fas fa-ellipsis-v"></i>
+		<!-- 재생 목록 섹션 -->
+		<Playlist :show="showQueue" @close="toggleQueue" />
+
+		<!-- Playlist Selection Modal -->
+		<transition name="fade">
+			<div v-if="showPlaylistSelectionModal"
+				class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+				<div class="bg-gray-800 rounded-lg p-6 max-w-sm w-full">
+					<h3 class="text-xl font-semibold mb-4">플레이리스트 선택</h3>
+					<ul class="space-y-2">
+						<li v-for="playlist in myPlaylists" :key="playlist.id">
+							<button @click="addToSelectedPlaylist(playlist.id)"
+								class="w-full text-left p-2 rounded hover:bg-gray-700 transition-colors duration-200">
+								{{ playlist.name }}
 							</button>
 						</li>
 					</ul>
+					<button @click="closePlaylistSelection"
+						class="mt-4 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+						취소
+					</button>
 				</div>
 			</div>
 		</transition>
+
+		<!-- Toast Message -->
+		<transition name="fade">
+			<div v-if="toastVisible"
+				class="fixed bottom-20 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg">
+				{{ toastMessage }}
+			</div>
+		</transition>
+
+		<!-- Loading Overlay -->
+		<div v-if="isAdding" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+			<div class="bg-gray-800 rounded-lg p-6 max-w-sm w-full text-center">
+				<svg class="animate-spin h-10 w-10 text-blue-500 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg"
+					fill="none" viewBox="0 0 24 24">
+					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+					<path class="opacity-75" fill="currentColor"
+						d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+					</path>
+				</svg>
+				<p class="text-lg font-semibold mb-2">곡 추가 중...</p>
+				<div class="w-full bg-gray-700 rounded-full h-2.5 dark:bg-gray-700 mt-4">
+					<div class="bg-blue-600 h-2.5 rounded-full" :style="{ width: `${progressPercentage}%` }"></div>
+				</div>
+			</div>
+		</div>
 	</div>
 </template>
 
 <script>
 import { mapState, mapActions } from 'vuex'
 import MusicPlayer from '~/components/MusicPlayer.vue'
-import AppHeader from '~/components/AppHeader.vue';
+import AppHeader from '~/components/AppHeader.vue'
+import Playlist from '~/components/Playlist.vue'
 
 export default {
+	watch: {
+		isAdding(newValue) {
+			if (newValue) {
+				this.startProgress()
+			} else {
+				this.stopProgress()
+			}
+		}
+	},
 	components: {
 		MusicPlayer,
-		AppHeader
+		AppHeader,
+		Playlist,
 	},
 	computed: {
-		...mapState('player', ['queue', 'currentTrack'])
+		...mapState('player', ['queue', 'currentTrack']),
+		allSelected() {
+			return this.selectedSongs.length === this.popularChart.length
+		}
 	},
 	data() {
 		return {
@@ -109,26 +167,17 @@ export default {
 				{ id: 3, name: '운동할 때', cover: 'https://via.placeholder.com/200x200' },
 				{ id: 4, name: 'K-Pop Hits', cover: 'https://via.placeholder.com/200x200' }
 			],
-			// currentTrack: {
-			// 	id: 1,
-			// 	title: 'Dynamite',
-			// 	artist: 'BTS',
-			// 	albumCover: 'https://via.placeholder.com/200x200'
-			// },
-			// queue: []
+			selectedSongs: [],
+			showPlaylistSelectionModal: false,
+			currentSongForPlaylist: null,
+			toastVisible: false,
+			toastMessage: '',
+			isAdding: false,
+			progressPercentage: 0,
 		}
 	},
 	methods: {
-		...mapActions('player', ['addToPlaylist', 'setCurrentTrack']),
-		// async addToPlaylist(song) {
-		// 	try {
-		// 		const { songData } = await this.$axios.$get(`/api/songs/songdata?title=${song.title}&artist=${song.artist}`)
-		// 		this.queue.push(songData)
-		// 		console.log('Added to playlist:', songData)
-		// 	} catch (err) {
-
-		// 	}
-		// },
+		...mapActions('player', ['addToPlaylist', 'setCurrentTrack', 'addMultipleToPlaylist']),
 		toggleQueue() {
 			this.showQueue = !this.showQueue;
 		},
@@ -144,15 +193,92 @@ export default {
 			if (e.key === 'Escape' && this.showQueue) {
 				this.closeQueue()
 			}
-		}
+		},
+		toggleSongSelection(song) {
+			const index = this.selectedSongs.findIndex(s => s.title === song.title && s.artist === song.artist)
+			if (index === -1) {
+				this.selectedSongs.push(song)
+			} else {
+				this.selectedSongs.splice(index, 1)
+			}
+		},
+		isSongSelected(song) {
+			return this.selectedSongs.some(s => s.title === song.title && s.artist === song.artist)
+		},
+		selectAll() {
+			if (this.allSelected) {
+				this.selectedSongs = []
+			} else {
+				this.selectedSongs = [...this.popularChart]
+				// this.selectedSongs = this.popularChart.map(song => ({ ...song }))
+			}
+		},
+		async addSelectedToPlaylist() {
+			if (this.isAdding) return
+
+			this.isAdding = true
+			try {
+				const uniqueSongs = this.selectedSongs.filter(
+					song => !this.queue.some(queueSong => queueSong.title === song.title && queueSong.artist === song.artist)
+				)
+
+				const addedCount = await this.addMultipleToPlaylist(uniqueSongs)
+
+				this.showToast(`${addedCount}곡이 재생목록에 추가되었습니다.`)
+				this.selectedSongs = []
+			} catch (err) {
+				console.error('Failed to add songs to playlist:', err)
+				this.showToast('곡을 재생목록에 추가하는 데 실패했습니다.')
+			} finally {
+				this.isAdding = false
+			}
+		},
+		showPlaylistSelection(song) {
+			this.currentSongForPlaylist = song
+			this.showPlaylistSelectionModal = true
+		},
+		closePlaylistSelection() {
+			this.showPlaylistSelectionModal = false
+			this.currentSongForPlaylist = null
+		},
+		addToSelectedPlaylist(playlistId) {
+			// Here you would implement the logic to add the song to the selected playlist
+			console.log(`Adding song ${this.currentSongForPlaylist.title} by ${this.currentSongForPlaylist.artist} to playlist ${playlistId}`)
+			this.showToast(`"${this.currentSongForPlaylist.title}"이(가) 플레이리스트에 추가되었습니다.`)
+			this.closePlaylistSelection()
+		},
+		showToast(message) {
+			this.toastMessage = message
+			this.toastVisible = true
+			setTimeout(() => {
+				this.toastVisible = false
+			}, 3000)
+		},
+		playSong(song) {
+			this.setCurrentTrack(song)
+		},
+		startProgress() {
+			this.progressPercentage = 0
+			this.intervalId = setInterval(() => {
+				if (this.progressPercentage < 90) {
+					this.progressPercentage += Math.random() * 15 + 5
+					if (this.progressPercentage > 90) {
+						this.progressPercentage = 90
+					}
+				}
+			}, 100)
+		},
+		stopProgress() {
+			clearInterval(this.intervalId)
+			this.progressPercentage = 100
+			setTimeout(() => {
+				this.progressPercentage = 0
+			}, 300)
+		},
 	},
 	mounted() {
 		this.fetchPopularChart()
-		document.addEventListener('keydown', (e) => {
-			if (e.key === 'Escape' && this.showQueue) {
-				this.toggleQueue()
-			}
-		})
+		document.addEventListener('keydown', this.handleKeyDown)
 	},
 	beforeDestroy() {
 		document.removeEventListener('keydown', this.handleKeyDown)
@@ -203,5 +329,19 @@ export default {
 .container {
 	max-width: 100%;
 	overflow-x: hidden;
+}
+
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.animate-spin {
+	animation: spin 1s linear infinite;
 }
 </style>

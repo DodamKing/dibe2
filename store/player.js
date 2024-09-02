@@ -24,6 +24,9 @@ export const mutations = {
     ADD_TO_QUEUE(state, track) {
         state.queue.push(track)
     },
+    ADD_MULTIPLE_TO_QUEUE(state, songs) {
+        state.queue.push(...songs)
+    },
     SET_IS_PLAYING(state, isPlaying) {
         state.isPlaying = isPlaying
     },
@@ -65,6 +68,17 @@ export const actions = {
 
         if (!state.currentTrack) {
             commit('SET_CURRENT_TRACK', songData)
+        }
+    },
+
+    async addMultipleToPlaylist({ commit, state }, songs) {
+        try {
+            const { songDatas } = await this.$axios.$post('/api/songs/songsdata', { songs })
+            commit('ADD_MULTIPLE_TO_QUEUE', songDatas)
+            if (!state.currentTrack) commit('SET_CURRENT_TRACK', songDatas[0])
+            return songDatas.length
+        } catch (err) {
+            console.error(err)
         }
     },
 
@@ -165,9 +179,11 @@ export const actions = {
         const shuffleOn = !state.shuffleOn
         commit('SET_SHUFFLE', shuffleOn)
         if (shuffleOn) {
-            commit('SHUFFLE_QUEUE')
+            // commit('SHUFFLE_QUEUE')
+            alert('셔플 켬, 구현 필요')
         } else {
-            commit('RESTORE_ORIGINAL_QUEUE')
+            // commit('RESTORE_ORIGINAL_QUEUE')
+            alert('셔플 끔, 구현 필요')
         }
     },
 

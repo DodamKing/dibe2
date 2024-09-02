@@ -54,4 +54,14 @@ router.get('/songdata', async (req, res) => {
     res.json({ songData })
 })
 
+router.post('/songsdata', async (req, res) => {
+    const { songs } = req.body
+    const songDatas = []
+    for (const song of songs) {
+        const songData = await services.songService.getSongByTitleAndArtist(song.title, song.artist)
+        songDatas.push(songData)
+    }
+    res.json({ songDatas })
+})
+
 module.exports = router
