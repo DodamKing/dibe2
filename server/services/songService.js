@@ -16,13 +16,20 @@ function parseSimpleTextDuration(simpleText) {
     }
 }
 
+// 개별 검색 함수
+async function searchByField(query, field) {
+    const searchCriteria = {}
+    searchCriteria[field] = { $regex: query, $options : 'i'}
+    return await db.Song.find(searchCriteria)
+}
+
 module.exports = {
     updateChartData: async (newChartData) => {
         try {
             const currentChart = await db.Chart.findOne()
 
             if (!currentChart) {
-                await db.Chart.create(newChartData)
+                await db.Chart.create({ items: newChartData})
                 console.log('차트 초기 데이터 삽입 성공');
                 return 
             }
@@ -65,10 +72,8 @@ module.exports = {
         }
     },
 
-    saveSongData: async () => {
+    saveSongData: async (chartData) => {
         try {
-            const chartData = await helper.getBugsChart()
-            
             for (const song of chartData) {
                 const existingSong = await db.Song.findOne({ title: song.title, artist: song.artist })
                 if (!existingSong) {
@@ -105,7 +110,7 @@ module.exports = {
                             }
     
                             if (durationInSeconds >= 120 && durationInSeconds <= 360) {
-                                const videoId = searchResults.items[0].id
+                                const videoId = item.id
                                 const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`
     
                                 await song.updateOne({ youtubeUrl })
@@ -126,6 +131,46 @@ module.exports = {
             }
 
             console.log('YouTube URL 업데이트 완료')
+        } catch (err) {
+            console.error('YouTube URL 업데이트 중 오류 발생:', err)
+        }
+    },
+
+    updateYoutubeUrl: async (_id) => {
+        try {
+            const song = await db.Song.findById(_id)
+            const searchQuery = `${song.title} ${song.artist} official audio`
+            const searchResults = await YouTubeSearch.GetListByKeyword(searchQuery, false, 10)
+
+            let foundSuitableVideo = false
+            let youtubeUrl
+
+            if (searchResults && searchResults.items && searchResults.items.length > 0) {
+                for (const item of searchResults.items) {
+                    const durationInSeconds = parseSimpleTextDuration(item.length.simpleText)
+
+                    if (durationInSeconds === null) {
+                        console.log('길이 파싱 못함', item.title)
+                        continue
+                    }
+
+                    if (durationInSeconds >= 120 && durationInSeconds <= 360) {
+                        const videoId = item.id
+                        youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`
+
+                        await song.updateOne({ youtubeUrl })
+                        console.log(`YouTube URL 업데이트: ${song.title} by ${song.artist}`)
+                        foundSuitableVideo = true
+                        break
+                    }
+                }
+            }
+
+            if (!foundSuitableVideo) console.log(`YouTube URL 결과 없음: ${song.title} by ${song.artist}`)
+
+            console.log('YouTube URL 업데이트 완료')
+
+            return youtubeUrl
         } catch (err) {
             console.error('YouTube URL 업데이트 중 오류 발생:', err)
         }
@@ -164,6 +209,36 @@ module.exports = {
             return song
         } catch (err) {
             console.error(err)
+        }
+    },
+
+    searchSong: async (query) => {
+        const results = {
+            titles: await searchByField(query, 'title'),
+            artists: await searchByField(query, 'artist'),
+            albums: await searchByField(query, 'album'),
+            lyrics: await searchByField(query, 'lyrics')
+        }
+
+        return results
+    },
+
+    updateLyrics: async () => {
+        try {
+            const songs = await db.Song.find({ lyrics: null })
+            
+            for (const song of songs) {
+                try {
+                    const lyrics = await helper.getLyrics(song.detailLink)
+                    await song.updateOne({ lyrics })
+                    console.log(`가사 업데이트: ${song.title} by ${song.artist}`)
+                } catch (err) {
+                    console.error(`가사 업데이트 에러: ${song.title} by ${song.artist}`)
+                }
+            }
+            console.log('가사 업데이트 완료')
+        } catch (err) {
+            console.error('가사 업데이트 중 에러: ' ,err)
         }
     }
 }

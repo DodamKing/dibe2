@@ -6,10 +6,10 @@ const router = express.Router()
 
 router.get('/test', async (req, res) => {
     try {
-        // const chartData = await helper.getBugsChart()
-        // await services.songService.updateChartData(chartData)
-        // await services.songService.updateYoutubeUrls()
-        res.json('테스투 입니돠')
+        // const _detailLink = 'https://music.bugs.co.kr/track/6259980?wl_ref=list_tr_08_chart'
+        const chartData = await helper.getBugsChart()
+        // await services.songService.updateLyrics()
+        res.json(chartData)
     } catch (error) {
         console.error('Error crawling Bugs chart:', error);
         res.end()
@@ -28,7 +28,8 @@ router.get('/chart', async (req, res) => {
 
 router.get('/stream/:songId', async (req, res) => {
     const { songId } = req.params
-    const youtubeUrl = await services.songService.getYoutubeUrlbySongId(songId)
+    let youtubeUrl = await services.songService.getYoutubeUrlbySongId(songId)
+    if (!youtubeUrl) youtubeUrl = await services.songService.updateYoutubeUrl(songId)
     
     try {
         // const audioStream  = await services.songService.getAudioStream(youtubeUrl)
@@ -62,6 +63,17 @@ router.post('/songsdata', async (req, res) => {
         songDatas.push(songData)
     }
     res.json({ songDatas })
+}),
+
+router.get('/search', async (req, res) => {
+    const { query } = req.query
+
+    try {
+        const results = await services.songService.searchSong(query)
+        res.json(results)
+    } catch (err) {
+        res.status(500).end()
+    }
 })
 
 module.exports = router

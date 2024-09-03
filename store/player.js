@@ -63,6 +63,11 @@ export const mutations = {
 
 export const actions = {
     async addToPlaylist({ commit, dispatch, state }, song) {
+        const songExists = state.queue.some(
+            queuedSong => queuedSong.title === song.title && queuedSong.artist === song.artist
+        )
+        if (songExists) return // 이곳에 토스트 날려야 함
+
         const { songData } = await this.$axios.$get(`/api/songs/songdata?title=${song.title}&artist=${song.artist}`)
         commit('ADD_TO_QUEUE', songData)
 

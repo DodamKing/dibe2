@@ -57,14 +57,8 @@ export default {
   build: {},
 
   serverMiddleware: [
-    session({
-      secret: 'dibe2_secret',
-      resave: false,
-      saveUninitialized: true,
-      cookie: {
-          maxAge: 24 * 60 * 60 * 1000
-      }
-    }),
+    '~/server/middleware/session',
+    '~/server/middleware/cron',
     { path: '/api', handler: '~/server/api/index.js' },
   ],
 

@@ -31,7 +31,7 @@ module.exports = {
             for (const element of rows) {
                 const rank = $(element).find('.ranking > strong').text().trim();
                 const title = $(element).find('.title').text().trim();
-                const artist = $(element).find('.artist').text().trim();
+                const artist = $(element).find('.artist > a').first().text().trim()
                 const album = $(element).find('.album').text().trim();
                 const coverUrl = $(element).find('.thumbnail > img').attr('src');
                 const detailLink = $(element).find('.trackInfo').attr('href');

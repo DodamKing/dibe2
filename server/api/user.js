@@ -42,6 +42,7 @@ router.post('/login', isNotAuthenticated, async (req, res) => {
             username: user.username,
             email: user.email
         }
+        
 
         res.json({ message: '로그인 성공', user: { userId: user._id, username: user.username, email: user.email }, code: 1})
     } catch (err) {

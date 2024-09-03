@@ -39,10 +39,10 @@
 									<p class="text-xs text-gray-300 truncate">{{ song.artist }}</p>
 								</div>
 								<div class="flex-shrink-0 flex space-x-1">
-									<!-- <button class="text-gray-400 hover:text-purple-400 transition-colors duration-200"
+									<button class="text-gray-400 hover:text-purple-400 transition-colors duration-200 mr-1"
 										@click="addToPlaylist(song)">
 										<i class="fas fa-plus-circle text-base"></i>
-									</button> -->
+									</button>
 									<button class="text-gray-400 hover:text-blue-400 transition-colors duration-200"
 										@click="showPlaylistSelection(song)">
 										<i class="fas fa-list text-base"></i>
@@ -174,6 +174,8 @@ export default {
 			toastMessage: '',
 			isAdding: false,
 			progressPercentage: 0,
+			showSearchResults: false,
+			searchResults: []
 		}
 	},
 	methods: {
@@ -210,7 +212,6 @@ export default {
 				this.selectedSongs = []
 			} else {
 				this.selectedSongs = [...this.popularChart]
-				// this.selectedSongs = this.popularChart.map(song => ({ ...song }))
 			}
 		},
 		async addSelectedToPlaylist() {

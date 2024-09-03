@@ -4,7 +4,9 @@ const User = require('./User')
 const Chart = require('./Chart')
 const Song = require('./Song')
 
-mongoose.connect(process.env.MONGODB_URI)
+mongoose.connect(process.env.MONGODB_URI, {
+    dbName: 'dibe2'
+})
 
 mongoose.connection.on('connected', () => {
     console.log('MongoDB에 연결되었습니다.');
