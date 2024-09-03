@@ -2,39 +2,6 @@ const cron = require('node-cron')
 const helper = require('../utils/helper')
 const { songService } = require('../services')
 
-// module.exports = function (req, res, next) {
-//     if (!global.cronJobRegistered) {
-//         cron.schedule('8 * * * *', async () => {
-//             console.log('데이터 저장 작업 시작', new Date().toISOString())
-            
-//             try {
-//                 const chartData = await helper.getBugsChart()
-//                 console.log('차트 데이터 가져오기 완료')
-
-//                 await songService.saveSongData(chartData)
-//                 console.log('노래 데이터 저장 완료')
-
-//                 await songService.updateChartData(chartData)
-//                 console.log('차트 데이터 업데이트 완료')
-
-//                 await songService.updateLyrics()
-//                 console.log('가사 업데이트 완료')
-
-//                 await songService.updateYoutubeUrls()
-//                 console.log('YouTube URL 업데이트 완료')
-
-//                 console.log('작업 완료', new Date().toISOString())
-//             } catch (err) {
-//                 console.error(err)
-//             }
-//         })
-
-//         global.cronJobRegistered = true
-//     }
-    
-//     next()
-// }
-
 function setupCronJob(schedule, jobName, task) {
     if (!global.cronJobsRegistered) global.cronJobsRegistered = {};
     

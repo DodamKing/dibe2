@@ -206,6 +206,7 @@ module.exports = {
     getSongByTitleAndArtist: async (title, artist) => {
         try {
             const song = await db.Song.findOne({ title, artist })
+                .select('_id title artist coverUrl')
             return song
         } catch (err) {
             console.error(err)

@@ -12,9 +12,11 @@ app.use(sessionCheckMiddleware)
 
 const userRoutes = require('./user')
 const songRoutes = require('./song')
+const playlistRoutes = require('./playlist')
 
 app.use('/users', userRoutes)
 app.use('/songs', songRoutes)
+app.use('/playlists', playlistRoutes)
 
 module.exports  = app
 
