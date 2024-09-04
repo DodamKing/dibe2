@@ -226,7 +226,7 @@ module.exports = {
 
     updateLyrics: async () => {
         try {
-            const songs = await db.Song.find({ lyrics: null })
+            const songs = await db.Song.find({ lyrics: null, detailLink: { $ne: null } })
             
             for (const song of songs) {
                 try {

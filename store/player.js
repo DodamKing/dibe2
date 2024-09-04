@@ -1,6 +1,12 @@
 // store/player.js
 import audioPlayer from "~/utils/audioPlayer"
 
+const getStorageKey = (rootState, key) => {
+    if (!rootState.auth.loggedIn) return null
+    const userId = rootState.auth.user.userId
+    return `user_${userId}_${key}`
+}
+
 export const state = () => ({
     currentTrack: null,
     queue: [],
@@ -62,6 +68,22 @@ export const mutations = {
 }
 
 export const actions = {
+    initializeQueue({ commit, rootState }) {
+        if (!rootState.auth.loggedIn) return
+
+        const queueKey = getStorageKey(rootState, 'queue')
+        const trackKey = getStorageKey(rootState, 'current_track')
+
+        const savedQueue = localStorage.getItem(queueKey)
+        if (savedQueue) {
+            commit('SET_QUEUE', JSON.parse(savedQueue))
+        }
+        const savedCurrentTrack = localStorage.getItem(trackKey)
+        if (savedCurrentTrack) {
+            commit('SET_CURRENT_TRACK', JSON.parse(savedCurrentTrack))
+        }
+    },
+
     async addToPlaylist({ commit, dispatch, state }, song) {
         const songExists = state.queue.some(
             queuedSong => queuedSong.title === song.title && queuedSong.artist === song.artist
@@ -70,25 +92,38 @@ export const actions = {
 
         const { songData } = await this.$axios.$get(`/api/songs/songdata?title=${song.title}&artist=${song.artist}`)
         commit('ADD_TO_QUEUE', songData)
+        await dispatch('saveQueue')
 
         if (!state.currentTrack) {
-            commit('SET_CURRENT_TRACK', songData)
+            // commit('SET_CURRENT_TRACK', songData)
+            await dispatch('setCurrentTrack', songData)
         }
     },
 
-    async addMultipleToPlaylist({ commit, state }, songs) {
+    async addMultipleToPlaylist({ commit, state, dispatch }, songs) {
         try {
             const { songDatas } = await this.$axios.$post('/api/songs/songsdata', { songs })
             commit('ADD_MULTIPLE_TO_QUEUE', songDatas)
-            if (!state.currentTrack) commit('SET_CURRENT_TRACK', songDatas[0])
+            await dispatch('saveQueue')
+
+            // if (!state.currentTrack) commit('SET_CURRENT_TRACK', songDatas[0])
+            if (!state.currentTrack) await dispatch('setCurrentTrack', songDatas[0])
             return songDatas.length
         } catch (err) {
             console.error(err)
         }
     },
 
-    setCurrentTrack({ commit, dispatch }, track) {
+    saveQueue({ state, rootState }) {
+        const key = getStorageKey(rootState, 'queue')
+        if (key) localStorage.setItem(key, JSON.stringify(state.queue))
+    },
+
+    setCurrentTrack({ commit, rootState }, track) {
         commit('SET_CURRENT_TRACK', track)
+
+        const key = getStorageKey(rootState, 'current_track')
+        if (key) localStorage.setItem(key, JSON.stringify(track))
         // dispatch('play')
     },
 

@@ -6,10 +6,8 @@ const router = express.Router()
 
 router.get('/test', async (req, res) => {
     try {
-        // const _detailLink = 'https://music.bugs.co.kr/track/6259980?wl_ref=list_tr_08_chart'
-        const chartData = await helper.getBugsChart()
-        // await services.songService.updateLyrics()
-        res.json(chartData)
+        const detailLink = await helper.getBugsDetailUrl('녹아내려요 day6')
+        res.json(detailLink)
     } catch (error) {
         console.error('Error crawling Bugs chart:', error);
         res.end()

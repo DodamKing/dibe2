@@ -55,4 +55,19 @@ module.exports = {
         }
     },
 
+    getBugsDetailUrl: async (query) => {
+        try {
+            const encodedQuery = encodeURIComponent(query)
+            const url = 'https://music.bugs.co.kr/search/integrated?q=' + encodedQuery
+            const response = await axios.get(url);
+            const html = response.data;
+            const $ = cheerio.load(html);
+            const detailLink = $('.list > tbody > tr').first().find('.trackInfo').attr('href');
+
+            return detailLink
+        } catch (err) {
+            console.error('벅스 디테일 링크 크롤링 오류:', err)
+        }
+    }
+
 }

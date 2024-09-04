@@ -22,7 +22,7 @@ function setupCronJob(schedule, jobName, task) {
 
 module.exports = function (req, res, next) {
     // 차트 데이터 가져오기 및 저장 (매일 9시)
-    setupCronJob('* 9 * * *', 'updateChartData', async () => {
+    setupCronJob('0 9 * * *', 'updateChartData', async () => {
         const chartData = await helper.getBugsChart();
         await songService.saveSongData(chartData);
         await songService.updateChartData(chartData);

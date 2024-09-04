@@ -185,7 +185,7 @@ export default {
 		}
 	},
 	methods: {
-		...mapActions('player', ['addToPlaylist', 'setCurrentTrack', 'addMultipleToPlaylist']),
+		...mapActions('player', ['addToPlaylist', 'setCurrentTrack', 'addMultipleToPlaylist', 'initializeQueue']),
 		...mapActions('playlist', ['fetchPlaylists', 'createPlaylist']),
 		toggleQueue() {
 			this.showQueue = !this.showQueue;
@@ -297,6 +297,7 @@ export default {
 		this.fetchPopularChart()
 		document.addEventListener('keydown', this.handleKeyDown)
 		this.fetchPlaylists()
+		this.$store.dispatch('player/initializeQueue')
 	},
 	beforeDestroy() {
 		document.removeEventListener('keydown', this.handleKeyDown)

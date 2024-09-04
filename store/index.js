@@ -1,4 +1,6 @@
 // store/index.js
+import { titleUpdatePlugin  } from "./plugins/titleUpdate"
+import { mediaSessionPlugin } from "./plugins/mediaSession"
 
 export const actions = {
     nuxtServerInit({ commit }, { req }) {
@@ -8,3 +10,5 @@ export const actions = {
         }
     }
 }
+
+export const plugins = [titleUpdatePlugin, mediaSessionPlugin]
