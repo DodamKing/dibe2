@@ -16,7 +16,7 @@
                                 <i @click="executeSearch"
                                     class="fas fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-300 cursor-pointer"></i>
                             </div>
-                            <div class="relative">
+                            <div class="relative" ref="userMenuContainer">
                                 <button @click="toggleUserMenu"
                                     class="flex items-center space-x-2 text-white hover:text-gray-200">
                                     <img src="https://via.placeholder.com/32" alt="User Avatar"
@@ -86,6 +86,11 @@ export default {
         toggleUserMenu() {
             this.showUserMenu = !this.showUserMenu
         },
+        closeUserMenu(event) {
+            if (!this.$refs.userMenuContainer.contains(event.target)) {
+                this.showUserMenu = false
+            }
+        },
         async logout() {
             try {
                 await this.$store.dispatch('auth/logout')
@@ -123,9 +128,11 @@ export default {
     },
     mounted() {
         window.addEventListener('popstate', this.toggleSearch)
+        document.addEventListener('click', this.closeUserMenu)
     },
     beforeDestroy() {
         window.removeEventListener('popstate', this.toggleSearch)
+        document.removeEventListener('click', this.closeUserMenu)
     },
 
 }

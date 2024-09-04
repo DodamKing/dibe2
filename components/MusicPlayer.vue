@@ -27,7 +27,7 @@
 
                 <!-- Playback Controls -->
                 <div class="flex items-center justify-center space-x-2 sm:space-x-4 w-1/3 sm:w-1/2">
-                    <button class="text-gray-200 hover:text-white focus:outline-none hidden sm:block" aria-label="이전 곡"
+                    <button class="text-gray-200 hover:text-white focus:outline-none" aria-label="이전 곡"
                         @click="playPrevious" :disabled="!hasPreviousTrack">
                         <i class="fas fa-step-backward text-lg sm:text-xl"
                             :class="{ 'opacity-50': !hasPreviousTrack }"></i>

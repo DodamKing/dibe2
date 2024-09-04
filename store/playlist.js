@@ -40,6 +40,14 @@ export const actions = {
     setCurrentPlaylist({ commit }, playlist) {
         commit('SET_CURRENT_PLAYLIST', playlist)
     },
+    async deletePlaylist({ commit }, playlistId) {
+        try {
+            const { updatedPlaylists } = await this.$axios.$delete('/api/playlists/' + playlistId)
+            commit('SET_PLAYLISTS', updatedPlaylists)
+        } catch (err) {
+            console.error('플레이 리스트 삭제 오류: ', err)
+        }
+    },
 }
 
 export const getters = {

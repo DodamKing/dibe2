@@ -4,7 +4,8 @@
 
 		<main class="container mx-auto px-4 sm:px-6 py-8 flex-grow overflow-y-auto pb-24 sm:pb-32">
 			<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-				<div class="bg-gray-800 bg-opacity-70 rounded-lg shadow-lg p-4 sm:p-6 transition-transform duration-300">
+				<div
+					class="bg-gray-800 bg-opacity-70 rounded-lg shadow-lg p-4 sm:p-6 transition-transform duration-300">
 					<div class="sticky top-0 z-10 pb-4">
 						<div class="flex justify-between items-center">
 							<h2 class="text-xl sm:text-2xl font-semibold text-purple-300">인기 차트</h2>
@@ -13,7 +14,8 @@
 									class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-3 rounded text-sm">
 									{{ allSelected ? '전체 해제' : '전체 선택' }}
 								</button>
-								<button @click="addSelectedToPlaylist" :disabled="selectedSongs.length === 0 || isAdding"
+								<button @click="addSelectedToPlaylist"
+									:disabled="selectedSongs.length === 0 || isAdding"
 									class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed w-24">
 									{{ isAdding ? '추가 중...' : `추가 (${selectedSongs.length})` }}
 								</button>
@@ -24,7 +26,8 @@
 						<ul class="space-y-3">
 							<li v-for="song in popularChart" :key="`${song.title}-${song.artist}`"
 								class="flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors duration-200">
-								<input type="checkbox" :checked="isSongSelected(song)" @change="toggleSongSelection(song)"
+								<input type="checkbox" :checked="isSongSelected(song)"
+									@change="toggleSongSelection(song)"
 									class="mr-2 form-checkbox h-4 w-4 text-purple-600" />
 								<span class="mr-2 text-lg font-bold text-purple-400 w-6">
 									{{ song.rank }}
@@ -36,7 +39,8 @@
 									<p class="text-xs text-gray-300 truncate">{{ song.artist }}</p>
 								</div>
 								<div class="flex-shrink-0 flex space-x-1">
-									<button class="text-gray-400 hover:text-purple-400 transition-colors duration-200 mr-1"
+									<button
+										class="text-gray-400 hover:text-purple-400 transition-colors duration-200 mr-1"
 										@click="addToPlaylist(song)">
 										<i class="fas fa-plus-circle text-base"></i>
 									</button>
@@ -51,31 +55,8 @@
 				</div>
 
 				<div class="lg:col-span-2">
-					<div
-						class="bg-gray-800 bg-opacity-70 rounded-lg shadow-lg p-4 sm:p-6 transition-transform duration-300">
-						<div class="flex justify-between items-center mb-4 sm:mb-6">
-							<h2 class="text-xl sm:text-2xl font-semibold text-blue-300">내 플레이리스트</h2>
-							<button><i class="fas fa-ellipsis-h"></i></button>
-							<!-- <button @click="showCreatePlaylistModal = true"
-								class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center">
-							</button> -->
-						</div>
-						<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-							<div @click="showCreatePlaylistModal = true"
-								class="relative group cursor-pointer bg-gray-700 rounded-lg flex items-center justify-center aspect-square transition-colors duration-300 hover:bg-gray-600">
-								<i
-									class="fas fa-plus text-4xl text-gray-400 group-hover:text-white transition-colors duration-300"></i>
-							</div>
-							<div v-for="playlist in playlists" :key="playlist._id" class="relative group cursor-pointer">
-								<img :src="playlist.coverUrl || 'https://via.placeholder.com/200x200'" :alt="playlist.name"
-									class="w-full aspect-square object-cover rounded-lg shadow-md transition-transform duration-300 group-hover:scale-105">
-								<div
-									class="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center p-2 sm:p-4">
-									<p class="font-medium text-center text-sm sm:text-lg truncate">{{ playlist.name }}</p>
-								</div>
-							</div>
-						</div>
-					</div>
+					<MyPlaylistSection :playlists="playlists" @create-playlist="showCreatePlaylistModal = true"
+						@delete-playlist="_deletePlaylist" />
 				</div>
 			</div>
 		</main>
@@ -87,13 +68,13 @@
 		<Playlist :show="showQueue" @close="toggleQueue" />
 
 		<!-- Playlist Selection Modal -->
-		<transition name="fade">
+		<transition name="slide-up">
 			<div v-if="showPlaylistSelectionModal"
-				class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+				class="modal fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
 				<div class="bg-gray-800 rounded-lg p-6 max-w-sm w-full">
 					<h3 class="text-xl font-semibold mb-4">플레이리스트 선택</h3>
 					<ul class="space-y-2">
-						<li v-for="playlist in myPlaylists" :key="playlist.id">
+						<li v-for="playlist in playlists" :key="playlist.id">
 							<button @click="addToSelectedPlaylist(playlist.id)"
 								class="w-full text-left p-2 rounded hover:bg-gray-700 transition-colors duration-200">
 								{{ playlist.name }}
@@ -113,7 +94,8 @@
 
 		<!-- Toast Message -->
 		<transition name="fade">
-			<div v-if="toastVisible" class="fixed bottom-20 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg">
+			<div v-if="toastVisible"
+				class="fixed bottom-20 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg">
 				{{ toastMessage }}
 			</div>
 		</transition>
@@ -143,6 +125,7 @@ import MusicPlayer from '~/components/MusicPlayer.vue'
 import AppHeader from '~/components/AppHeader.vue'
 import Playlist from '~/components/Playlist.vue'
 import CreatePlaylistModal from '~/components/CreatePlaylistModal.vue'
+import MyPlaylistSection from '~/components/MyPlaylistSection.vue'
 
 export default {
 	watch: {
@@ -159,6 +142,7 @@ export default {
 		AppHeader,
 		Playlist,
 		CreatePlaylistModal,
+		MyPlaylistSection,
 	},
 	computed: {
 		...mapState('player', ['queue', 'currentTrack']),
@@ -182,11 +166,12 @@ export default {
 			showSearchResults: false,
 			searchResults: [],
 			showCreatePlaylistModal: false,
+			showDropdown: false,
 		}
 	},
 	methods: {
 		...mapActions('player', ['addToPlaylist', 'setCurrentTrack', 'addMultipleToPlaylist', 'initializeQueue']),
-		...mapActions('playlist', ['fetchPlaylists', 'createPlaylist']),
+		...mapActions('playlist', ['fetchPlaylists', 'createPlaylist', 'deletePlaylist']),
 		toggleQueue() {
 			this.showQueue = !this.showQueue;
 		},
@@ -291,7 +276,19 @@ export default {
 			} catch (error) {
 				this.showToast('플레이리스트 생성에 실패했습니다.');
 			}
-		}
+		},
+		toggleDropdown() {
+			this.showDropdown = !this.showDropdown
+		},
+		async _deletePlaylist(playlistId) {
+			try {
+				if (!confirm('삭제하시겠습니까?')) return
+				await this.deletePlaylist(playlistId)
+				this.showToast('플레이리스트 삭제되었습니다.')
+			} catch (err) {
+				this.showToast('플레이리스트 삭제에 실패했습니다.')
+			}
+		},
 	},
 	mounted() {
 		this.fetchPopularChart()
@@ -337,14 +334,6 @@ export default {
 	border: transparent;
 }
 
-/* 모바일에서 플레이어가 잘리지 않도록 패딩 조정 */
-@media (max-width: 640px) {
-	.pb-24 {
-		padding-bottom: 5rem;
-	}
-}
-
-/* 컨테이너의 최대 너비를 제한하여 좌우 스크롤 방지 */
 .container {
 	max-width: 100%;
 	overflow-x: hidden;
@@ -362,5 +351,23 @@ export default {
 
 .animate-spin {
 	animation: spin 1s linear infinite;
+}
+
+@media (max-width: 640px) {
+	.pb-24 {
+		padding-bottom: 5rem;
+	}
+
+	button,
+	a {
+		min-height: 44px;
+		min-width: 44px;
+	}
+}
+
+@media (hover: none) and (pointer: coarse) {
+	.custom-scrollbar {
+		-webkit-overflow-scrolling: touch;
+	}
 }
 </style>
