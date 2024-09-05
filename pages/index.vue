@@ -74,8 +74,8 @@
 				<div class="bg-gray-800 rounded-lg p-6 max-w-sm w-full">
 					<h3 class="text-xl font-semibold mb-4">플레이리스트 선택</h3>
 					<ul class="space-y-2">
-						<li v-for="playlist in playlists" :key="playlist.id">
-							<button @click="addToSelectedPlaylist(playlist.id)"
+						<li v-for="playlist in playlists" :key="playlist._id">
+							<button @click="addToSelectedPlaylist(playlist._id)"
 								class="w-full text-left p-2 rounded hover:bg-gray-700 transition-colors duration-200">
 								{{ playlist.name }}
 							</button>
