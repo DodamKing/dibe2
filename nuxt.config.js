@@ -1,4 +1,4 @@
-const session = require('express-session')
+require('dotenv').config()
 
 export default {
   // Global page headers: https://go.nuxtjs.dev/config-head
@@ -77,5 +77,5 @@ export default {
 
   server: {
     host: '0.0.0.0'
-  }
+  },
 }
