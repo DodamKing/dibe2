@@ -21,16 +21,43 @@
                 class="relative group cursor-pointer bg-gray-700 rounded-lg flex items-center justify-center aspect-square transition-colors duration-300 hover:bg-gray-600">
                 <i class="fas fa-plus text-4xl text-gray-400 group-hover:text-white transition-colors duration-300"></i>
             </div>
-            <div v-for="playlist in playlists" :key="playlist._id" class="relative group cursor-pointer">
+            <div v-for="playlist in playlists" :key="playlist._id" class="relative group cursor-pointer"
+                @touchstart="touchStart(playlist._id, $event)" @touchend="touchEnd(playlist._id, $event)"
+                @touchmove="touchMove(playlist._id, $event)">
                 <img :src="playlist.coverUrl || 'https://via.placeholder.com/200x200'" :alt="playlist.name"
                     class="w-full aspect-square object-cover rounded-lg shadow-md transition-transform duration-300 group-hover:scale-105">
-                <div
-                    class="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-end p-2 sm:p-4">
+                <div :class="['absolute inset-0 bg-gradient-to-t from-black to-transparent transition-opacity duration-300 flex flex-col items-center justify-end p-2 sm:p-4',
+                    { 'opacity-0 group-hover:opacity-100': !isMobile },
+                    { 'opacity-100': isMobile && activeTouchPlaylist === playlist._id }]">
                     <p class="font-medium text-center text-sm sm:text-lg truncate mb-2">{{ playlist.name }}</p>
-                    <button @click.stop="deletePlaylist(playlist._id)" class="text-red-500 hover:text-red-400">
-                        <i class="fas fa-trash-alt"></i> 삭제
+                    <button v-if="!isMobile && playlistToDelete !== playlist._id"
+                        @click.stop="deletePlaylist(playlist._id)"
+                        class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-full text-sm transition-colors duration-300">
+                        삭제
                     </button>
+                    <div v-if="!isMobile && playlistToDelete === playlist._id" class="flex space-x-2">
+                        <button @click.stop="confirmDelete(playlist._id)"
+                            class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-full text-sm transition-colors duration-300">
+                            확인
+                        </button>
+                        <button @click.stop="cancelDelete"
+                            class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-full text-sm transition-colors duration-300">
+                            취소
+                        </button>
+                    </div>
                 </div>
+                <transition name="slide-fade">
+                    <div v-if="isMobile && swipedPlaylist === playlist._id"
+                        class="absolute inset-y-0 right-0 flex items-center bg-gray-800 bg-opacity-90 px-2 py-1">
+                        <button @click.stop="confirmDelete(playlist._id)"
+                            class="bg-red-500 text-white text-xs px-2 py-1 rounded mr-1">
+                            삭제
+                        </button>
+                        <button @click.stop="cancelDelete" class="bg-gray-500 text-white text-xs px-2 py-1 rounded">
+                            취소
+                        </button>
+                    </div>
+                </transition>
             </div>
         </div>
     </div>
@@ -46,7 +73,14 @@ export default {
     },
     data() {
         return {
-            showDropdown: false
+            showDropdown: false,
+            touchStartX: 0,
+            touchEndX: 0,
+            swipeThreshold: 50,
+            playlistToDelete: null,
+            isMobile: false,
+            activeTouchPlaylist: null,
+            swipedPlaylist: null
         }
     },
     methods: {
@@ -59,24 +93,72 @@ export default {
             }
         },
         deletePlaylist(playlistId) {
+            this.playlistToDelete = playlistId
+        },
+        confirmDelete(playlistId) {
             this.$emit('delete-playlist', playlistId)
+            this.playlistToDelete = null
+            this.swipedPlaylist = null
+        },
+        cancelDelete() {
+            this.playlistToDelete = null
+            this.swipedPlaylist = null
         },
         managePlaylists() {
-            // 플레이리스트 관리 로직
             console.log('플레이리스트 관리')
-            // this.showDropdown = false
+            this.showDropdown = false
         },
         sortPlaylists() {
-            // 정렬 옵션 로직
             console.log('정렬 옵션')
-            // this.showDropdown = false
+            this.showDropdown = false
+        },
+        touchStart(playlistId, event) {
+            this.touchStartX = event.touches[0].clientX
+            this.activeTouchPlaylist = playlistId
+        },
+        touchEnd(playlistId, event) {
+            this.touchEndX = event.changedTouches[0].clientX
+            if (this.touchStartX - this.touchEndX > this.swipeThreshold) {
+                this.swipedPlaylist = playlistId
+            } else {
+                setTimeout(() => {
+                    this.activeTouchPlaylist = null
+                }, 300)
+            }
+        },
+        touchMove(playlistId, event) {
+            if (Math.abs(event.touches[0].clientX - this.touchStartX) > 10) {
+                this.activeTouchPlaylist = null
+            }
+            if (this.touchStartX - event.touches[0].clientX > this.swipeThreshold) {
+                event.preventDefault() // Prevent scrolling while swiping
+            }
+        },
+        checkMobile() {
+            this.isMobile = window.innerWidth < 640 // sm breakpoint
         }
     },
     mounted() {
         document.addEventListener('click', this.closeDropdown)
+        window.addEventListener('resize', this.checkMobile)
+        this.checkMobile()
     },
     beforeDestroy() {
         document.removeEventListener('click', this.closeDropdown)
+        window.removeEventListener('resize', this.checkMobile)
     }
 }
 </script>
+
+<style scoped>
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+    transition: all 0.3s ease;
+}
+
+.slide-fade-enter,
+.slide-fade-leave-to {
+    transform: translateX(100%);
+    opacity: 0;
+}
+</style>

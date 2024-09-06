@@ -48,6 +48,12 @@ export const actions = {
             console.error('플레이 리스트 삭제 오류: ', err)
         }
     },
+    addSongsToPlaylist({ commit }, data) {
+        const playlistId = data.playlistId
+        const songs = data.songs
+        console.log('playlistId: ', playlistId);
+        console.log('songs: ', songs);
+    },
 }
 
 export const getters = {

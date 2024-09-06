@@ -14,10 +14,9 @@
 									class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-3 rounded text-sm">
 									{{ allSelected ? '전체 해제' : '전체 선택' }}
 								</button>
-								<button @click="addSelectedToPlaylist"
-									:disabled="selectedSongs.length === 0 || isAdding"
-									class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed w-24">
-									{{ isAdding ? '추가 중...' : `추가 (${selectedSongs.length})` }}
+								<button @click="_showAddToPlaylistModal" :disabled="selectedSongs.length === 0"
+									class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+									추가 ({{ selectedSongs.length }})
 								</button>
 							</div>
 						</div>
@@ -38,7 +37,7 @@
 									<p class="font-medium text-sm truncate">{{ song.title }}</p>
 									<p class="text-xs text-gray-300 truncate">{{ song.artist }}</p>
 								</div>
-								<div class="flex-shrink-0 flex space-x-1">
+								<!-- <div class="flex-shrink-0 flex space-x-1">
 									<button
 										class="text-gray-400 hover:text-purple-400 transition-colors duration-200 mr-1"
 										@click="addToPlaylist(song)">
@@ -48,7 +47,7 @@
 										@click="showPlaylistSelection(song)">
 										<i class="fas fa-list text-base"></i>
 									</button>
-								</div>
+								</div> -->
 							</li>
 						</ul>
 					</div>
@@ -68,7 +67,7 @@
 		<Playlist :show="showQueue" @close="toggleQueue" />
 
 		<!-- Playlist Selection Modal -->
-		<transition name="slide-up">
+		<!-- <transition name="slide-up">
 			<div v-if="showPlaylistSelectionModal"
 				class="modal fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
 				<div class="bg-gray-800 rounded-lg p-6 max-w-sm w-full">
@@ -87,7 +86,7 @@
 					</button>
 				</div>
 			</div>
-		</transition>
+		</transition> -->
 
 		<CreatePlaylistModal :show="showCreatePlaylistModal" @close="showCreatePlaylistModal = false"
 			@create="handleCreatePlaylist" @show-toast="showToast" />
@@ -95,7 +94,7 @@
 		<!-- Toast Message -->
 		<transition name="fade">
 			<div v-if="toastVisible"
-				class="fixed bottom-20 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg">
+				class="fixed bottom-24 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg">
 				{{ toastMessage }}
 			</div>
 		</transition>
@@ -116,6 +115,34 @@
 				</div>
 			</div>
 		</div>
+
+		<!-- Add to Playlist Modal -->
+		<transition name="slide-up">
+			<div v-if="showAddToPlaylistModal"
+				class="modal fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+				<div class="bg-gray-800 rounded-lg p-6 max-w-sm w-full">
+					<h3 class="text-xl font-semibold mb-4">플레이리스트 선택</h3>
+					<ul class="space-y-2 mb-4">
+						<li>
+							<button @click="addToCurrentPlaylist"
+								class="w-full text-left p-2 rounded hover:bg-gray-700 transition-colors duration-200">
+								현재 재생 목록에 추가
+							</button>
+						</li>
+						<li v-for="playlist in playlists" :key="playlist._id">
+							<button @click="addToSelectedPlaylist(playlist._id)"
+								class="w-full text-left p-2 rounded hover:bg-gray-700 transition-colors duration-200">
+								{{ playlist.name }}
+							</button>
+						</li>
+					</ul>
+					<button @click="closeAddToPlaylistModal"
+						class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+						취소
+					</button>
+				</div>
+			</div>
+		</transition>
 	</div>
 </template>
 
@@ -167,11 +194,12 @@ export default {
 			searchResults: [],
 			showCreatePlaylistModal: false,
 			showDropdown: false,
+			showAddToPlaylistModal: false,
 		}
 	},
 	methods: {
 		...mapActions('player', ['addToPlaylist', 'setCurrentTrack', 'addMultipleToPlaylist', 'initializeQueue']),
-		...mapActions('playlist', ['fetchPlaylists', 'createPlaylist', 'deletePlaylist']),
+		...mapActions('playlist', ['fetchPlaylists', 'createPlaylist', 'deletePlaylist', 'addSongsToPlaylist']),
 		toggleQueue() {
 			this.showQueue = !this.showQueue;
 		},
@@ -206,40 +234,74 @@ export default {
 				this.selectedSongs = [...this.popularChart]
 			}
 		},
-		async addSelectedToPlaylist() {
+		// async addSelectedToPlaylist() {
+		// 	if (this.isAdding) return
+
+		// 	this.isAdding = true
+		// 	try {
+		// 		const uniqueSongs = this.selectedSongs.filter(
+		// 			song => !this.queue.some(queueSong => queueSong.title === song.title && queueSong.artist === song.artist)
+		// 		)
+
+		// 		const addedCount = await this.addMultipleToPlaylist(uniqueSongs)
+
+		// 		this.showToast(`${addedCount}곡이 재생목록에 추가되었습니다.`)
+		// 		this.selectedSongs = []
+		// 	} catch (err) {
+		// 		console.error('Failed to add songs to playlist:', err)
+		// 		this.showToast('곡을 재생목록에 추가하는 데 실패했습니다.')
+		// 	} finally {
+		// 		this.isAdding = false
+		// 	}
+		// },
+		_showAddToPlaylistModal() {
+			this.showAddToPlaylistModal = true
+		},
+		closeAddToPlaylistModal() {
+			this.showAddToPlaylistModal = false
+		},
+		async addToCurrentPlaylist() {
 			if (this.isAdding) return
 
 			this.isAdding = true
 			try {
-				const uniqueSongs = this.selectedSongs.filter(
-					song => !this.queue.some(queueSong => queueSong.title === song.title && queueSong.artist === song.artist)
-				)
+				const addedCount = await this.addMultipleToPlaylist(this.selectedSongs)
+				this.showToast(`${addedCount}곡이 현재 재생목록에 추가되었습니다.`)
+				this.selectedSongs = []
+			} catch (err) {
+				console.error('Failed to add songs to current playlist:', err)
+				this.showToast('곡을 현재 재생목록에 추가하는 데 실패했습니다.')
+			} finally {
+				this.isAdding = false
+				this.closeAddToPlaylistModal()
+			}
+		},
+		async addToSelectedPlaylist(playlistId) {
+			if (this.isAdding) return
 
-				const addedCount = await this.addMultipleToPlaylist(uniqueSongs)
-
-				this.showToast(`${addedCount}곡이 재생목록에 추가되었습니다.`)
+			this.isAdding = true
+			try {
+				// Implement the logic to add selected songs to the chosen playlist
+				// This might involve a new action in your Vuex store
+				await this.addSongsToPlaylist({ playlistId, songs: this.selectedSongs })
+				this.showToast(`${this.selectedSongs.length}곡이 선택한 플레이리스트에 추가되었습니다.`)
 				this.selectedSongs = []
 			} catch (err) {
 				console.error('Failed to add songs to playlist:', err)
-				this.showToast('곡을 재생목록에 추가하는 데 실패했습니다.')
+				this.showToast('곡을 플레이리스트에 추가하는 데 실패했습니다.')
 			} finally {
 				this.isAdding = false
+				this.closeAddToPlaylistModal()
 			}
 		},
-		showPlaylistSelection(song) {
-			this.currentSongForPlaylist = song
-			this.showPlaylistSelectionModal = true
-		},
-		closePlaylistSelection() {
-			this.showPlaylistSelectionModal = false
-			this.currentSongForPlaylist = null
-		},
-		addToSelectedPlaylist(playlistId) {
-			// Here you would implement the logic to add the song to the selected playlist
-			console.log(`Adding song ${this.currentSongForPlaylist.title} by ${this.currentSongForPlaylist.artist} to playlist ${playlistId}`)
-			this.showToast(`"${this.currentSongForPlaylist.title}"이(가) 플레이리스트에 추가되었습니다.`)
-			this.closePlaylistSelection()
-		},
+		// showPlaylistSelection(song) {
+		// 	this.currentSongForPlaylist = song
+		// 	this.showPlaylistSelectionModal = true
+		// },
+		// closePlaylistSelection() {
+		// 	this.showPlaylistSelectionModal = false
+		// 	this.currentSongForPlaylist = null
+		// },
 		showToast(message) {
 			this.toastMessage = message
 			this.toastVisible = true
@@ -282,7 +344,6 @@ export default {
 		},
 		async _deletePlaylist(playlistId) {
 			try {
-				if (!confirm('삭제하시겠습니까?')) return
 				await this.deletePlaylist(playlistId)
 				this.showToast('플레이리스트 삭제되었습니다.')
 			} catch (err) {
