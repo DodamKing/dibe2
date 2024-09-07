@@ -25,8 +25,8 @@ function setupCronJob(schedule, jobName, task) {
 
 function setupAllCronJobs() {
     if (!global.cronJobsSetup) {
-        // 차트 데이터 가져오기 및 저장 (매일 9시)
-        setupCronJob('0 9 * * *', 'updateChartData', async () => {
+        // 차트 데이터 가져오기 및 저장 (매일 8시)
+        setupCronJob('0 8 * * *', 'updateChartData', async () => {
             const chartData = await helper.getBugsChart();
             await songService.saveSongData(chartData);
             await songService.updateChartData(chartData);

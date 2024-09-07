@@ -1,5 +1,9 @@
 // store/plugins/mediaSession.js
 
+function getAlbumCoverUrl(baseUrl, size) {
+    return baseUrl.replace('/50/', `/${size}/`);
+}
+
 export const mediaSessionPlugin = (store) => {
     if (process.client && 'mediaSession' in navigator) {
         // Media Session API 설정
@@ -23,18 +27,21 @@ export const mediaSessionPlugin = (store) => {
         store.subscribe((mutation, state) => {
             if (mutation.type === 'player/SET_CURRENT_TRACK') {
                 const track = state.player.currentTrack;
+                console.log(track.coverUrl);
+                
                 if (track) {
+                    const baseUrl = track.coverUrl
+
                     navigator.mediaSession.metadata = new MediaMetadata({
                         title: track.title,
                         artist: track.artist,
                         album: track.album,
                         artwork: [
-                            { src: track.coverUrl, sizes: '96x96', type: 'image/png' },
-                            { src: track.coverUrl, sizes: '128x128', type: 'image/png' },
-                            { src: track.coverUrl, sizes: '192x192', type: 'image/png' },
-                            { src: track.coverUrl, sizes: '256x256', type: 'image/png' },
-                            { src: track.coverUrl, sizes: '384x384', type: 'image/png' },
-                            { src: track.coverUrl, sizes: '512x512', type: 'image/png' },
+                            { src: getAlbumCoverUrl(baseUrl, 96), sizes: '96x96', type: 'image/png' },
+                            { src: getAlbumCoverUrl(baseUrl, 128), sizes: '128x128', type: 'image/png' },
+                            { src: getAlbumCoverUrl(baseUrl, 192), sizes: '192x192', type: 'image/png' },
+                            { src: getAlbumCoverUrl(baseUrl, 256), sizes: '256x256', type: 'image/png' },
+                            { src: getAlbumCoverUrl(baseUrl, 512), sizes: '512x512', type: 'image/png' }
                         ]
                     });
                 }

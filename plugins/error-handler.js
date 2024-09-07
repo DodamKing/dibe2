@@ -3,13 +3,8 @@ import axios from 'axios'
 
 export default ({ app }, inject) => {
     const sendSlackMessage = async (message) => {
-        const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL
-        if (!slackWebhookUrl) {
-            console.error('Slack Webhook URL이 설정되지 않았습니다.')
-            return
-        }
         try {
-            await axios.post(slackWebhookUrl, { text: message })
+            await axios.post('/api/send-slack-message', { message })
         } catch (err) {
             console.error('Slack 메시지 보내기 오류:', err)
         }

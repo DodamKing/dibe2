@@ -31,9 +31,9 @@
             </header>
             <div v-if="showUserMenu"
                 class="user-menu absolute right-4 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">프로필</a>
-                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">설정</a>
-                <a @click="logout" href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">로그아웃</a>
+                <a @click.stop.prevent href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">프로필</a>
+                <a @click.stop.prevent href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">설정</a>
+                <a @click.stop.prevent="logout" href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">로그아웃</a>
             </div>
         </div>
         <transition name="fade">

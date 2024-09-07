@@ -8,7 +8,7 @@
 					class="bg-gray-800 bg-opacity-70 rounded-lg shadow-lg p-4 sm:p-6 transition-transform duration-300">
 					<div class="sticky top-0 z-10 pb-4">
 						<div class="flex justify-between items-center">
-							<h2 class="text-xl sm:text-2xl font-semibold text-purple-300">인기 차트</h2>
+							<h2 class="text-xl sm:text-2xl font-semibold text-purple-300">오늘 Top 100</h2>
 							<div class="flex space-x-2">
 								<button @click="selectAll"
 									class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-3 rounded text-sm">
@@ -20,6 +20,7 @@
 								</button>
 							</div>
 						</div>
+						<div class="text-sm text-gray-400">{{ lastChartUpdated }} 업데이트</div>
 					</div>
 					<div class="h-[300px] overflow-y-auto pr-2 custom-scrollbar">
 						<ul class="space-y-3">
@@ -53,7 +54,7 @@
 					</div>
 				</div>
 
-				<div class="lg:col-span-2">
+				<div class="lg:col-span-2 flex flex-col">
 					<MyPlaylistSection :playlists="playlists" @create-playlist="showCreatePlaylistModal = true"
 						@delete-playlist="_deletePlaylist" />
 				</div>
@@ -147,6 +148,8 @@
 </template>
 
 <script>
+import dayjs from 'dayjs'
+import 'dayjs/locale/ko'
 import { mapState, mapActions } from 'vuex'
 import MusicPlayer from '~/components/MusicPlayer.vue'
 import AppHeader from '~/components/AppHeader.vue'
@@ -183,6 +186,7 @@ export default {
 			searchQuery: '',
 			showQueue: false,
 			popularChart: [],
+			lastChartUpdated: '',
 			selectedSongs: [],
 			showPlaylistSelectionModal: false,
 			currentSongForPlaylist: null,
@@ -207,6 +211,7 @@ export default {
 			try {
 				const { chart } = await this.$axios.$get('/api/songs/chart')
 				this.popularChart = chart.items
+				this.lastChartUpdated = dayjs(chart.lastUpdated).locale('ko').format('M월 D일 A h시')
 			} catch (err) {
 
 			}
@@ -281,8 +286,6 @@ export default {
 
 			this.isAdding = true
 			try {
-				// Implement the logic to add selected songs to the chosen playlist
-				// This might involve a new action in your Vuex store
 				await this.addSongsToPlaylist({ playlistId, songs: this.selectedSongs })
 				this.showToast(`${this.selectedSongs.length}곡이 선택한 플레이리스트에 추가되었습니다.`)
 				this.selectedSongs = []
