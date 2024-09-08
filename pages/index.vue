@@ -358,7 +358,8 @@ export default {
 		this.fetchPopularChart()
 		document.addEventListener('keydown', this.handleKeyDown)
 		this.fetchPlaylists()
-		this.$store.dispatch('player/initializeQueue')
+		// this.$store.dispatch('player/initializeQueue')
+		// this.$store.dispatch('player/initializeAudioSystem')
 	},
 	beforeDestroy() {
 		document.removeEventListener('keydown', this.handleKeyDown)

@@ -9,10 +9,6 @@ class AudioPlayerService {
     }
 
     init() {
-        // if (typeof window !== 'undefined' && !this.audio) {
-        //     this.audio = new Audio();
-        //     this.audio.addEventListener('ended', this.onTrackEnded.bind(this));
-        //     this.audio.addEventListener('timeupdate', this.onTimeUpdate.bind(this));
         // }
         if (typeof window !== 'undefined' && !this.audio) {
             this.audio = new Audio();

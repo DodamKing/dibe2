@@ -28,16 +28,7 @@ export default ({ app }, inject) => {
     if (process.client) {
         window.addEventListener('unhandledrejection', (event) => {
             console.error('Unhandled Promise Rejection:', event.reason);
-            sendSlackMessage(`Unhandled Promise Rejection: ${event.reason}`)
+            sendSlackMessage(`클라이언트 Unhandled Promise Rejection: ${event.reason}`)
         })
     }
-
-    // 서버 측 unhandled rejection 핸들러
-    if (process.server) {
-        process.on('unhandledRejection', (reason, promise) => {
-            console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-            sendSlackMessage(`Unhandled Rejection: ${reason}`)
-        })
-    }
-
 }

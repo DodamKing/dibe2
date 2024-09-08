@@ -179,7 +179,7 @@ export default {
     },
 
     mounted() {
-        this.$store.dispatch('player/initAudioPlayer')
+        this.$store.dispatch('player/initializeAudioSystem')
     },
 
     watch: {

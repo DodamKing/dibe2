@@ -68,11 +68,17 @@ export const mutations = {
 }
 
 export const actions = {
+    async initializeAudioSystem ( {dispatch }) {
+        await dispatch('initializeQueue')
+        dispatch('initAudioPlayer')
+    },
+
     initializeQueue({ commit, rootState }) {
         if (!rootState.auth.loggedIn) return
 
         const queueKey = getStorageKey(rootState, 'queue')
         const trackKey = getStorageKey(rootState, 'current_track')
+        const volumeKey = getStorageKey(rootState, 'volume')
 
         const savedQueue = localStorage.getItem(queueKey)
         if (savedQueue) {
@@ -82,6 +88,8 @@ export const actions = {
         if (savedCurrentTrack) {
             commit('SET_CURRENT_TRACK', JSON.parse(savedCurrentTrack))
         }
+        const savedVolume = localStorage.getItem(volumeKey)
+        if (savedVolume) commit('SET_VOLUME', parseFloat(savedVolume))
     },
 
     async addToPlaylist({ commit, dispatch, state }, song) {
@@ -181,9 +189,12 @@ export const actions = {
         }
     },
 
-    setVolume({ commit }, volume) {
+    setVolume({ commit, rootState }, volume) {
         audioPlayer.setVolume(volume);
         commit('SET_VOLUME', volume);
+
+        const volumeKey = getStorageKey(rootState, 'volume')
+        if (volumeKey) localStorage.setItem(volumeKey, volume)
     },
 
     seek({ commit, state, dispatch }, time) {
@@ -193,9 +204,9 @@ export const actions = {
         }
     },
 
-    initAudioPlayer({ dispatch }) {
-        audioPlayer.init();
-        // audioPlayer.setVolume(state.volume)
+    initAudioPlayer({ state, dispatch }) {
+        audioPlayer.init()
+        audioPlayer.setVolume(state.volume)
         audioPlayer.setOnTrackEndedCallback(() => {
             if (state.repeatOn && !state.shuffleOn) {
                 // 한 곡 반복 재생
