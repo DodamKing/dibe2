@@ -22,7 +22,8 @@
 						</div>
 						<div class="text-sm text-gray-400">{{ lastChartUpdated }} 업데이트</div>
 					</div>
-					<div class="h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+
+					<div class="h-[320px] overflow-y-auto pr-2 custom-scrollbar">
 						<ul class="space-y-3">
 							<li v-for="song in popularChart" :key="`${song.title}-${song.artist}`"
 								class="flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors duration-200">
@@ -54,7 +55,7 @@
 					</div>
 				</div>
 
-				<div class="lg:col-span-2 flex flex-col">
+				<div class="lg:col-span-2">
 					<MyPlaylistSection :playlists="playlists" @create-playlist="showCreatePlaylistModal = true"
 						@delete-playlist="_deletePlaylist" />
 				</div>
@@ -286,8 +287,9 @@ export default {
 
 			this.isAdding = true
 			try {
-				await this.addSongsToPlaylist({ playlistId, songs: this.selectedSongs })
-				this.showToast(`${this.selectedSongs.length}곡이 선택한 플레이리스트에 추가되었습니다.`)
+				const { success, addedSongs} = await this.addSongsToPlaylist({ playlistId, songs: this.selectedSongs })
+				if (success) this.showToast(`${addedSongs}곡이 선택한 플레이리스트에 추가되었습니다.`)
+				else this.showToast('예기치 못한 에러 발생으로 곡 추가에 실패했습니다.')
 				this.selectedSongs = []
 			} catch (err) {
 				console.error('Failed to add songs to playlist:', err)

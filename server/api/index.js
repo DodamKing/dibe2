@@ -21,6 +21,12 @@ app.use('/playlists', playlistRoutes)
 
 app.post('/send-slack-message', async (req, res) =>{
     const { message } = req.body
+
+    if (process.env.NODE_ENV === 'development') {
+        console.error('개발이라 슬랙 메시지 보내지 않음: ', message)
+        return res.json({ success: true })
+    }
+
     const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL
 
     try {

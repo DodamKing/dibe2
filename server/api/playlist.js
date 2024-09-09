@@ -41,9 +41,34 @@ router.delete('/:playlistId', async (req, res) => {
         console.error(err)
         res.status(500).json()
     }
-});
+})
 
-// router.post('/:id/songs', playlistController.addSongToPlaylist);
-// router.delete('/:id/songs/:songId', playlistController.removeSongFromPlaylist);
+router.post('/:id/songs', async (req, res) => {
+    const { id } = req.params
+    const { songs } = req.body
+
+    try {
+        const result = await playlistService.addToPlaylist(id, songs)
+        if (!result.success) throw new Error(result.error)
+        res.json(result)
+    } catch (err) {
+        console.error('내 플레이리스트에 노래 추가중 오류 발생: ', err)
+        res.status(500).json({ success: false })
+    }
+})
+
+router.delete('/:id/songs', async (req, res) => {
+    const { id } = req.params
+    const { songIds } = req.body
+
+    try {
+        const result = await playlistService.removeSongsFromPlaylist(id, songIds)
+        if (!result.success) throw new Error(result.error)
+        res.json(result)
+    } catch (err) {
+        console.error('플레이리스틍데서 노래 제거 중 오류 발생: ', err)
+        res.status(500).json({ success: false, error: err })
+    }
+})
 
 module.exports = router

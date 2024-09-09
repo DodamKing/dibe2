@@ -31,15 +31,15 @@ function setupAllCronJobs() {
             await songService.saveSongData(chartData);
             await songService.updateChartData(chartData);
         });
+        
+        // YouTube URL 업데이트 (매일 8시 10분)
+        setupCronJob('10 8 * * *', 'updateYoutubeUrls', async () => {
+            await songService.updateYoutubeUrls();
+        });
 
         // 가사 업데이트 (매일 새벽 2시)
         setupCronJob('0 2 * * *', 'updateLyrics', async () => {
             await songService.updateLyrics();
-        });
-
-        // YouTube URL 업데이트 (매일 새벽 3시)
-        setupCronJob('0 3 * * *', 'updateYoutubeUrls', async () => {
-            await songService.updateYoutubeUrls();
         });
 
         global.cronJobsSetup = true;

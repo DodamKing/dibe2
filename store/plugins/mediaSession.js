@@ -27,7 +27,6 @@ export const mediaSessionPlugin = (store) => {
         store.subscribe((mutation, state) => {
             if (mutation.type === 'player/SET_CURRENT_TRACK') {
                 const track = state.player.currentTrack;
-                console.log(track.coverUrl);
                 
                 if (track) {
                     const baseUrl = track.coverUrl

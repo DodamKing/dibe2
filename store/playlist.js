@@ -10,17 +10,26 @@ export const mutations = {
     ADD_PLAYLIST(state, playlist) {
         state.playlists.push(playlist)
     },
-    SET_CURRENT_PLAYLIST(state, playlist) {
-        state.currentPlaylist = playlist
+    UPDATE_PLAYLIST(state, updatedPlaylist) {
+        const index = state.playlists.findIndex(p => p._id === updatedPlaylist._id);
+        if (index !== -1) {
+            state.playlists.splice(index, 1, updatedPlaylist);
+        }
     },
+    REMOVE_SONGS_FROM_PLAYLIST(state, { playlistId, songIds }) {
+        const playlist = state.playlists.find(p => p._id === playlistId)
+        if (playlist) {
+            playlist.songs = playlist.songs.filter(song => !songIds.includes(song.songId))
+        }
+    }
 }
 
 export const actions = {
     async fetchPlaylists({ commit }) {
         try {
             // API 호출로 플레이리스트 목록을 가져옵니다.
-            const response = await this.$axios.$get('/api/playlists')
-            commit('SET_PLAYLISTS', response.playlists)
+            const { playlists } = await this.$axios.$get('/api/playlists')
+            commit('SET_PLAYLISTS', playlists)
         } catch (error) {
             console.error('Failed to fetch playlists:', error)
             // 에러 처리 로직 (예: 사용자에게 알림)
@@ -37,9 +46,6 @@ export const actions = {
             throw error // 컴포넌트에서 에러 처리를 위해 에러를 다시 throw합니다.
         }
     },
-    setCurrentPlaylist({ commit }, playlist) {
-        commit('SET_CURRENT_PLAYLIST', playlist)
-    },
     async deletePlaylist({ commit }, playlistId) {
         try {
             const { updatedPlaylists } = await this.$axios.$delete('/api/playlists/' + playlistId)
@@ -48,11 +54,27 @@ export const actions = {
             console.error('플레이 리스트 삭제 오류: ', err)
         }
     },
-    addSongsToPlaylist({ commit }, data) {
-        const playlistId = data.playlistId
-        const songs = data.songs
-        console.log('playlistId: ', playlistId);
-        console.log('songs: ', songs);
+    async addSongsToPlaylist({ commit }, { playlistId, songs }) {
+        try {
+            const { success, playlist, addedSongs } = await this.$axios.$post(`/api/playlists/${playlistId}/songs`, { songs })
+            if (success)  {
+                commit('UPDATE_PLAYLIST', playlist)
+                return { success, addedSongs }
+            }
+        } catch (err) {
+            console.error('내 플레이리스트 곡 추가 오류: ', err)
+        }
+    },
+    async removeSongsFromPlaylist({ commit }, { playlistId, songIds }) {
+        try {
+            const { success, removedCount } = await this.$axios.$delete(`/api/playlists/${playlistId}/songs`, { songIds })
+            if (success) {
+                commit('UPDATE_PLAYLIST', { playlistId, songIds })
+                return { success, removedCount }
+            }
+        } catch (err) {
+            console.error('플레이리스트에서 노래 제거 실패:', err)
+        }
     },
 }
 
