@@ -22,7 +22,7 @@
                     class="relative group cursor-pointer bg-gray-700 rounded-lg flex items-center justify-center aspect-square transition-colors duration-300 hover:bg-gray-600">
                     <i class="fas fa-plus text-4xl text-gray-400 group-hover:text-white transition-colors duration-300"></i>
                 </div>
-                <div v-for="playlist in playlists" :key="playlist._id" class="relative group cursor-pointer"
+                <div v-for="playlist in playlists" :key="playlist._id" class="relative group cursor-pointer" @click="selectPlaylist(playlist._id)"
                     @touchstart="touchStart(playlist._id, $event)" @touchend="touchEnd(playlist._id, $event)"
                     @touchmove="touchMove(playlist._id, $event)">
                     <div v-if="playlist.songs.length === 0" class="aspect-square w-full flex flex-col items-center justify-center p-4">
@@ -126,6 +126,9 @@ export default {
             console.log('정렬 옵션')
             this.showDropdown = false
         },
+        selectPlaylist(playlistId) {
+            this.$emit('select-playlist', playlistId)
+        },
         touchStart(playlistId, event) {
             this.touchStartX = event.touches[0].clientX
             this.activeTouchPlaylist = playlistId
@@ -134,6 +137,9 @@ export default {
             this.touchEndX = event.changedTouches[0].clientX
             if (this.touchStartX - this.touchEndX > this.swipeThreshold) {
                 this.swipedPlaylist = playlistId
+            } else if (Math.abs(this.touchStartX - this.touchEndX) < 10) {
+                // 탭으로 간주하고 상세 페이지로 이동
+                this.selectPlaylist(playlistId)
             } else {
                 setTimeout(() => {
                     this.activeTouchPlaylist = null

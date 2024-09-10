@@ -78,5 +78,15 @@ module.exports = {
             console.error('내 플레이리스트 노래 제거 서비스 에러:', err)
             return { success: false, error: err }
         }
+    },
+
+    readPlaylist: async (playlistId) => {
+        try {
+            const playlist = await db.Playlist.findById(playlistId)
+            return { success: true, playlist }
+        } catch (err) {
+            console.error('플레이리스트 불러오기 서비스 에러:', err)
+            return { success: false, error: err }
+        }
     }
 }

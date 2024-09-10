@@ -21,7 +21,10 @@ export const mutations = {
         if (playlist) {
             playlist.songs = playlist.songs.filter(song => !songIds.includes(song.songId))
         }
-    }
+    },
+    SET_CURRENT_PLAYLIST(state, playlist) {
+        state.currentPlaylist = playlist;
+    },
 }
 
 export const actions = {
@@ -57,7 +60,7 @@ export const actions = {
     async addSongsToPlaylist({ commit }, { playlistId, songs }) {
         try {
             const { success, playlist, addedSongs } = await this.$axios.$post(`/api/playlists/${playlistId}/songs`, { songs })
-            if (success)  {
+            if (success) {
                 commit('UPDATE_PLAYLIST', playlist)
                 return { success, addedSongs }
             }
@@ -74,6 +77,16 @@ export const actions = {
             }
         } catch (err) {
             console.error('플레이리스트에서 노래 제거 실패:', err)
+        }
+    },
+    async fetchPlaylistDetail({ commit }, playlistId) {
+        try {
+            const { success, playlist } = await this.$axios.$get(`/api/playlists/${playlistId}`);
+            if (success) commit('SET_CURRENT_PLAYLIST', playlist);
+            return success;
+        } catch (error) {
+            console.error('플레이리스트 상세 정보 조회 중 오류 발생:', error);
+            throw error;
         }
     },
 }

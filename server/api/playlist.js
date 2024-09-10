@@ -66,7 +66,20 @@ router.delete('/:id/songs', async (req, res) => {
         if (!result.success) throw new Error(result.error)
         res.json(result)
     } catch (err) {
-        console.error('플레이리스틍데서 노래 제거 중 오류 발생: ', err)
+        console.error('플레이리스트에서 노래 제거 중 오류 발생: ', err)
+        res.status(500).json({ success: false, error: err })
+    }
+})
+
+router.get('/:id', async (req, res) => {
+    const { id } = req.params
+
+    try {
+        const { success, playlist} = await playlistService.readPlaylist(id)
+        if (!playlist) return res.status(400).json({ success: false, message: '플레이리스트를 찾을 수 없습니다.'})
+        res.json({ success, playlist })
+    } catch (err) {
+        console.error('플레이리스트 불러오기 api 오류: ', err)
         res.status(500).json({ success: false, error: err })
     }
 })
