@@ -76,7 +76,6 @@ import MusicPlayer from '~/components/MusicPlayer.vue'
 import AppHeader from '~/components/AppHeader.vue'
 import Playlist from '~/components/Playlist.vue'
 import CreatePlaylistModal from '~/components/CreatePlaylistModal.vue'
-// import MyPlaylistSection from '~/components/MyPlaylistSection.vue'
 
 export default {
     provide() {
@@ -114,7 +113,6 @@ export default {
         AppHeader,
         Playlist,
         CreatePlaylistModal,
-        // MyPlaylistSection,
     },
     computed: {
         ...mapState('player', ['queue', 'currentTrack']),

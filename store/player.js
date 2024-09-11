@@ -17,7 +17,8 @@ export const state = () => ({
     shuffleOn: false,
     repeatOn: false,
     originalQueue: [],
-    isLoading: false
+    isLoading: false,
+    isInitialized: false
 })
 
 export const mutations = {
@@ -64,13 +65,19 @@ export const mutations = {
     },
     SET_IS_LOADING(state, isLoading) {
         state.isLoading = isLoading
+    },
+    SET_IS_INITIALIZED(state, isInitialized) {
+        state.isInitialized = isInitialized
     }
 }
 
 export const actions = {
-    async initializeAudioSystem ( {dispatch }) {
-        await dispatch('initializeQueue')
-        dispatch('initAudioPlayer')
+    async initializeAudioSystem({ commit, dispatch, state }) {
+        if (!state.isInitialized) {
+            await dispatch('initializeQueue')
+            dispatch('initAudioPlayer')
+            commit('SET_IS_INITIALIZED', true)
+        }
     },
 
     initializeQueue({ commit, rootState }) {
@@ -114,7 +121,6 @@ export const actions = {
             commit('ADD_MULTIPLE_TO_QUEUE', songDatas)
             await dispatch('saveQueue')
 
-            // if (!state.currentTrack) commit('SET_CURRENT_TRACK', songDatas[0])
             if (!state.currentTrack) await dispatch('setCurrentTrack', songDatas[0])
             return songDatas.length
         } catch (err) {
@@ -242,6 +248,30 @@ export const actions = {
         commit('SET_REPEAT', !state.repeatOn)
     },
 
+    async playEntirePlaylist({ commit, dispatch }, playlist) {
+        if (playlist && playlist.songs && playlist.songs.length > 0) {
+            const { songDatas } = await this.$axios.$post('/api/songs/songsdata', { songs: playlist.songs })
+            commit('SET_QUEUE', songDatas)
+            if (!state.currentTrack || state.currentTrack._id !== songDatas[0]._id) {
+                await dispatch('setCurrentTrack', songDatas[0])
+            }
+            dispatch('play')
+            dispatch('saveQueue') 
+        }
+    },
+
+    async playShuffledPlaylist({ commit, dispatch }, playlist) {
+        if (playlist && playlist.songs && playlist.songs.length > 0) {
+            const { songDatas } = await this.$axios.$post('/api/songs/songsdata', { songs: playlist.songs })
+            const shuffledSongs = [...songDatas].sort(() => Math.random() - 0.5)
+            commit('SET_QUEUE', shuffledSongs)
+            if (!state.currentTrack || state.currentTrack._id !== shuffledSongs[0]._id) {
+                await dispatch('setCurrentTrack', shuffledSongs[0])
+            }
+            dispatch('play')
+            dispatch('saveQueue')
+        }
+    },
 }
 
 export const getters = {

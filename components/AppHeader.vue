@@ -127,11 +127,9 @@ export default {
         }
     },
     mounted() {
-        window.addEventListener('popstate', this.toggleSearch)
         document.addEventListener('click', this.closeUserMenu)
     },
     beforeDestroy() {
-        window.removeEventListener('popstate', this.toggleSearch)
         document.removeEventListener('click', this.closeUserMenu)
     },
 

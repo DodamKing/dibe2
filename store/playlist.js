@@ -70,7 +70,7 @@ export const actions = {
     },
     async removeSongsFromPlaylist({ commit }, { playlistId, songIds }) {
         try {
-            const { success, removedCount } = await this.$axios.$delete(`/api/playlists/${playlistId}/songs`, { songIds })
+            const { success, removedCount } = await this.$axios.$delete(`/api/playlists/${playlistId}/songs`, { data: { songIds } })
             if (success) {
                 commit('UPDATE_PLAYLIST', { playlistId, songIds })
                 return { success, removedCount }

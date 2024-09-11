@@ -64,14 +64,17 @@ module.exports = {
 
     removeSongsFromPlaylist: async (playlistId, songIds) => {
         try {
-            const playlist = await db.Playlist.findById(playlistId)
-            if (!playlist) return { success: false, error: '플레이리스트를 찾을 수 없습니다.'}
+            const playlist = await db.Playlist.findOneAndUpdate(
+                { _id: playlistId },
+                { $pull: { songs: { songId: { $in: songIds } } } },
+                { new: true, projection: { songs: 1 } } // 업데이트된 문서를 반환하고, songs 필드만 가져옴
+            )
 
-            const originalSongCount = playlist.songs.length
-            const songIdsToRemove = songIds.map(id => id.toString())
-            playlist.songs = playlist.songs.filter(song => !songIdsToRemove.include(song.songId.toString()))
-            await playlist.save()
-            const removedCount = originalSongCount - playlist.songs.length
+            if (!playlist) {
+                return { success: false, error: '플레이리스트를 찾을 수 없습니다.' }
+            }
+
+            const removedCount = songIds.length - playlist.songs.filter(song => songIds.includes(song.songId.toString())).length
 
             return { success: true, message: '곡이 성공적으로 제거되었습니다.', removedCount, playlist }
         } catch (err) {

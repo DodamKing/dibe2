@@ -25,7 +25,7 @@
                 </div>
                 <div ref="queueContainer" class="flex-grow overflow-y-auto custom-scrollbar pb-20">
                     <draggable v-model="localQueue" class="p-4 space-y-3" handle=".drag-handle" @end="onDragEnd"
-                        :options="{ touchStartThreshold: 50 }">
+                        :animation="200" :delay="50" :delayOnTouchOnly="true" :touchStartThreshold="50">
                         <li v-for="(song) in localQueue" :key="song._id"
                             :ref="song._id === currentTrack?._id ? 'currentTrack' : null" :class="['flex items-center p-3 rounded-lg transition-all duration-300 ease-in-out',
                                 song._id === currentTrack?._id
@@ -40,7 +40,8 @@
                                 <div class="relative w-12 h-12 mr-4 flex-shrink-0">
                                     <img :src="song.coverUrl" :alt="song.title"
                                         class="w-full h-full object-cover rounded-lg shadow-md">
-                                    <div class="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                    <div
+                                        class="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                         <i class="fas fa-play text-white text-lg"></i>
                                     </div>
                                 </div>
@@ -73,7 +74,7 @@
 </template>
 
 <script>
-import { mapState, mapActions } from 'vuex'
+import { mapState, mapActions, mapMutations } from 'vuex'
 import draggable from 'vuedraggable'
 import MusicPlayer from '~/components/MusicPlayer.vue'
 
@@ -91,23 +92,24 @@ export default {
     },
     data() {
         return {
-            localQueue: [],
             selectedSongs: []
         }
     },
     computed: {
         ...mapState('player', ['queue', 'currentTrack']),
+        localQueue: {
+            get() {
+                return this.queue
+            },
+            set(value) {
+                this.SET_QUEUE(value)
+            }
+        },
         allSelected() {
-            return this.localQueue.length > 0 && this.selectedSongs.length === this.localQueue.length
+            return this.queue.length > 0 && this.selectedSongs.length === this.queue.length
         }
     },
     watch: {
-        queue: {
-            immediate: true,
-            handler(newQueue) {
-                this.localQueue = [...newQueue]
-            }
-        },
         show(newVal) {
             if (newVal) {
                 this.$nextTick(() => {
@@ -123,11 +125,13 @@ export default {
     },
     methods: {
         ...mapActions('player', ['setCurrentTrack', 'play']),
+        ...mapMutations('player', ['SET_QUEUE']),
         close() {
             this.$emit('close')
         },
         onDragEnd() {
-            this.$store.commit('player/SET_QUEUE', this.localQueue)
+            // 드래그 종료 시 큐 업데이트
+            this.SET_QUEUE(this.localQueue)
         },
         toggleSongSelection(song) {
             const index = this.selectedSongs.findIndex(s => s._id === song._id)
@@ -144,12 +148,12 @@ export default {
             if (this.allSelected) {
                 this.selectedSongs = []
             } else {
-                this.selectedSongs = [...this.localQueue]
+                this.selectedSongs = [...this.queue]
             }
         },
         removeSelected() {
-            this.localQueue = this.localQueue.filter(song => !this.selectedSongs.some(s => s._id === song._id))
-            this.$store.commit('player/SET_QUEUE', this.localQueue)
+            const newQueue = this.queue.filter(song => !this.selectedSongs.some(s => s._id === song._id))
+            this.SET_QUEUE(newQueue)
             this.selectedSongs = []
         },
         async playSong(song) {
@@ -210,10 +214,12 @@ export default {
 }
 
 @keyframes pulse {
+
     0%,
     100% {
         opacity: 1;
     }
+
     50% {
         opacity: 0.5;
     }
