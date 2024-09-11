@@ -124,7 +124,7 @@ export default {
         }
     },
     methods: {
-        ...mapActions('player', ['setCurrentTrack', 'play']),
+        ...mapActions('player', ['setCurrentTrack', 'play', 'removeFromQueue']),
         ...mapMutations('player', ['SET_QUEUE']),
         close() {
             this.$emit('close')
@@ -151,9 +151,9 @@ export default {
                 this.selectedSongs = [...this.queue]
             }
         },
-        removeSelected() {
-            const newQueue = this.queue.filter(song => !this.selectedSongs.some(s => s._id === song._id))
-            this.SET_QUEUE(newQueue)
+        async removeSelected() {
+            const trackIdsToRemove = this.selectedSongs.map(song => song._id)
+            await this.removeFromQueue(trackIdsToRemove)
             this.selectedSongs = []
         },
         async playSong(song) {

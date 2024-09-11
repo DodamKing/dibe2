@@ -68,7 +68,10 @@ export const mutations = {
     },
     SET_IS_INITIALIZED(state, isInitialized) {
         state.isInitialized = isInitialized
-    }
+    },
+    REMOVE_FROM_QUEUE(state, trackIds) {
+        state.queue = state.queue.filter(track => !trackIds.includes(track._id))
+    },
 }
 
 export const actions = {
@@ -270,6 +273,25 @@ export const actions = {
             }
             dispatch('play')
             dispatch('saveQueue')
+        }
+    },
+
+    async removeFromQueue({ commit, state, dispatch }, trackIds) {
+        commit('REMOVE_FROM_QUEUE', trackIds)
+        await dispatch('saveQueue')
+
+        // 현재 재생 중인 트랙이 제거되었는지 확인
+        if (trackIds.includes(state.currentTrack?._id)) {
+            if (state.queue.length > 0) {
+                // 큐에 남은 곡이 있으면 다음 곡을 재생
+                await dispatch('setCurrentTrack', state.queue[0])
+                dispatch('play')
+            } else {
+                // 큐가 비어있으면 재생을 중지하고 현재 트랙을 null로 설정
+                commit('SET_CURRENT_TRACK', null)
+                commit('SET_IS_PLAYING', false)
+                audioPlayer.stop()
+            }
         }
     },
 }
