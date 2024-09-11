@@ -6,9 +6,11 @@ const app = express()
 app.use(session({
     secret: 'dibe2_secret',
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     cookie: {
-        maxAge: 24 * 60 * 60 * 1000
+        maxAge: 24 * 60 * 60 * 1000,
+        // secure: process.env.NODE_ENV === 'production'
+        secure: false
     }
 }))
 

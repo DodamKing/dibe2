@@ -1,14 +1,17 @@
 module.exports = {
     apps: [{
-        name: 'nuxt-app',
+        name: 'dibe2',
         script: 'npm',
         args: 'start',
+        env: {
+            TZ: 'Asia/Seoul'
+        },
         log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-        out_file: 'logs/out.log',
-        error_file: 'logs/error.log',
-        merge_logs: true,
-        log_type: 'json'
+        // output: './logs/out.log',
+        // error: './logs/error.log',
+        // log_file: './logs/combined.log',
+        // time: true,
+        // merge_logs: true,
+        // log_type: 'raw'
     }]
 };
-
-// 우선 만들어 봄
