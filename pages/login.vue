@@ -83,6 +83,7 @@
 import SocialLoginButton from '@/components/SocialLoginButton.vue'
 
 export default {
+    layout: 'auth',
     components: {
         SocialLoginButton
     },
