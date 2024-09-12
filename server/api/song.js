@@ -64,13 +64,14 @@ router.post('/songsdata', async (req, res) => {
 }),
 
 router.get('/search', async (req, res) => {
-    const { query } = req.query
+    const { query, type = 'all', page = 1, limit = 20 } = req.query
 
     try {
-        const results = await services.songService.searchSong(query)
+        const results = await services.songService.searchSong(query, type, parseInt(page), parseInt(limit))
         res.json(results)
     } catch (err) {
-        res.status(500).end()
+        console.error('곡 검색 api 에러 :', err)
+        res.status(500).json({ error: '검색 중 에러 발생' })
     }
 })
 

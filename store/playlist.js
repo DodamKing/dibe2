@@ -1,3 +1,5 @@
+// store/playlist.js
+
 export const state = () => ({
     playlists: [],
     currentPlaylist: null,

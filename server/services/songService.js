@@ -17,10 +17,21 @@ function parseSimpleTextDuration(simpleText) {
 }
 
 // 개별 검색 함수
-async function searchByField(query, field) {
+async function searchByField(query, field, page = 1, limit = 20) {
+    const skip = (page - 1) * limit
     const searchCriteria = {}
-    searchCriteria[field] = { $regex: query, $options : 'i'}
-    return await db.Song.find(searchCriteria)
+    searchCriteria[field] = { $regex: query, $options: 'i' }
+    
+    const [items, total] = await Promise.all([
+        db.Song.find(searchCriteria).skip(skip).limit(limit),
+        db.Song.countDocuments(searchCriteria)
+    ])
+
+    return {
+        items,
+        total,
+        hasMore: skip + items.length < total
+    }
 }
 
 module.exports = {
@@ -211,15 +222,39 @@ module.exports = {
         }
     },
 
-    searchSong: async (query) => {
-        const results = {
-            titles: await searchByField(query, 'title'),
-            artists: await searchByField(query, 'artist'),
-            albums: await searchByField(query, 'album'),
-            lyrics: await searchByField(query, 'lyrics')
+    searchSong: async (query, type, page = 1, limit = 20) => {
+        const skip = (page - 1) * limit;
+        let searchCriteria;
+
+        if (type === 'all') {
+            searchCriteria = {
+                $or: [
+                    { title: { $regex: query, $options: 'i' } },
+                    { artist: { $regex: query, $options: 'i' } },
+                    { album: { $regex: query, $options: 'i' } },
+                    { lyrics: { $regex: query, $options: 'i' } }
+                ]
+            };
+        } else {
+            searchCriteria = {
+                [type]: { $regex: query, $options: 'i' }
+            };
         }
 
-        return results
+        const [items, total] = await Promise.all([
+            db.Song.find(searchCriteria)
+                .select('-__v') // Exclude the version key
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            db.Song.countDocuments(searchCriteria)
+        ]);
+
+        return {
+            items,
+            total,
+            hasMore: skip + items.length < total
+        };
     },
 
     updateLyrics: async () => {

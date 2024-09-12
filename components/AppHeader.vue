@@ -56,8 +56,9 @@
             </div>
         </transition>
 
-        <SearchResultsModal :show="showSearchResults" :searchQuery="searchQuery" :results="searchResults"
-            @close="closeSearchResults" />
+        <SearchResultsModal :show="showSearchResults" @close="closeSearchResults" />
+        <!-- <SearchResultsModal :show="showSearchResults" :searchQuery="searchQuery" :results="searchResults"
+            @close="closeSearchResults" /> -->
     </div>
 </template>
 
