@@ -272,7 +272,7 @@ export default {
     display: -moz-box;
     -moz-line-clamp: 3;
     -moz-box-orient: vertical;
-    display: box;
+    display: flex;
     line-clamp: 3;
     box-orient: vertical;
 }

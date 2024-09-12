@@ -19,21 +19,23 @@ app.use(session({
     cookie: {
         maxAge: 24 * 60 * 60 * 1000,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        domain: process.env.NODE_ENV === 'production' ? '.dibe2.dimad.site' : undefined,
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         httpOnly: true,
     }
 }))
 
-// app.use((req, res, next) => {
-//     if (process.env.NODE_ENV === 'development' && !req.session.user) {
-//         req.session.user = {
-//             userId: '66d66cca82defc51c7c1ce1f',
-//             username: 'tester1',
-//             email: 'user1@test.com'
-//         }
-//         console.log('개발 모드: 세션에 개발자 정보 자동 설정됨')
-//     }
-//     next()
-// })
+app.use((req, res, next) => {
+    console.log('Request headers:', req.headers);
+    console.log('Session:', req.session);
+
+    const oldWriteHead = res.writeHead;
+    res.writeHead = function (statusCode, headers) {
+        console.log('Response headers:', this.getHeaders());
+        oldWriteHead.apply(this, arguments);
+    };
+
+    next();
+});
 
 module.exports = app
