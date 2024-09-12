@@ -54,7 +54,7 @@ module.exports = {
             }
             
             if (needsUpdate) {
-                await db.Chart.updateOne({}, { $set: { items: newChartData }})
+                await db.Chart.findOneAndUpdate({}, { $set: { items: newChartData }})
                 console.log('차트 업데이트 성공')
             }
             else console.log('차트 변경점 없음')
@@ -80,7 +80,6 @@ module.exports = {
                     await db.Song.create(song)
                     console.log(`새로운 곡 저장: ${song.title} by ${song.artist}`)
                 }
-                else console.log(`이미 존재하는 곡: ${song.title} by ${song.artist}`)
             }
 
             console.log('음원 데이터 저장 완료')

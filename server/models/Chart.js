@@ -16,8 +16,8 @@ const chartSchema = new mongoose.Schema({
     items: [chartItemSchema]
 })
 
-chartSchema.pre('updateOne', function(next) {
-    this.lastUpdated = Date.now()
+chartSchema.pre('findOneAndUpdate', function(next) {
+    this.set({ lastUpdated: new Date() })
     next()
 })
 

@@ -1,5 +1,4 @@
 require('dotenv').config()
-import { sendSlackMessage } from './server/utils/slackNotifier'
 
 export default {
   // Global page headers: https://go.nuxtjs.dev/config-head
@@ -60,6 +59,7 @@ export default {
   build: {},
 
   serverMiddleware: [
+    '~/server/middleware/errorHandler',
     '~/server/middleware/session',
     '~/server/middleware/cron',
     { path: '/api', handler: '~/server/api/index.js' },
@@ -78,31 +78,5 @@ export default {
 
   server: {
     host: '0.0.0.0'
-  },
-
-  hooks: {
-    'render:errorMiddleware': (app) => {
-      app.use(async (err, req, res, next) => {
-        // 서버 사이드 에러 처리 로직
-        console.error('서버 에러:', err)
-        const formatErrorMessage = (err, req) => {
-          const timestamp = new Date().toISOString();
-          const stackLines = err.stack.split('\n').slice(0, 3).join('\n');  // 첫 3줄만 포함
-        
-          return `🚨 *서버 에러 발생*
-        - 시간: ${timestamp}
-        - URL: ${req.method} ${req.url}
-        - 메시지: ${err.message}
-        - 스택 (요약):
-        \`\`\`
-        ${stackLines}
-        \`\`\``;
-        };
-        const errorMessage = formatErrorMessage(err, req);
-        sendSlackMessage(errorMessage)
-        res.statusCode = 500
-        res.end('서버 내부 오류가 발생했습니다.')
-      })
-    }
   },
 }
