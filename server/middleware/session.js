@@ -6,7 +6,7 @@ const MongoStore = require('connect-mongo')
 
 const app = express()
 
-// app.set('trust proxy', 1)
+app.set('trust proxy', 1)
 
 app.use(session({
     secret: process.env.SESSION_SECRET || 'dibe2_secret',
@@ -20,16 +20,9 @@ app.use(session({
     }),
     cookie: {
         maxAge: 24 * 60 * 60 * 1000,
-        secure: false,
+        secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
     }
 }))
-
-app.use((req, res, next) => {
-    console.log('secret:', process.env.SESSION_SECRET);
-    console.log('db:', process.env.MONGODB_URI);
-    console.log('env:', process.env.NODE_ENV);
-    next()
-})
 
 module.exports = app

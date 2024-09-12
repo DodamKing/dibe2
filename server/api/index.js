@@ -3,7 +3,7 @@ const express = require('express')
 require('../models')
 const { sessionCheckMiddleware } = require('../middleware/auth')
 const axios = require('axios')
-// const cors = require('cors')
+const cors = require('cors')
 
 const app = express()
 
@@ -11,7 +11,9 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
 app.use(sessionCheckMiddleware)
-// app.use(cors())
+app.use(cors({
+    credentials: true
+}))
 
 const userRoutes = require('./user')
 const songRoutes = require('./song')
