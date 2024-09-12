@@ -171,7 +171,7 @@ export default {
                         songs: this.selectedSongs
                     })
                     if (success) {
-                        this.$toast.success(`${addedSongs.length}곡이 "${playlist.name}" 플레이리스트에 추가되었습니다.`)
+                        this.$toast.success(`${addedSongs}곡이 "${playlist.name}" 플레이리스트에 추가되었습니다.`)
                         this.selectedSongs = []
                         this.selectAll = false
                         this.showPlaylistModal = false

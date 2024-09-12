@@ -16,6 +16,7 @@ export const state = () => ({
     volume: 1,
     shuffleOn: false,
     repeatOn: false,
+    repeatMode: 'off',
     originalQueue: [],
     isLoading: false,
     isInitialized: false
@@ -52,14 +53,6 @@ export const mutations = {
     SET_REPEAT(state, repeatOn) {
         state.repeatOn = repeatOn
     },
-    SHUFFLE_QUEUE(state) {
-        state.originalQueue = [...state.queue]
-
-        for (let i = state.queue.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [state.queue[i], state.queue[j]] = [state.queue[j], state.queue[i]];
-        }
-    },
     RESTORE_ORIGINAL_QUEUE(state) {
         state.queue = [...state.originalQueue]
     },
@@ -71,6 +64,36 @@ export const mutations = {
     },
     REMOVE_FROM_QUEUE(state, trackIds) {
         state.queue = state.queue.filter(track => !trackIds.includes(track._id))
+    },
+    SET_REPEAT_MODE(state, mode) {
+        state.repeatMode = mode
+        state.repeatOn = mode !== 'off'
+    },
+    SHUFFLE_QUEUE(state) {
+        if (state.currentTrack) {
+            // 현재 재생 중인 트랙을 제외하고 나머지를 셔플
+            const currentTrackIndex = state.queue.findIndex(track => track._id === state.currentTrack._id)
+            const remainingTracks = state.queue.filter((_, index) => index !== currentTrackIndex)
+            
+            for (let i = remainingTracks.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [remainingTracks[i], remainingTracks[j]] = [remainingTracks[j], remainingTracks[i]];
+            }
+            
+            // 현재 트랙을 첫 번째로 하고 셔플된 나머지 트랙을 그 뒤에 붙임
+            state.queue = [state.currentTrack, ...remainingTracks]
+        } else {
+            // 현재 재생 중인 트랙이 없으면 전체 큐를 셔플
+            const shuffled = [...state.queue]
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            state.queue = shuffled
+        }
+    },
+    SET_ORIGINAL_QUEUE(state, queue) {
+        state.originalQueue = [...queue]
     },
 }
 
@@ -165,6 +188,12 @@ export const actions = {
     },
 
     playNext({ commit, state, dispatch }) {
+        if (state.repeatMode === 'one') {
+            dispatch('seek', 0)
+            dispatch('play')
+            return
+        }
+
         const currentIndex = state.queue.findIndex(track => track._id === state.currentTrack?._id)
         if (currentIndex < state.queue.length - 1) {
             commit('SET_CURRENT_TRACK', state.queue[currentIndex + 1])
@@ -235,20 +264,35 @@ export const actions = {
         commit('SET_DURATION', duration);
     },
 
-    toggleShuffle({ commit, state }) {
-        const shuffleOn = !state.shuffleOn
-        commit('SET_SHUFFLE', shuffleOn)
-        if (shuffleOn) {
-            // commit('SHUFFLE_QUEUE')
-            alert('셔플 켬, 구현 필요')
+    toggleShuffle({ commit, state, dispatch }) {
+        if (!state.shuffleOn) {
+            // 셔플을 켤 때
+            commit('SET_ORIGINAL_QUEUE', state.queue) // 현재 큐를 원본으로 저장
+            commit('SHUFFLE_QUEUE')
+            commit('SET_SHUFFLE', true)
         } else {
-            // commit('RESTORE_ORIGINAL_QUEUE')
-            alert('셔플 끔, 구현 필요')
+            // 셔플을 끌 때
+            commit('RESTORE_ORIGINAL_QUEUE')
+            commit('SET_SHUFFLE', false)
         }
+        dispatch('saveQueue')
     },
 
     toggleRepeat({ commit, state }) {
-        commit('SET_REPEAT', !state.repeatOn)
+        const currentMode = state.repeatMode
+        let newMode
+        switch (currentMode) {
+            case 'off':
+                newMode = 'all'
+                break
+            case 'all':
+                newMode = 'one'
+                break
+            case 'one':
+                newMode = 'off'
+                break
+        }
+        commit('SET_REPEAT_MODE', newMode)
     },
 
     async playEntirePlaylist({ commit, dispatch }, playlist) {
@@ -306,5 +350,20 @@ export const getters = {
         if (!state.currentTrack) return false;
         const currentIndex = state.queue.findIndex(track => track._id === state.currentTrack._id);
         return currentIndex < state.queue.length - 1;
+    },
+    repeatModeIcon: (state) => {
+        switch (state.repeatMode) {
+            case 'off':
+                return 'repeat-off'
+            case 'all':
+                return 'repeat'
+            case 'one':
+                return 'repeat-once'
+            default:
+                return 'repeat-off'
+        }
+    },
+    shuffleIcon: (state) => {
+        return state.shuffleOn ? 'shuffle' : 'shuffle-off'
     }
 }

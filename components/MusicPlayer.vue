@@ -1,10 +1,10 @@
 <template>
     <div class="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-purple-800 to-blue-700 shadow-lg">
         <div class="container mx-auto px-4 py-2">
-            <div class="flex flex-row items-center justify-between h-14 sm:h-12"> <!-- Fixed height container -->
+            <div class="flex flex-row items-center justify-between h-14 sm:h-12">
                 <!-- Track Info -->
-                <div class="flex items-center w-1/3 sm:w-1/4 h-full"> <!-- Added h-full -->
-                    <div v-if="currentTrack" class="flex items-center w-full h-full"> <!-- Added h-full -->
+                <div class="flex items-center w-1/3 sm:w-1/4 h-full">
+                    <div v-if="currentTrack" class="flex items-center w-full h-full">
                         <div class="relative w-10 h-10 sm:w-12 sm:h-12 mr-2 sm:mr-3 flex-shrink-0">
                             <img :src="currentTrack.coverUrl" :alt="currentTrack.title"
                                 class="w-full h-full object-cover rounded-lg">
@@ -27,6 +27,11 @@
 
                 <!-- Playback Controls -->
                 <div class="flex items-center justify-center space-x-2 sm:space-x-4 w-1/3 sm:w-1/2">
+                    <button class="text-gray-200 hover:text-white focus:outline-none" aria-label="반복 재생"
+                        @click="toggleRepeat" :title="getRepeatTitle">
+                        <!-- <i :class="['fas', repeatModeIcon, { 'text-white': repeatMode !== 'off' }]"></i> -->
+                        <i :class="['fas', 'fa-repeat', { 'text-white': repeatMode !== 'off' }]"></i>
+                    </button>
                     <button class="text-gray-200 hover:text-white focus:outline-none" aria-label="이전 곡"
                         @click="playPrevious" :disabled="!hasPreviousTrack">
                         <i class="fas fa-step-backward text-lg sm:text-xl"
@@ -42,18 +47,15 @@
                         @click="playNext" :disabled="!hasNextTrack">
                         <i class="fas fa-step-forward text-lg sm:text-xl" :class="{ 'opacity-50': !hasNextTrack }"></i>
                     </button>
+                    <button class="text-gray-200 hover:text-white focus:outline-none" aria-label="셔플"
+                        @click="toggleShuffle" :title="shuffleOn ? '셔플 끄기' : '셔플 켜기'">
+                        <!-- <i :class="['fas', shuffleIcon, { 'text-white': shuffleOn }]">{{  shuffleIcon }}</i> -->
+                        <i :class="['fas', 'fa-shuffle', { 'text-white': shuffleOn }]"></i>
+                    </button>
                 </div>
 
                 <!-- Additional Controls -->
                 <div class="flex items-center justify-end space-x-2 sm:space-x-4 w-1/3 sm:w-1/4">
-                    <button class="text-gray-200 hover:text-white focus:outline-none hidden sm:block"
-                        @click="toggleShuffle" :class="{ 'text-white': shuffleOn }">
-                        <i class="fas fa-random text-lg"></i>
-                    </button>
-                    <button class="text-gray-200 hover:text-white focus:outline-none hidden sm:block"
-                        @click="toggleRepeat" :class="{ 'text-white': repeatOn }">
-                        <i class="fas fa-redo text-lg"></i>
-                    </button>
                     <div class="hidden sm:flex items-center space-x-1">
                         <button class="text-gray-200 hover:text-white focus:outline-none" @click="toggleMute">
                             <i
@@ -103,10 +105,18 @@ import { mapState, mapActions, mapGetters } from 'vuex'
 
 export default {
     computed: {
-        ...mapState('player', ['currentTrack', 'isPlaying', 'currentTime', 'duration', 'volume', 'shuffleOn', 'repeatOn', 'isLoading']),
-        ...mapGetters('player', ['hasPreviousTrack', 'hasNextTrack']),
+        ...mapState('player', ['currentTrack', 'isPlaying', 'currentTime', 'duration', 'volume', 'shuffleOn', 'repeatMode', 'isLoading']),
+        ...mapGetters('player', ['hasPreviousTrack', 'hasNextTrack', 'repeatModeIcon', 'shuffleIcon']),
         progress() {
             return this.duration > 0 ? (this.currentTime / this.duration) * 100 : 0
+        },
+        getRepeatTitle() {
+            switch (this.repeatMode) {
+                case 'off': return '반복 없음'
+                case 'all': return '전체 반복'
+                case 'one': return '한 곡 반복'
+                default: return '반복 모드'
+            }
         }
     },
     methods: {
@@ -257,5 +267,12 @@ input[type="range"]::-ms-track {
 
 .group:hover input[type="range"] {
     height: 0.5rem;
+}
+
+@media (max-width: 640px) {
+    .container {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
 }
 </style>
