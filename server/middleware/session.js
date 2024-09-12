@@ -4,7 +4,8 @@ const MongoStore = require('connect-mongo')
 
 const app = express()
 
-app.enable('trust proxy')
+const isProduction = process.env.NODE_ENV === 'production'
+if (isProduction) app.enable('trust proxy')
 
 app.use(session({
     secret: process.env.SESSION_SECRET || 'dibe2_secret',
@@ -18,9 +19,9 @@ app.use(session({
     }),
     cookie: {
         maxAge: 24 * 60 * 60 * 1000,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isProduction,
         httpOnly: true,
-        sameSite: 'none'
+        sameSite: isProduction ? 'none' : 'lax',
     }
 }))
 
