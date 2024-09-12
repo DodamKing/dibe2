@@ -11,6 +11,8 @@ module.exports = {
 
     sessionCheckMiddleware: (req, res, next) => {
         // 공개 경로 목록
+        console.log('세션은 있는지 찍어보자: ', req.session);
+        
         const publicPaths = ['/users/login', '/users/register'];
 
         if (!req.session || typeof req.session.user === 'undefined') {
