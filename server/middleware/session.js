@@ -5,9 +5,9 @@ const MongoStore = require('connect-mongo')
 const app = express()
 
 app.use(session({
-    secret: 'dibe2_secret',
+    secret: process.env.SESSION_SECRET || 'dibe2_secret',
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true,
     store: MongoStore.create({
         mongoUrl: process.env.MONGODB_URI,
         dbName: 'dibe2',
@@ -16,7 +16,9 @@ app.use(session({
     }),
     cookie: {
         maxAge: 24 * 60 * 60 * 1000,
-        secure: process.env.NODE_ENV === 'production'
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        httpOnly: true,
     }
 }))
 
