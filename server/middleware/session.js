@@ -4,10 +4,12 @@ const MongoStore = require('connect-mongo')
 
 const app = express()
 
+app.set('trust proxy', 1)
+
 app.use(session({
     secret: process.env.SESSION_SECRET || 'dibe2_secret',
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     store: MongoStore.create({
         mongoUrl: process.env.MONGODB_URI,
         dbName: 'dibe2',
