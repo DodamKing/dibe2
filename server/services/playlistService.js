@@ -19,7 +19,7 @@ module.exports = {
 
     readPlaylists: async (userId) => {
         try {
-            const playlists = db.Playlist.find({ user: userId })
+            const playlists = await db.Playlist.find({ user: userId }).sort({ createdAt: -1 })
             return playlists
         } catch (err) {
             console.error(err)

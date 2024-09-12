@@ -17,12 +17,12 @@
             </div>
         </div>
         <div class="h-[320px] overflow-y-auto pr-2 custom-scrollbar">
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-x-6 sm:gap-y-10">
                 <div @click="$emit('create-playlist')"
                     class="relative group cursor-pointer bg-gray-700 rounded-lg flex items-center justify-center aspect-square transition-colors duration-300 hover:bg-gray-600">
                     <i class="fas fa-plus text-4xl text-gray-400 group-hover:text-white transition-colors duration-300"></i>
                 </div>
-                <div v-for="playlist in playlists" :key="playlist._id" class="relative group cursor-pointer" @click="selectPlaylist(playlist._id)"
+                <div v-for="playlist in playlists" :key="playlist._id" class="relative group cursor-pointer" @click="handleClick(playlist._id)"
                     @touchstart="touchStart(playlist._id, $event)" @touchend="touchEnd(playlist._id, $event)"
                     @touchmove="touchMove(playlist._id, $event)">
                     <div v-if="playlist.songs.length === 0" class="aspect-square w-full flex flex-col items-center justify-center p-4">
@@ -94,7 +94,9 @@ export default {
             playlistToDelete: null,
             isMobile: false,
             activeTouchPlaylist: null,
-            swipedPlaylist: null
+            swipedPlaylist: null,
+            isSwipeAction: false,
+            swipeStartTime: 0,
         }
     },
     methods: {
@@ -130,29 +132,43 @@ export default {
             this.$emit('select-playlist', playlistId)
         },
         touchStart(playlistId, event) {
-            this.touchStartX = event.touches[0].clientX
-            this.activeTouchPlaylist = playlistId
-        },
-        touchEnd(playlistId, event) {
-            this.touchEndX = event.changedTouches[0].clientX
-            if (this.touchStartX - this.touchEndX > this.swipeThreshold) {
-                this.swipedPlaylist = playlistId
-            } else if (Math.abs(this.touchStartX - this.touchEndX) < 10) {
-                // 탭으로 간주하고 상세 페이지로 이동
-                this.selectPlaylist(playlistId)
-            } else {
-                setTimeout(() => {
-                    this.activeTouchPlaylist = null
-                }, 300)
-            }
+            this.touchStartX = event.touches[0].clientX;
+            this.swipeStartTime = Date.now();
+            this.isSwipeAction = false;
+            this.activeTouchPlaylist = playlistId;
         },
         touchMove(playlistId, event) {
             if (Math.abs(event.touches[0].clientX - this.touchStartX) > 10) {
-                this.activeTouchPlaylist = null
+                this.isSwipeAction = true;
+                this.activeTouchPlaylist = null;
             }
             if (this.touchStartX - event.touches[0].clientX > this.swipeThreshold) {
-                event.preventDefault() // Prevent scrolling while swiping
+                event.preventDefault(); // 스와이프 중 스크롤 방지
             }
+        },
+        touchEnd(playlistId, event) {
+            this.touchEndX = event.changedTouches[0].clientX;
+            const swipeDuration = Date.now() - this.swipeStartTime;
+            
+            if (this.isSwipeAction && this.touchStartX - this.touchEndX > this.swipeThreshold) {
+                this.swipedPlaylist = playlistId;
+            } else if (!this.isSwipeAction && swipeDuration < 300) {
+                // 짧은 탭으로 간주하고 클릭 이벤트 트리거
+                this.handleClick(playlistId);
+            }
+            
+            setTimeout(() => {
+                this.activeTouchPlaylist = null;
+            }, 300);
+            
+            this.isSwipeAction = false;
+        },
+        handleClick(playlistId) {
+            if (this.swipedPlaylist === playlistId) {
+                // 스와이프 액션이 활성화된 상태에서는 클릭 무시
+                return;
+            }
+            this.selectPlaylist(playlistId);
         },
         checkMobile() {
             this.isMobile = window.innerWidth < 640 // sm breakpoint
