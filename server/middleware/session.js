@@ -2,11 +2,9 @@ const express = require('express')
 const session = require('express-session')
 const MongoStore = require('connect-mongo')
 
-// require('dotenv').config()
-
 const app = express()
 
-app.set('trust proxy', 1)
+app.enable('trust proxy')
 
 app.use(session({
     secret: process.env.SESSION_SECRET || 'dibe2_secret',
@@ -22,6 +20,7 @@ app.use(session({
         maxAge: 24 * 60 * 60 * 1000,
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
+        sameSite: 'none'
     }
 }))
 
