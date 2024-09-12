@@ -59,8 +59,8 @@ export default {
   build: {},
 
   serverMiddleware: [
-    '~/server/middleware/errorHandler',
     '~/server/middleware/session',
+    '~/server/middleware/errorHandler',
     '~/server/middleware/cron',
     { path: '/api', handler: '~/server/api/index.js' },
   ],

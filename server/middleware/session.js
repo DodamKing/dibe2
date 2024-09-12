@@ -12,7 +12,7 @@ app.use(session({
         mongoUrl: process.env.MONGODB_URI,
         dbName: 'dibe2',
         collectionName: 'sessions',
-        ttl: 24 * 60 * 60 * 1000
+        ttl: 24 * 60 * 60
     }),
     cookie: {
         maxAge: 24 * 60 * 60 * 1000,
