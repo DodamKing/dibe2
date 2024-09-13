@@ -187,12 +187,20 @@ module.exports = {
     },
 
     getAudioStream: async (youtubeUrl) => {
+        const options = {
+            requestOptions: {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                },
+            },
+        }
+
         try {
-            const info = await ytdl.getInfo(youtubeUrl)
+            const info = await ytdl.getInfo(youtubeUrl, options)
             const audioFormat  = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly'})
 
             const result = {
-                audioStream: ytdl(youtubeUrl, { format: audioFormat }),
+                audioStream: ytdl(youtubeUrl, {...options, format: audioFormat }),
                 duration: parseInt(info.videoDetails.lengthSeconds),
                 contentLength: audioFormat.contentLength
             } 
