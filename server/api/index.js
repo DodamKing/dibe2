@@ -1,6 +1,6 @@
 const express = require('express')
 require('../models')
-// const { sessionCheckMiddleware } = require('../middleware/auth')
+const { sessionCheckMiddleware } = require('../middleware/auth')
 const axios = require('axios')
 
 const userRoutes = require('./user')
@@ -14,7 +14,7 @@ app.set('trust proxy', 1)
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
-// app.use(sessionCheckMiddleware)
+app.use(sessionCheckMiddleware)
 
 app.use('/users', userRoutes)
 app.use('/songs', songRoutes)

@@ -7,7 +7,6 @@ export default function (req, res, next) {
             secret: process.env.SESSION_SECRET || 'dibe2_secret',
             resave: false,
             saveUninitialized: false,
-            proxy: true,
             store: MongoStore.create({
                 mongoUrl: process.env.MONGODB_URI,
                 dbName: 'dibe2',
