@@ -264,7 +264,7 @@ export default {
     }
 }
 
-.lyrics-clamp {
+/* .lyrics-clamp {
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
@@ -275,7 +275,7 @@ export default {
     display: flex;
     line-clamp: 3;
     box-orient: vertical;
-}
+} */
 
 /* 폰트어썸 아이콘 크기 조정 */
 .fas {
