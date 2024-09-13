@@ -14,11 +14,12 @@ app.use(express.urlencoded({ extended: true }))
 //     origin: 'https://dibe2.dimad.site',
 //     credentials: true
 // }))
-app.use(sessionCheckMiddleware)
 
 const userRoutes = require('./user')
 const songRoutes = require('./song')
 const playlistRoutes = require('./playlist')
+
+app.use(sessionCheckMiddleware)
 
 app.use('/users', userRoutes)
 app.use('/songs', songRoutes)

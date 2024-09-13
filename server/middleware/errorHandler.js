@@ -18,8 +18,8 @@ export default function (req, res, next) {
         err.occurredAt = errorTime
 
         try {
-            if (process.env.NODE_ENV === 'development') return console.log('개발환경이어서 slack 메시지 안 보냄.')
-            await sendErrorToSlack(err, req);
+            if (process.env.NODE_ENV === 'development') console.log('개발환경이어서 slack 메시지 안 보냄: ', err)
+            else await sendErrorToSlack(err, req);
         } catch (slackError) {
             console.error('Failed to send error to Slack:', slackError);
         }
