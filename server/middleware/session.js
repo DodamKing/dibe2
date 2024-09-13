@@ -8,6 +8,7 @@ const isProduction = process.env.NODE_ENV === 'production'
 if (isProduction) app.enable('trust proxy')
 
 app.use(session({
+    secure: isProduction,
     secret: process.env.SESSION_SECRET || 'dibe2_secret',
     resave: false,
     saveUninitialized: false,
@@ -22,7 +23,8 @@ app.use(session({
         secure: isProduction,
         httpOnly: true,
         sameSite: isProduction ? 'none' : 'lax',
-    }
+    },
+    name: 'dibe2-session-cookie'
 }))
 
 module.exports = app

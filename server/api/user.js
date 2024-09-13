@@ -37,11 +37,13 @@ router.post('/login', isNotAuthenticated, async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password)
         if (!isMatch) return res.json({ message: '비밀번호가 일치하지 않습니다.', code: 3})
 
-        req.session.user = {
+        const sessionUser = {
             userId: user._id,
             username: user.username,
             email: user.email
         }
+
+        req.session.user = sessionUser
         
         // 세션 저장 완료 후 응답
         req.session.save((err) => {
@@ -49,7 +51,9 @@ router.post('/login', isNotAuthenticated, async (req, res) => {
                 console.error('세션 저장 오류', err);
                 return res.status(500).json({ message: '세션 저장 중 오류가 발생했습니다.', code: 5 });
             }
-            res.json({ message: '로그인 성공', user: { userId: user._id, username: user.username, email: user.email }, code: 1 });
+            console.log('세션 저장:', req.session);
+            
+            res.json({ message: '로그인 성공', user: sessionUser, code: 1 });
         });
 
         // res.json({ message: '로그인 성공', user: { userId: user._id, username: user.username, email: user.email }, code: 1})
