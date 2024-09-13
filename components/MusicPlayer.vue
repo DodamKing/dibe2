@@ -188,9 +188,9 @@ export default {
         }
     },
 
-    mounted() {
-        this.$store.dispatch('player/initializeAudioSystem')
-    },
+    // mounted() {
+    //     this.$store.dispatch('player/initializeAudioSystem')
+    // },
 
     watch: {
         currentTrack() {

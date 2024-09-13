@@ -4,6 +4,8 @@ import { mediaSessionPlugin } from "./plugins/mediaSession"
 
 export const actions = {
     nuxtServerInit({ commit }, { req }) {
+        console.log('nuxtServerInit: ', req.session);
+        
         const user = req.session?.user
         if (user) {
             commit('auth/setUser', user)
