@@ -29,8 +29,13 @@
                 <div class="flex items-center justify-center space-x-2 sm:space-x-4 w-1/3 sm:w-1/2">
                     <button class="text-gray-200 hover:text-white focus:outline-none" aria-label="반복 재생"
                         @click="toggleRepeat" :title="getRepeatTitle">
-                        <!-- <i :class="['fas', repeatModeIcon, { 'text-white': repeatMode !== 'off' }]"></i> -->
-                        <i :class="['fas', 'fa-repeat', { 'text-white': repeatMode !== 'off' }]"></i>
+                        <i :class="['fas', repeatModeIcon, { 'text-red': repeatMode !== 'off' }]"></i>
+                        <!-- <i v-if="repeatMode === 'off'" class="fas fa-repeat"></i>
+                        <span v-else-if="repeatMode === 'all'" class="fa-stack">
+                            <i class="fas fa-repeat"></i>
+                            <i class="fas fa-1 fa-stack-1x fa-inverse" style="font-size: 0.5em; top: -8px; left: 10px;"></i>
+                        </span>
+                        <i v-else-if="repeatMode === 'one'" class="fas fa-repeat" style="color: red;"></i> -->
                     </button>
                     <button class="text-gray-200 hover:text-white focus:outline-none" aria-label="이전 곡"
                         @click="playPrevious" :disabled="!hasPreviousTrack">
@@ -49,8 +54,7 @@
                     </button>
                     <button class="text-gray-200 hover:text-white focus:outline-none" aria-label="셔플"
                         @click="toggleShuffle" :title="shuffleOn ? '셔플 끄기' : '셔플 켜기'">
-                        <!-- <i :class="['fas', shuffleIcon, { 'text-white': shuffleOn }]">{{  shuffleIcon }}</i> -->
-                        <i :class="['fas', 'fa-shuffle', { 'text-white': shuffleOn }]"></i>
+                        <i :class="['fas', 'fa-shuffle', { 'text-red': shuffleOn }]"></i>
                     </button>
                 </div>
 
@@ -106,7 +110,7 @@ import { mapState, mapActions, mapGetters } from 'vuex'
 export default {
     computed: {
         ...mapState('player', ['currentTrack', 'isPlaying', 'currentTime', 'duration', 'volume', 'shuffleOn', 'repeatMode', 'isLoading']),
-        ...mapGetters('player', ['hasPreviousTrack', 'hasNextTrack', 'repeatModeIcon', 'shuffleIcon']),
+        ...mapGetters('player', ['hasPreviousTrack', 'hasNextTrack', 'repeatModeIcon']),
         progress() {
             return this.duration > 0 ? (this.currentTime / this.duration) * 100 : 0
         },
@@ -275,4 +279,9 @@ input[type="range"]::-ms-track {
         padding-right: 0.5rem;
     }
 }
+
+.text-red {
+    color: red;
+}
+
 </style>

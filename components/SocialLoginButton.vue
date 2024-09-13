@@ -1,6 +1,7 @@
 <template>
     <button @click="login" :class="['social-login-btn', `social-login-btn-${provider}`]">
-        <i :class="['fab', `fa-${icon}`]"></i>
+        <i v-if="provider==='google'" :class="['fab', `fa-${icon}`]"></i>
+        <i v-else :class="['fas', `fa-${icon}`]"></i>
         {{ provider }}로 로그인
     </button>
 </template>

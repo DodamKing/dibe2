@@ -354,13 +354,13 @@ export const getters = {
     repeatModeIcon: (state) => {
         switch (state.repeatMode) {
             case 'off':
-                return 'repeat-off'
+                return 'fa-repeat'
             case 'all':
-                return 'repeat'
+                return 'fa-repeat'
             case 'one':
-                return 'repeat-once'
+                return 'fa-redo'
             default:
-                return 'repeat-off'
+                return 'fa-repeat'
         }
     },
     shuffleIcon: (state) => {
