@@ -6,6 +6,8 @@ const app = express()
 
 const isProduction = process.env.NODE_ENV === 'production'
 
+if (isProduction) app.set('trust proxy', 1)
+
 const store = MongoStore.create({
     mongoUrl: process.env.MONGODB_URI,
     dbName: 'dibe2',
@@ -33,6 +35,12 @@ app.use(session({
     name: 'dibe2_session_cookie'
 }))
 
-if (isProduction) app.set('trust proxy', 1)
+// 세션 디버깅 미들웨어
+app.use((req, res, next) => {
+    console.log('Session ID:', req.sessionID);
+    console.log('Session:', req.session);
+    console.log('Cookies:', req.headers.cookie);
+    next();
+});
 
 module.exports = app

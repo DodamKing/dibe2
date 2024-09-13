@@ -51,8 +51,7 @@ router.post('/login', isNotAuthenticated, async (req, res) => {
                 console.error('세션 저장 오류', err);
                 return res.status(500).json({ message: '세션 저장 중 오류가 발생했습니다.', code: 5 });
             }
-            console.log('세션 저장:', req.session);
-            console.log('저장된 세션 아이디:', req.sessionID)
+            console.log('로그인 할 때 세션 아이디:', req.sessionID)
             
             res.json({ message: '로그인 성공', user: sessionUser, code: 1 });
         });
