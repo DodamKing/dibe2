@@ -28,7 +28,7 @@ app.use(session({
         secure: isProduction,
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000,
-        domain: '.dimad.site'
+        sameSite: isProduction ? 'none' : 'lax'
     },
     name: 'dibe2_session_cookie'
 }))
