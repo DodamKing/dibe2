@@ -16,33 +16,15 @@ function parseSimpleTextDuration(simpleText) {
     }
 }
 
-// 개별 검색 함수
-async function searchByField(query, field, page = 1, limit = 20) {
-    const skip = (page - 1) * limit
-    const searchCriteria = {}
-    searchCriteria[field] = { $regex: query, $options: 'i' }
-    
-    const [items, total] = await Promise.all([
-        db.Song.find(searchCriteria).skip(skip).limit(limit),
-        db.Song.countDocuments(searchCriteria)
-    ])
-
-    return {
-        items,
-        total,
-        hasMore: skip + items.length < total
-    }
-}
-
 module.exports = {
     updateChartData: async (newChartData) => {
         try {
             const currentChart = await db.Chart.findOne()
 
             if (!currentChart) {
-                await db.Chart.create({ items: newChartData})
+                await db.Chart.create({ items: newChartData })
                 console.log('차트 초기 데이터 삽입 성공');
-                return 
+                return
             }
 
             let needsUpdate = false
@@ -63,9 +45,9 @@ module.exports = {
                     break
                 }
             }
-            
+
             if (needsUpdate) {
-                await db.Chart.findOneAndUpdate({}, { $set: { items: newChartData }})
+                await db.Chart.findOneAndUpdate({}, { $set: { items: newChartData } })
                 console.log('차트 업데이트 성공')
             }
             else console.log('차트 변경점 없음')
@@ -103,13 +85,13 @@ module.exports = {
         try {
             const songs = await db.Song.find({ youtubeUrl: null })
 
-            for (const song of songs ) {
+            for (const song of songs) {
                 try {
                     const searchQuery = `${song.title} ${song.artist} official audio`
                     const searchResults = await YouTubeSearch.GetListByKeyword(searchQuery, false, 10)
-    
+
                     let foundSuitableVideo = false
-    
+
                     if (searchResults && searchResults.items && searchResults.items.length > 0) {
                         for (const item of searchResults.items) {
                             const durationInSeconds = parseSimpleTextDuration(item.length.simpleText)
@@ -118,11 +100,11 @@ module.exports = {
                                 console.log('길이 파싱 못함', item.title)
                                 continue
                             }
-    
+
                             if (durationInSeconds >= 120 && durationInSeconds <= 360) {
                                 const videoId = item.id
                                 const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`
-    
+
                                 await song.updateOne({ youtubeUrl })
                                 console.log(`YouTube URL 업데이트: ${song.title} by ${song.artist}`)
                                 foundSuitableVideo = true
@@ -130,9 +112,9 @@ module.exports = {
                             }
                         }
                     }
-    
+
                     if (!foundSuitableVideo) console.log(`YouTube URL 결과 없음: ${song.title} by ${song.artist}`)
-    
+
                     // YouTube API 제한을 고려한 딜레이
                     await new Promise(resolve => setTimeout(resolve, 1000))
                 } catch (searchErr) {
@@ -202,13 +184,13 @@ module.exports = {
 
         try {
             const info = await ytdl.getInfo(youtubeUrl, options)
-            const audioFormat  = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly'})
+            const audioFormat = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly' })
 
             const result = {
-                audioStream: ytdl(youtubeUrl, {...options, format: audioFormat }),
+                audioStream: ytdl(youtubeUrl, { ...options, format: audioFormat }),
                 duration: parseInt(info.videoDetails.lengthSeconds),
                 contentLength: audioFormat.contentLength
-            } 
+            }
             return result
         } catch (err) {
             console.error('오디오 스트림 추출 중 에러 발생:', err)
@@ -273,7 +255,7 @@ module.exports = {
     updateLyrics: async () => {
         try {
             const songs = await db.Song.find({ lyrics: null, detailLink: { $ne: null } })
-            
+
             for (const song of songs) {
                 try {
                     const lyrics = await helper.getLyrics(song.detailLink)
@@ -285,7 +267,7 @@ module.exports = {
             }
             console.log('가사 업데이트 완료')
         } catch (err) {
-            console.error('가사 업데이트 중 에러: ' ,err)
+            console.error('가사 업데이트 중 에러: ', err)
         }
     }
 }

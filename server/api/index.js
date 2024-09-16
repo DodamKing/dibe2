@@ -3,6 +3,7 @@ const { connectDB } = require('../models')
 const { sessionCheckMiddleware } = require('../middleware/auth')
 const axios = require('axios')
 
+const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL
 const userRoutes = require('./user')
 const songRoutes = require('./song')
 const playlistRoutes = require('./playlist')
@@ -32,8 +33,6 @@ app.post('/send-slack-message', async (req, res) =>{
         console.error('개발이라 슬랙 메시지 보내지 않음: ', message)
         return res.json({ success: true })
     }
-
-    const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL
 
     try {
         await axios.post(slackWebhookUrl, { text: message })
