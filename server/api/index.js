@@ -1,5 +1,5 @@
 const express = require('express')
-require('../models')
+const { connectDB } = require('../models')
 const { sessionCheckMiddleware } = require('../middleware/auth')
 const axios = require('axios')
 
@@ -8,6 +8,11 @@ const songRoutes = require('./song')
 const playlistRoutes = require('./playlist')
 
 const app = express()
+
+app.use(async (req, res, next) => {
+    await connectDB()
+    next()
+})
 
 app.set('trust proxy', 1)
 
@@ -37,6 +42,11 @@ app.post('/send-slack-message', async (req, res) =>{
         console.error('Slack 메시지 전송 오류:', err)
         res.status(500).json({ success: false })
     }
+})
+
+app.use((err, req, res, next) => {
+    console.error(err)
+    res.status(500).json({ error: '서버 내부 오류 발생' })
 })
 
 module.exports  = app
