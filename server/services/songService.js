@@ -169,29 +169,8 @@ module.exports = {
     },
 
     getAudioStream: async (youtubeUrl) => {
-        const cookies = [
-            { name: 'APISID', value: 'APISID=3QZX1-wg-D3oMogr/AwnZjSd2jmyPDC93W', domain: '.youtube.com' },
-            { name: 'HSID', value: 'ADiNR6RyMp48HJKjf', domain: '.youtube.com' },
-            { name: 'LOGIN_INFO', value: 'AFmmF2swRQIgXLo2GMvKJpmEXU3C0-i26YdDoHPIAUf2GdpKJLMNe7UCIQD7Z5MqSWX6MrPeYKiwNDsesYPRTSlkT4Et8EzQYEPr5A:QUQ3MjNmenotR2xFUW5jb3hVMEpMeWZmeXU4ZklseXNWV0NxV2RPSFlCSGVVS05xbU5vVnI0LXhqQXhxN2tkZVRtUktBV0FCWF9xVUJfajBEbGZ1M2drenVXM3RBQ0hMR1A1X3owRG84bWJaUURMV3Q0WmY1VG9LRDU2TTFFei1DUlQ2UTN6TzBqbUY5c0VBcHQydnZUZk1uM1V4cl9TcGpn', domain: '.youtube.com' },
-            { name: 'PREF', value: 'tz=Asia.Seoul&f6=40000000&f7=100', domain: '.youtube.com' },
-            { name: 'SID', value: 'g.a000oAjBH1njWQvuHyfmqba_E8oLO3pUXyBZkM2jTYepzPgsZ8hyzx6wZwQ8NLA0N8gtrmb1TQACgYKAaESARYSFQHGX2MiTUNhp8jMnxE_HossfqzNvxoVAUF8yKq_dPw3WhUqBAjbe956U3R50076', domain: '.youtube.com' },
-            { name: 'SSID', value: 'Ae58Q6NC2PE_foUPC', domain: '.youtube.com' }
-        ];
-        const options = {
-            requestOptions: {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-                    'Accept-Language': 'en-US,en;q=0.9',
-                    'Referer': 'https://www.youtube.com/',
-                },
-                cookies: cookies
-            },
-            highWaterMark: 1 << 25,
-        }
-
         try {
-            const info = await ytdl.getInfo(youtubeUrl, options)
+            const info = await ytdl.getInfo(youtubeUrl)
             const audioFormat = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly' })
 
             const result = {

@@ -3,9 +3,9 @@ module.exports = {
         name: 'dibe2',
         script: 'npm',
         args: 'start',
-        env: {
-            TZ: 'Asia/Seoul'
-        },
+        // env: {
+        //     TZ: 'Asia/Seoul'
+        // },
         log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
         // output: './logs/out.log',
         // error: './logs/error.log',
