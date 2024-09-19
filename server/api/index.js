@@ -1,5 +1,4 @@
 const express = require('express')
-const { connectDB } = require('../models')
 const { sessionCheckMiddleware } = require('../middleware/auth')
 const axios = require('axios')
 
@@ -9,11 +8,6 @@ const songRoutes = require('./song')
 const playlistRoutes = require('./playlist')
 
 const app = express()
-
-app.use(async (req, res, next) => {
-    await connectDB()
-    next()
-})
 
 app.set('trust proxy', 1)
 
@@ -30,7 +24,7 @@ app.post('/send-slack-message', async (req, res) =>{
     const { message } = req.body
 
     if (process.env.NODE_ENV === 'development') {
-        console.error('개발이라 슬랙 메시지 보내지 않음: ', message)
+        console.error('개발 환경, 슬랙 메시지 생략: ', message)
         return res.json({ success: true })
     }
 
