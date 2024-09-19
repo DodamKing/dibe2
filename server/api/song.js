@@ -33,7 +33,7 @@ router.get('/stream/:songId', async (req, res) => {
         // const audioStream  = await services.songService.getAudioStream(youtubeUrl)
         const { audioStream, duration, contentLength } = await services.songService.getAudioStream(youtubeUrl)
 
-        res.setHeader('Content-Type', 'audio/mp3')
+        res.setHeader('Content-Type', 'audio/mpeg')
         res.setHeader('Transfer-Encoding', 'chunked')
 
         res.setHeader('X-Content-Duration', duration);
