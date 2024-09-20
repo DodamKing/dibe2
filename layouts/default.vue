@@ -284,9 +284,6 @@ export default {
 </script>
 
 <style>
-/* @import 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css'; */
-/* @import 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css'; */
-
 .slide-up-enter-active,
 .slide-up-leave-active {
     transition: all 0.3s ease-out;

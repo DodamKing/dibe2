@@ -256,5 +256,17 @@ module.exports = {
         } catch (err) {
             console.error('가사 업데이트 중 에러: ', err)
         }
+    },
+
+    getYoutubeId: async (songId) => {
+        try {
+            const song = await db.Song.findById(songId)
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
+            const match = song.youtubeUrl.match(regExp)
+            return (match && match[2].length === 11) ? match[2] : null;
+        } catch (err) {
+            console.error('유뷰트 아이디:', err)
+            throw err
+        }
     }
 }

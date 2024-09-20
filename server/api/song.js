@@ -75,4 +75,15 @@ router.get('/search', async (req, res) => {
     }
 })
 
+router.get('/youtubeId/:songId', async (req, res, next) => {
+    const { songId } = req.params
+
+    try {
+        const youtubeId = await services.songService.getYoutubeId(songId)
+        res.json(youtubeId)
+    } catch (err) {
+        next(err)
+    }
+})
+
 module.exports = router

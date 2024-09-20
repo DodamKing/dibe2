@@ -1,0 +1,113 @@
+// utils/youtubePlayer.js
+let player;
+let onReadyCallback;
+let onStateChangeCallback;
+let onErrorCallback;
+let currentVideoId = null;
+
+function onYouTubeIframeAPIReady() {
+    player = new YT.Player('youtube-player', {
+        height: '0',
+        width: '0',
+        playerVars: {
+            'autoplay': 0,
+            'controls': 0,
+            'disablekb': 1,
+            'iv_load_policy': 3,
+            'modestbranding': 1,
+            'rel': 0,
+            'showinfo': 0,
+            'enablejsapi': 1,
+            'origin': window.location.origin,
+            'playsinline': 1,
+            'fs': 0,
+            'hl': 'ko',
+            'host': 'https://www.youtube-nocookie.com',
+            'mute': 0,
+            'loop': 0,
+            'playlist': '',
+            'widget_referrer': window.location.origin,
+        },
+        events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange,
+            'onError': onPlayerError
+        }
+    });
+}
+
+function onPlayerReady(event) {
+    if (onReadyCallback) onReadyCallback(event);
+}
+
+function onPlayerStateChange(event) {
+    if (onStateChangeCallback) onStateChangeCallback(event);
+}
+
+function onPlayerError(event) {
+    if (onErrorCallback) onErrorCallback(event);
+}
+
+export default {
+    init(readyCallback, stateChangeCallback, errorCallback) {
+        onReadyCallback = readyCallback;
+        onStateChangeCallback = stateChangeCallback;
+        onErrorCallback = errorCallback;
+
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+    },
+
+    getCurrentVideoId() {
+        return currentVideoId;
+    },
+
+    loadVideo(videoId) {
+        if (player && player.loadVideoById) {
+            player.loadVideoById(videoId);
+            currentVideoId = videoId;
+        }
+    },
+
+    play() {
+        if (player && player.playVideo) {
+            player.playVideo();
+        }
+    },
+
+    pause() {
+        if (player && player.pauseVideo) {
+            player.pauseVideo();
+        }
+    },
+
+    stop() {
+        if (player && player.stopVideo) {
+            player.stopVideo();
+        }
+    },
+
+    seek(seconds) {
+        if (player && player.seekTo) {
+            player.seekTo(seconds, true);
+        }
+    },
+
+    setVolume(volume) {
+        if (player && player.setVolume) {
+            player.setVolume(volume * 100);
+        }
+    },
+
+    getCurrentTime() {
+        return player && player.getCurrentTime ? player.getCurrentTime() : 0;
+    },
+
+    getDuration() {
+        return player && player.getDuration ? player.getDuration() : 0;
+    }
+};
