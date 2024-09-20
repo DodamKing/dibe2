@@ -24,9 +24,9 @@ module.exports = {
             const response = await axios.get(url);
             const html = response.data;
             const $ = cheerio.load(html);
-        
+
             const chartData = [];
-        
+
             const rows = $('.list > tbody > tr').toArray();
             for (const element of rows) {
                 const rank = $(element).find('.ranking > strong').text().trim();
@@ -36,7 +36,7 @@ module.exports = {
                 const coverUrl = $(element).find('.thumbnail > img').attr('src');
                 const detailLink = $(element).find('.trackInfo').attr('href');
                 // const lyrics = await getLyrics(detailLink);
-        
+
                 chartData.push({
                     rank,
                     title,
@@ -47,7 +47,7 @@ module.exports = {
                     // lyrics
                 });
             }
-        
+
             return chartData
         } catch (err) {
             console.error('벅스 크롤링 오류:', err)

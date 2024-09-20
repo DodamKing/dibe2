@@ -174,7 +174,7 @@ module.exports = {
             const audioFormat = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly' })
 
             const result = {
-                audioStream: ytdl(youtubeUrl, { ...options, format: audioFormat }),
+                audioStream: ytdl(youtubeUrl, { format: audioFormat }),
                 duration: parseInt(info.videoDetails.lengthSeconds),
                 contentLength: audioFormat.contentLength
             }

@@ -30,12 +30,6 @@
                     <button class="text-gray-200 hover:text-white focus:outline-none" aria-label="반복 재생"
                         @click="toggleRepeat" :title="getRepeatTitle">
                         <i :class="['fas', repeatModeIcon, { 'text-red': repeatMode !== 'off' }]"></i>
-                        <!-- <i v-if="repeatMode === 'off'" class="fas fa-repeat"></i>
-                        <span v-else-if="repeatMode === 'all'" class="fa-stack">
-                            <i class="fas fa-repeat"></i>
-                            <i class="fas fa-1 fa-stack-1x fa-inverse" style="font-size: 0.5em; top: -8px; left: 10px;"></i>
-                        </span>
-                        <i v-else-if="repeatMode === 'one'" class="fas fa-repeat" style="color: red;"></i> -->
                     </button>
                     <button class="text-gray-200 hover:text-white focus:outline-none" aria-label="이전 곡"
                         @click="playPrevious" :disabled="!hasPreviousTrack">
@@ -63,14 +57,14 @@
                     <div class="hidden sm:flex items-center space-x-1">
                         <button class="text-gray-200 hover:text-white focus:outline-none" @click="toggleMute">
                             <i
-                                :class="['fas', volume === 0 ? 'fa-volume-mute' : volume < 0.5 ? 'fa-volume-down' : 'fa-volume-up', 'text-lg']"></i>
+                                :class="['fas', volume === 0 ? 'fa-volume-mute' : volume < 50 ? 'fa-volume-down' : 'fa-volume-up', 'text-lg']"></i>
                         </button>
                         <div class="relative w-20 h-1">
                             <div class="absolute inset-y-0 left-0 bg-gray-600 bg-opacity-50 rounded-full w-full h-1">
                             </div>
                             <div class="absolute inset-y-0 left-0 bg-white rounded-full h-1"
-                                :style="{ width: `${volume * 100}%` }"></div>
-                            <input type="range" min="0" max="1" step="0.01" :value="volume" @input="onVolumeChange"
+                                :style="{ width: `${volume}%` }"></div>
+                            <input type="range" min="0" max="100" step="1" :value="volume" @input="onVolumeChange"
                                 class="w-full appearance-none bg-transparent h-1 rounded-full focus:outline-none absolute inset-0 opacity-0">
                         </div>
                     </div>
@@ -94,13 +88,14 @@
                         :style="{ left: `${dragProgress}%` }">
                         {{ formatTime(dragTime) }}
                     </div>
-                    <input type="range" min="0" :max="duration" :value="currentTime"
+                    <input type="range" min="0" :max="duration" :value="currentTime" @input="onSeekChange"
                         class="appearance-none w-full h-1 group-hover:h-2 bg-transparent rounded-full outline-none focus:outline-none active:outline-none absolute inset-0 z-10 opacity-0 cursor-pointer">
                 </div>
                 <span class="w-8">{{ formatTime(duration) }}</span>
             </div>
         </div>
         <div v-if="isLoading" class="absolute bottom-0 left-0 w-full h-0.5 bg-white animate-pulse"></div>
+        <div id="youtube-player" class="hidden"></div>
     </div>
 </template>
 
@@ -109,7 +104,7 @@ import { mapState, mapActions, mapGetters } from 'vuex'
 
 export default {
     computed: {
-        ...mapState('player', ['currentTrack', 'isPlaying', 'currentTime', 'duration', 'volume', 'shuffleOn', 'repeatMode', 'isLoading']),
+        ...mapState('player', ['currentTrack', 'isPlaying', 'currentTime', 'duration', 'volume', 'shuffleOn', 'repeatMode', 'isLoading', 'isYouTubeReady']),
         ...mapGetters('player', ['hasPreviousTrack', 'hasNextTrack', 'repeatModeIcon']),
         progress() {
             return this.duration > 0 ? (this.currentTime / this.duration) * 100 : 0
@@ -124,7 +119,7 @@ export default {
         }
     },
     methods: {
-        ...mapActions('player', ['play', 'pause', 'playNext', 'playPrevious', 'seek', 'setVolume', 'toggleShuffle', 'toggleRepeat']),
+        ...mapActions('player', ['play', 'pause', 'playNext', 'playPrevious', 'seek', 'setVolume', 'toggleShuffle', 'toggleRepeat', 'initYoutubePlayer', 'updateTrackProgress']),
 
         togglePlay() {
             if (!this.isLoading) {
@@ -148,7 +143,7 @@ export default {
                 this.previousVolume = this.volume
                 this.setVolume(0)
             } else {
-                this.setVolume(this.previousVolume || 0.5)
+                this.setVolume(this.previousVolume || 50)
             }
         },
 
@@ -178,9 +173,29 @@ export default {
             this.dragTime = (this.dragProgress / 100) * this.duration
         },
 
-        async seek(time) {
-            await this.$store.dispatch('player/seek', time);
-        }
+        onSeekChange(event) {
+            this.seek(Number(event.target.value));
+        },
+
+        initYoutubePlayer() {
+            this.$store.dispatch('player/initYoutubePlayer');
+        },
+
+        startTimeUpdate() {
+            if (this.isYouTubeReady) {
+                this.stopTimeUpdate();
+                this.timeUpdateInterval = setInterval(() => {
+                    this.updateTrackProgress()
+                }, 1000)
+            }
+        },
+
+        stopTimeUpdate() {
+            if (this.timeUpdateInterval) {
+                clearInterval(this.timeUpdateInterval);
+                this.timeUpdateInterval = null;
+            }
+        },
     },
 
     data() {
@@ -188,19 +203,36 @@ export default {
             previousVolume: null,
             isDragging: false,
             dragProgress: 0,
-            dragTime: 0
+            dragTime: 0,
+            timeUpdateInterval: null
         }
     },
 
-    // mounted() {
-    //     this.$store.dispatch('player/initializeAudioSystem')
-    // },
+    mounted() {
+        this.initYoutubePlayer();
+        this.startTimeUpdate()
+    },
+
+    beforeDestroy() {
+        this.stopTimeUpdate()
+    },
 
     watch: {
-        currentTrack() {
-            // Reset currentTime and duration when track changes
-            this.$store.commit('player/SET_CURRENT_TIME', 0)
-            this.$store.commit('player/SET_DURATION', 0)
+        // currentTrack() {
+        //     this.$store.commit('player/SET_CURRENT_TIME', 0)
+        //     this.$store.commit('player/SET_DURATION', 0)
+        // },
+        isYouTubeReady(newValue) {
+            if (newValue && this.isPlaying) {
+                this.startTimeUpdate();
+            }
+        },
+        isPlaying(newValue) {
+            if (newValue) {
+                this.startTimeUpdate()
+            } else {
+                this.stopTimeUpdate()
+            }
         }
     }
 }
@@ -283,5 +315,4 @@ input[type="range"]::-ms-track {
 .text-red {
     color: red;
 }
-
 </style>

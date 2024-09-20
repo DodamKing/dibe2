@@ -1,5 +1,6 @@
 // store/player.js
-import audioPlayer from "~/utils/audioPlayer"
+// import audioPlayer from "~/utils/audioPlayer"
+import youtubePlayer from "~/utils/youtubePlayer"
 
 const getStorageKey = (rootState, key) => {
     if (!rootState.auth.loggedIn) return null
@@ -19,7 +20,8 @@ export const state = () => ({
     repeatMode: 'off',
     originalQueue: [],
     isLoading: false,
-    isInitialized: false
+    isInitialized: false,
+    isYouTubeReady: false
 })
 
 export const mutations = {
@@ -74,12 +76,12 @@ export const mutations = {
             // 현재 재생 중인 트랙을 제외하고 나머지를 셔플
             const currentTrackIndex = state.queue.findIndex(track => track._id === state.currentTrack._id)
             const remainingTracks = state.queue.filter((_, index) => index !== currentTrackIndex)
-            
+
             for (let i = remainingTracks.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [remainingTracks[i], remainingTracks[j]] = [remainingTracks[j], remainingTracks[i]];
             }
-            
+
             // 현재 트랙을 첫 번째로 하고 셔플된 나머지 트랙을 그 뒤에 붙임
             state.queue = [state.currentTrack, ...remainingTracks]
         } else {
@@ -95,13 +97,16 @@ export const mutations = {
     SET_ORIGINAL_QUEUE(state, queue) {
         state.originalQueue = [...queue]
     },
+    SET_YOUTUBE_READY(state, isReady) {
+        state.isYouTubeReady = isReady
+    }
 }
 
 export const actions = {
     async initializeAudioSystem({ commit, dispatch, state }) {
         if (!state.isInitialized) {
             await dispatch('initializeQueue')
-            dispatch('initAudioPlayer')
+            dispatch('initYoutubePlayer')
             commit('SET_IS_INITIALIZED', true)
         }
     },
@@ -170,12 +175,14 @@ export const actions = {
     async play({ commit, state }) {
         if (state.currentTrack) {
             commit('SET_IS_LOADING', true)
+            const youtubeId = await this.$axios.$get('/api/songs/youtubeId/' + state.currentTrack._id)
             try {
-                const url = `/api/songs/stream/${state.currentTrack._id}`
-                await audioPlayer.play(url)
+                if (youtubeId !== youtubePlayer.getCurrentVideoId()) youtubePlayer.loadVideo(youtubeId)
+                youtubePlayer.play()
                 commit('SET_IS_PLAYING', true)
             } catch (error) {
                 console.error('Failed to play track:', error)
+                commit('SET_ERROR_MESSAGE', 'Failed to play the track. Please try again.')
             } finally {
                 commit('SET_IS_LOADING', false)
             }
@@ -183,7 +190,7 @@ export const actions = {
     },
 
     pause({ commit }) {
-        audioPlayer.pause()
+        youtubePlayer.pause()
         commit('SET_IS_PLAYING', false)
     },
 
@@ -198,7 +205,7 @@ export const actions = {
         if (currentIndex < state.queue.length - 1) {
             commit('SET_CURRENT_TRACK', state.queue[currentIndex + 1])
             dispatch('play')
-        } else if (state.repeatOn) {
+        } else if (state.repeatMode === 'all') {
             // 반복 재생이 켜져 있으면 첫 번째 트랙으로 돌아감
             commit('SET_CURRENT_TRACK', state.queue[0])
             dispatch('play')
@@ -228,7 +235,7 @@ export const actions = {
     },
 
     setVolume({ commit, rootState }, volume) {
-        audioPlayer.setVolume(volume);
+        youtubePlayer.setVolume(volume);
         commit('SET_VOLUME', volume);
 
         const volumeKey = getStorageKey(rootState, 'volume')
@@ -237,31 +244,67 @@ export const actions = {
 
     seek({ commit, state, dispatch }, time) {
         if (state.currentTrack) {
-            audioPlayer.seek(time);
+            youtubePlayer.seek(time);
             commit('SET_CURRENT_TIME', time)
         }
     },
 
-    initAudioPlayer({ state, dispatch }) {
-        audioPlayer.init()
-        audioPlayer.setVolume(state.volume)
-        audioPlayer.setOnTrackEndedCallback(() => {
-            if (state.repeatOn && !state.shuffleOn) {
-                // 한 곡 반복 재생
-                dispatch('seek', 0);
-                dispatch('play');
-            } else {
-                dispatch('playNext');
+    // initAudioPlayer({ state, dispatch }) {
+    //     audioPlayer.init()
+    //     audioPlayer.setVolume(state.volume)
+    //     audioPlayer.setOnTrackEndedCallback(() => {
+    //         if (state.repeatOn && !state.shuffleOn) {
+    //             // 한 곡 반복 재생
+    //             dispatch('seek', 0);
+    //             dispatch('play');
+    //         } else {
+    //             dispatch('playNext');
+    //         }
+    //     });
+    //     audioPlayer.setOnTimeUpdateCallback((currentTime, duration) => {
+    //         dispatch('updateTrackProgress', { currentTime, duration });
+    //     });
+    // },
+
+    initYoutubePlayer({ state, dispatch, commit }) {
+        youtubePlayer.init(
+            // onReady callback
+            () => {
+                commit('SET_YOUTUBE_READY', true)
+                youtubePlayer.setVolume(state.volume)
+            },
+            // onStateChange callback
+            (event) => {
+                if (event.data === YT.PlayerState.ENDED) {
+                    dispatch('playNext')
+                } else if (event.data === YT.PlayerState.PLAYING) {
+                    commit('SET_IS_PLAYING', true)
+                } else if (event.data === YT.PlayerState.PAUSED) {
+                    commit('SET_IS_PLAYING', false)
+                }
+            },
+            // onError callback
+            (error) => {
+                console.error('YouTube player error:', error)
             }
-        });
-        audioPlayer.setOnTimeUpdateCallback((currentTime, duration) => {
-            dispatch('updateTrackProgress', { currentTime, duration });
-        });
+        )
+
+        setInterval(() => {
+            const currentTime = youtubePlayer.getCurrentTime()
+            const duration = youtubePlayer.getDuration()
+            dispatch('updateTrackProgress', { currentTime, duration })
+        }, 1000)
     },
 
-    updateTrackProgress({ commit }, { currentTime, duration }) {
-        commit('SET_CURRENT_TIME', currentTime);
-        commit('SET_DURATION', duration);
+    updateTrackProgress({ commit, state }) {
+        if (state.isYouTubeReady && youtubePlayer) {
+            const currentTime = youtubePlayer.getCurrentTime()
+            const duration = youtubePlayer.getDuration()
+            if (currentTime !== undefined && duration !== undefined) {
+                commit('SET_CURRENT_TIME', currentTime)
+                commit('SET_DURATION', duration)
+            }
+        }
     },
 
     toggleShuffle({ commit, state, dispatch }) {
@@ -279,20 +322,10 @@ export const actions = {
     },
 
     toggleRepeat({ commit, state }) {
-        const currentMode = state.repeatMode
-        let newMode
-        switch (currentMode) {
-            case 'off':
-                newMode = 'all'
-                break
-            case 'all':
-                newMode = 'one'
-                break
-            case 'one':
-                newMode = 'off'
-                break
-        }
-        commit('SET_REPEAT_MODE', newMode)
+        const modes = ['off', 'all', 'one'];
+        const currentIndex = modes.indexOf(state.repeatMode);
+        const nextIndex = (currentIndex + 1) % modes.length;
+        commit('SET_REPEAT_MODE', modes[nextIndex]);
     },
 
     async playEntirePlaylist({ commit, dispatch }, playlist) {
@@ -303,7 +336,7 @@ export const actions = {
                 await dispatch('setCurrentTrack', songDatas[0])
             }
             dispatch('play')
-            dispatch('saveQueue') 
+            dispatch('saveQueue')
         }
     },
 
@@ -334,7 +367,7 @@ export const actions = {
                 // 큐가 비어있으면 재생을 중지하고 현재 트랙을 null로 설정
                 commit('SET_CURRENT_TRACK', null)
                 commit('SET_IS_PLAYING', false)
-                audioPlayer.stop()
+                youtubePlayer.stop()
             }
         }
     },
