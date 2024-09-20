@@ -41,6 +41,9 @@ function onPlayerReady(event) {
 }
 
 function onPlayerStateChange(event) {
+    if (navigator.mediaSession) {
+        navigator.mediaSession.playbackState = event.data === YT.PlayerState.PLAYING ? "playing" : "paused";
+    }
     if (onStateChangeCallback) onStateChangeCallback(event);
 }
 
@@ -109,5 +112,21 @@ export default {
 
     getDuration() {
         return player && player.getDuration ? player.getDuration() : 0;
+    },
+
+    getPlayer() {
+        return player;
+    },
+
+    getPlayerState() {
+        return player && player.getPlayerState ? player.getPlayerState() : null;
+    },
+
+    getPlaybackRate() {
+        return player && player.getPlaybackRate ? player.getPlaybackRate() : 1;
+    },
+
+    isReady() {
+        return !!player && typeof player.getPlayerState === 'function';
     }
 };
