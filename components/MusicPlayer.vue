@@ -15,7 +15,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="mr-2 sm:mr-3 truncate">
+                        <div class="mr-2 sm:mr-3 truncate hidden sm:block">
                             <p class="font-medium truncate text-white text-sm sm:text-base">{{ currentTrack.title }}</p>
                             <p class="text-xs sm:text-sm text-gray-200 truncate">{{ currentTrack.artist }}</p>
                         </div>

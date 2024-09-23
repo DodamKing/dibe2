@@ -1,11 +1,21 @@
 // utils/youtubePlayer.js
-let player;
+// import { updateMediaSession } from '@/store/player';
+
+let player = null;
+let isAPIReady = false;
 let onReadyCallback;
 let onStateChangeCallback;
 let onErrorCallback;
 let currentVideoId = null;
 
 function onYouTubeIframeAPIReady() {
+    isAPIReady = true;
+    initPlayer();
+}
+
+function initPlayer() {
+    if (!isAPIReady) return;
+
     player = new YT.Player('youtube-player', {
         height: '0',
         width: '0',
@@ -22,10 +32,6 @@ function onYouTubeIframeAPIReady() {
             'playsinline': 1,
             'fs': 0,
             'hl': 'ko',
-            'host': 'https://www.youtube-nocookie.com',
-            'mute': 0,
-            'loop': 0,
-            'playlist': '',
             'widget_referrer': window.location.origin,
         },
         events: {
@@ -41,13 +47,13 @@ function onPlayerReady(event) {
 }
 
 function onPlayerStateChange(event) {
-    if (navigator.mediaSession) {
-        navigator.mediaSession.playbackState = event.data === YT.PlayerState.PLAYING ? "playing" : "paused";
-    }
     if (onStateChangeCallback) onStateChangeCallback(event);
+
+    // updateMediaSession()
 }
 
 function onPlayerError(event) {
+    console.error('YouTube player error:', event.data);
     if (onErrorCallback) onErrorCallback(event);
 }
 
@@ -57,12 +63,17 @@ export default {
         onStateChangeCallback = stateChangeCallback;
         onErrorCallback = errorCallback;
 
-        const tag = document.createElement('script');
-        tag.src = "https://www.youtube.com/iframe_api";
-        const firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+        if (typeof YT === 'undefined' || !YT.Player) {
+            const tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            const firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-        window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+            window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+        } else {
+            isAPIReady = true;
+            initPlayer();
+        }
     },
 
     getCurrentVideoId() {
@@ -72,6 +83,9 @@ export default {
     loadVideo(videoId) {
         if (player && player.loadVideoById) {
             player.loadVideoById(videoId);
+            currentVideoId = videoId;
+        } else {
+            console.warn('YouTube player not ready. Video will be loaded when player is ready.');
             currentVideoId = videoId;
         }
     },

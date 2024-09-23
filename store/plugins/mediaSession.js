@@ -1,63 +1,51 @@
 // store/plugins/mediaSession.js
-import youtubePlayer from '@/utils/youtubePlayer';
-
 function getAlbumCoverUrl(baseUrl, size) {
     return baseUrl.replace('/50/', `/${size}/`);
 }
 
 export const mediaSessionPlugin = (store) => {
     if (process.client && 'mediaSession' in navigator) {
-        let lastPlaybackState = null;
-
         const updateMediaSession = () => {
             const track = store.state.player.currentTrack;
-            const player = youtubePlayer.getPlayer();
-            
-            if (track && player) {
-                const playerState = youtubePlayer.getPlayerState();
-                const isPlaying = playerState === YT.PlayerState.PLAYING;
-                
-                // 재생 상태가 변경되었을 때만 업데이트
-                if (isPlaying !== lastPlaybackState) {
-                    lastPlaybackState = isPlaying;
-                    
-                    const baseUrl = track.coverUrl;
+            const isPlaying = store.state.player.isPlaying;
 
-                    navigator.mediaSession.metadata = new MediaMetadata({
-                        title: track.title,
-                        artist: track.artist,
-                        album: track.album,
-                        artwork: [
-                            { src: getAlbumCoverUrl(baseUrl, 96), sizes: '96x96', type: 'image/png' },
-                            { src: getAlbumCoverUrl(baseUrl, 128), sizes: '128x128', type: 'image/png' },
-                            { src: getAlbumCoverUrl(baseUrl, 192), sizes: '192x192', type: 'image/png' },
-                            { src: getAlbumCoverUrl(baseUrl, 256), sizes: '256x256', type: 'image/png' },
-                            { src: getAlbumCoverUrl(baseUrl, 512), sizes: '512x512', type: 'image/png' }
-                        ]
-                    });
+            if (track) {
+                // Media Session 메타데이터 강제 덮어쓰기
+                const baseUrl = track.coverUrl;
 
-                    navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
-                }
-
-                navigator.mediaSession.setPositionState({
-                    duration: player.getDuration(),
-                    playbackRate: player.getPlaybackRate(),
-                    position: player.getCurrentTime()
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: track.title,
+                    artist: track.artist,
+                    album: track.album,
+                    artwork: [
+                        { src: getAlbumCoverUrl(baseUrl, 96), sizes: '96x96', type: 'image/png' },
+                        { src: getAlbumCoverUrl(baseUrl, 128), sizes: '128x128', type: 'image/png' },
+                        { src: getAlbumCoverUrl(baseUrl, 192), sizes: '192x192', type: 'image/png' },
+                        { src: getAlbumCoverUrl(baseUrl, 256), sizes: '256x256', type: 'image/png' },
+                        { src: getAlbumCoverUrl(baseUrl, 512), sizes: '512x512', type: 'image/png' }
+                    ]
                 });
+
+                // 재생 상태에 따른 playbackState 설정
+                navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
             }
         };
 
-        // Media Session API 핸들러 설정
-        navigator.mediaSession.setActionHandler('play', () => {
-            if (youtubePlayer.isReady()) {
-                youtubePlayer.play();
-                store.commit('player/SET_PLAYING', true);
+        // Mutation을 더 세밀하게 감지해서 덮어쓰기
+        store.subscribe((mutation) => {
+            if (mutation.type.startsWith('player/')) {
+                // 트랙 변경, 재생 상태 변경 시 강제로 Media Session 갱신
+                updateMediaSession();
             }
         });
 
+        // Media Session 액션 핸들러 설정
+        navigator.mediaSession.setActionHandler('play', () => {
+            store.dispatch('player/play');
+        });
+
         navigator.mediaSession.setActionHandler('pause', () => {
-            youtubePlayer.getPlayer().pauseVideo();
-            store.commit('player/SET_PLAYING', false);
+            store.dispatch('player/pause');
         });
 
         navigator.mediaSession.setActionHandler('previoustrack', () => {
@@ -68,15 +56,12 @@ export const mediaSessionPlugin = (store) => {
             store.dispatch('player/playNext');
         });
 
-        // 주기적으로 상태 확인 및 업데이트
-        setInterval(updateMediaSession, 1000);
-
-        // 트랙 변경 시 강제 업데이트
-        store.subscribe((mutation, state) => {
-            if (mutation.type === 'player/SET_CURRENT_TRACK') {
-                lastPlaybackState = null; // 강제로 업데이트하도록 상태 리셋
-                updateMediaSession();
-            }
+        navigator.mediaSession.setActionHandler('seekto', (details) => {
+            store.dispatch('player/seek', details.seekTime);
         });
+
+        // 트랙 변경 또는 재생 상태 변경 시 즉시 업데이트
+        updateMediaSession();
     }
 };
+

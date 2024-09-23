@@ -66,6 +66,7 @@ export default {
     '~/server/middleware/session',
     '~/server/middleware/cron',
     { path: '/api', handler: '~/server/api/index.js' },
+    '~/server/middleware/cors'
   ],
 
   watchers: {
@@ -80,6 +81,6 @@ export default {
   },
 
   server: {
-    host: '0.0.0.0'
+    host: '0.0.0.0',
   },
 }

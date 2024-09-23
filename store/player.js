@@ -8,6 +8,10 @@ const getStorageKey = (rootState, key) => {
     return `user_${userId}_${key}`
 }
 
+function getAlbumCoverUrl(baseUrl, size) {
+    return baseUrl.replace('/50/', `/${size}/`);
+}
+
 export const state = () => ({
     currentTrack: null,
     queue: [],
@@ -374,6 +378,32 @@ export const actions = {
             }
         }
     },
+
+    updateMediaSession({ state }) {
+        if (process.client && 'mediaSession' in navigator) {
+            const track = state.currentTrack;
+            const isPlaying = state.isPlaying;
+
+            if (track) {
+                const baseUrl = track.coverUrl;
+
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: track.title,
+                    artist: track.artist,
+                    album: track.album,
+                    artwork: [
+                        { src: getAlbumCoverUrl(baseUrl, 96), sizes: '96x96', type: 'image/png' },
+                        { src: getAlbumCoverUrl(baseUrl, 128), sizes: '128x128', type: 'image/png' },
+                        { src: getAlbumCoverUrl(baseUrl, 192), sizes: '192x192', type: 'image/png' },
+                        { src: getAlbumCoverUrl(baseUrl, 256), sizes: '256x256', type: 'image/png' },
+                        { src: getAlbumCoverUrl(baseUrl, 512), sizes: '512x512', type: 'image/png' }
+                    ]
+                });
+
+                navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+            }
+        }
+    }
 
 }
 
