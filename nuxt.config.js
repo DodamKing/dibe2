@@ -63,6 +63,7 @@ export default {
 
   serverMiddleware: [
     '~/server/middleware/errorHandler',
+    '~/server/middleware/dbConnection',
     '~/server/middleware/session',
     '~/server/middleware/cron',
     { path: '/api', handler: '~/server/api/index.js' },

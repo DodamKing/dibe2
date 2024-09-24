@@ -1,5 +1,4 @@
 const express = require('express')
-const { connectToMongoDB } = require('../models')
 const { sessionCheckMiddleware } = require('../middleware/auth')
 const axios = require('axios')
 
@@ -14,8 +13,6 @@ app.set('trust proxy', 1)
 
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
-
-connectToMongoDB()
 app.use(sessionCheckMiddleware)
 
 app.use('/users', userRoutes)

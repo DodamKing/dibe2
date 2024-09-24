@@ -1,5 +1,4 @@
 // utils/youtubePlayer.js
-// import { updateMediaSession } from '@/store/player';
 
 let player = null;
 let isAPIReady = false;
@@ -48,8 +47,6 @@ function onPlayerReady(event) {
 
 function onPlayerStateChange(event) {
     if (onStateChangeCallback) onStateChangeCallback(event);
-
-    // updateMediaSession()
 }
 
 function onPlayerError(event) {

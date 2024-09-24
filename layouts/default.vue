@@ -1,14 +1,10 @@
 <template>
     <div class="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white flex flex-col">
         <AppHeader />
-
         <Nuxt />
-
-        <MusicPlayer :current-track="currentTrack" @toggle-queue="toggleQueue"
-            class="sticky bottom-0 left-0 right-0 z-40" />
-
-        <!-- 재생 목록 섹션 -->
-        <Playlist :show="showQueue" @close="toggleQueue" />
+        <div id="youtube-player" class="hidden"></div>
+        <Playlist :show="showQueue" @close="toggleQueue" class="z-40" />
+        <MusicPlayer :current-track="currentTrack" @toggle-queue="toggleQueue" class="z-50" />
 
         <CreatePlaylistModal :show="showCreatePlaylistModal" @close="showCreatePlaylistModal = false"
             @create="handleCreatePlaylist" @show-toast="showToast" />
@@ -347,6 +343,23 @@ export default {
 @media (hover: none) and (pointer: coarse) {
     .custom-scrollbar {
         -webkit-overflow-scrolling: touch;
+    }
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+    transition: all 0.3s ease-out;
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+    transform: translateY(100%);
+}
+
+/* 모바일 환경을 위한 추가 스타일 */
+@media (max-width: 640px) {
+    .fixed.bottom-0 {
+        padding-bottom: env(safe-area-inset-bottom);
     }
 }
 </style>

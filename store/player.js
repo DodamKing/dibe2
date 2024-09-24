@@ -8,10 +8,6 @@ const getStorageKey = (rootState, key) => {
     return `user_${userId}_${key}`
 }
 
-function getAlbumCoverUrl(baseUrl, size) {
-    return baseUrl.replace('/50/', `/${size}/`);
-}
-
 export const state = () => ({
     currentTrack: null,
     queue: [],
@@ -113,7 +109,7 @@ export const actions = {
     async initializeAudioSystem({ commit, dispatch, state }) {
         if (!state.isInitialized) {
             await dispatch('initializeQueue')
-            dispatch('initYoutubePlayer')
+            await dispatch('initYoutubePlayer')
             commit('SET_IS_INITIALIZED', true)
         }
     },
@@ -176,11 +172,10 @@ export const actions = {
 
         const key = getStorageKey(rootState, 'current_track')
         if (key) localStorage.setItem(key, JSON.stringify(track))
-        // dispatch('play')
     },
 
     async play({ commit, state }) {
-        if (state.currentTrack) {
+        if (state.currentTrack && state.isYouTubeReady) {
             commit('SET_IS_LOADING', true)
             const youtubeId = await this.$axios.$get('/api/songs/youtubeId/' + state.currentTrack._id)
             try {
@@ -210,15 +205,14 @@ export const actions = {
 
         const currentIndex = state.queue.findIndex(track => track._id === state.currentTrack?._id)
         if (currentIndex < state.queue.length - 1) {
-            commit('SET_CURRENT_TRACK', state.queue[currentIndex + 1])
+            dispatch('setCurrentTrack', state.queue[currentIndex + 1])
             dispatch('play')
         } else if (state.repeatMode === 'all') {
             // 반복 재생이 켜져 있으면 첫 번째 트랙으로 돌아감
-            commit('SET_CURRENT_TRACK', state.queue[0])
+            dispatch('setCurrentTrack', state.queue[0])
             dispatch('play')
         } else {
             // 큐의 마지막 곡이었을 경우
-            commit('SET_CURRENT_TRACK', null)
             commit('SET_IS_PLAYING', false)
         }
     },
@@ -226,7 +220,8 @@ export const actions = {
     playPrevious({ commit, state, dispatch }) {
         const currentIndex = state.queue.findIndex(track => track._id === state.currentTrack?._id)
         if (currentIndex > 0) {
-            commit('SET_CURRENT_TRACK', state.queue[currentIndex - 1])
+            dispatch('setCurrentTrack', state.queue[currentIndex - 1])
+            // commit('SET_CURRENT_TRACK', state.queue[currentIndex - 1])
             dispatch('play')
         }
     },
@@ -249,31 +244,15 @@ export const actions = {
         if (volumeKey) localStorage.setItem(volumeKey, volume)
     },
 
-    seek({ commit, state, dispatch }, time) {
+    seek({ commit, state }, time) {
         if (state.currentTrack) {
             youtubePlayer.seek(time);
             commit('SET_CURRENT_TIME', time)
         }
     },
 
-    // initAudioPlayer({ state, dispatch }) {
-    //     audioPlayer.init()
-    //     audioPlayer.setVolume(state.volume)
-    //     audioPlayer.setOnTrackEndedCallback(() => {
-    //         if (state.repeatOn && !state.shuffleOn) {
-    //             // 한 곡 반복 재생
-    //             dispatch('seek', 0);
-    //             dispatch('play');
-    //         } else {
-    //             dispatch('playNext');
-    //         }
-    //     });
-    //     audioPlayer.setOnTimeUpdateCallback((currentTime, duration) => {
-    //         dispatch('updateTrackProgress', { currentTime, duration });
-    //     });
-    // },
-
     initYoutubePlayer({ state, dispatch, commit }) {
+        /* global YT */
         youtubePlayer.init(
             // onReady callback
             () => {
@@ -378,33 +357,6 @@ export const actions = {
             }
         }
     },
-
-    updateMediaSession({ state }) {
-        if (process.client && 'mediaSession' in navigator) {
-            const track = state.currentTrack;
-            const isPlaying = state.isPlaying;
-
-            if (track) {
-                const baseUrl = track.coverUrl;
-
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: track.title,
-                    artist: track.artist,
-                    album: track.album,
-                    artwork: [
-                        { src: getAlbumCoverUrl(baseUrl, 96), sizes: '96x96', type: 'image/png' },
-                        { src: getAlbumCoverUrl(baseUrl, 128), sizes: '128x128', type: 'image/png' },
-                        { src: getAlbumCoverUrl(baseUrl, 192), sizes: '192x192', type: 'image/png' },
-                        { src: getAlbumCoverUrl(baseUrl, 256), sizes: '256x256', type: 'image/png' },
-                        { src: getAlbumCoverUrl(baseUrl, 512), sizes: '512x512', type: 'image/png' }
-                    ]
-                });
-
-                navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-            }
-        }
-    }
-
 }
 
 export const getters = {

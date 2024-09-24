@@ -1,6 +1,6 @@
 <template>
     <transition name="slide-up">
-        <div v-if="show" class="fixed inset-0 bg-black bg-opacity-50 z-50" @click="close">
+        <div v-if="show" class="fixed inset-0 bg-black bg-opacity-50" @click="close">
             <div class="absolute inset-x-0 bottom-0 bg-gradient-to-b from-gray-900 to-gray-800 shadow-lg rounded-t-xl max-h-[80vh] overflow-hidden flex flex-col"
                 @click.stop>
                 <div class="p-4 bg-gray-800 sticky top-0 z-10">
@@ -63,11 +63,6 @@
                         </li>
                     </draggable>
                 </div>
-
-                <!-- Reused Player Component -->
-                <div class="absolute bottom-0 left-0 right-0 bg-gray-900">
-                    <MusicPlayer @toggle-queue="close" />
-                </div>
             </div>
         </div>
     </transition>
@@ -76,13 +71,11 @@
 <script>
 import { mapState, mapActions, mapMutations } from 'vuex'
 import draggable from 'vuedraggable'
-import MusicPlayer from '~/components/MusicPlayer.vue'
 
 export default {
     name: 'PlaylistComponent',
     components: {
         draggable,
-        MusicPlayer
     },
     props: {
         show: {

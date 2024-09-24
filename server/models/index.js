@@ -1,9 +1,17 @@
 const mongoose = require('mongoose')
 
+let conn = null
+
 async function connectToMongoDB() {
     try {
-        await mongoose.connect(process.env.MONGODB_URI,  {
+        if (conn) return 
+
+        conn = await mongoose.connect(process.env.MONGODB_URI,  {
             dbName: 'dibe2',
+            maxIdleTimeMS: 30000,  // 최대 유휴 시간
+            maxPoolSize: 10, // 연결 풀 크기 제한
+            serverSelectionTimeoutMS: 5000, // 서버 선택 타임아웃
+            socketTimeoutMS: 45000, // 소켓 타임아웃
         })
 
         console.log('MongoDB에 성공적으로 연결되었습니다.')
@@ -11,6 +19,7 @@ async function connectToMongoDB() {
         // 연결 이벤트 리스너 추가
         mongoose.connection.on('disconnected', () => {
             console.log('MongoDB 연결이 끊어졌습니다.')
+            conn = null
         })
 
         mongoose.connection.on('connected', () => {

@@ -95,7 +95,7 @@
             </div>
         </div>
         <div v-if="isLoading" class="absolute bottom-0 left-0 w-full h-0.5 bg-white animate-pulse"></div>
-        <div id="youtube-player" class="hidden"></div>
+        <!-- <div id="youtube-player" class="hidden"></div> -->
     </div>
 </template>
 
