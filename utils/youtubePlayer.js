@@ -12,6 +12,7 @@ function onYouTubeIframeAPIReady() {
     initPlayer();
 }
 
+/* global YT */
 function initPlayer() {
     if (!isAPIReady) return;
 
