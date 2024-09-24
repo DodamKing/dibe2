@@ -22,6 +22,7 @@ export const state = () => ({
     isLoading: false,
     isInitialized: false,
     isYouTubeReady: false,
+    isQueueEnded: false,
 })
 
 export const mutations = {
@@ -102,7 +103,10 @@ export const mutations = {
     },
     SET_CUSTOM_METADATA(state, { trackId, metadata }) {
         state.customMetadata[trackId] = metadata;
-    }
+    },
+    SET_QUEUE_ENDED(state, isEnded) {
+        state.isQueueEnded = isEnded
+    },
 }
 
 export const actions = {
@@ -174,7 +178,13 @@ export const actions = {
         if (key) localStorage.setItem(key, JSON.stringify(track))
     },
 
-    async play({ commit, state }) {
+    async play({ commit, state, dispatch }) {
+        if (state.isQueueEnded && state.queue.length > 0) {
+            // 큐가 끝났지만 재생 목록에 곡이 있는 경우, 첫 번째 곡으로 설정
+            await dispatch('setCurrentTrack', state.queue[0])
+            commit('SET_QUEUE_ENDED', false)
+        }
+
         if (state.currentTrack && state.isYouTubeReady) {
             commit('SET_IS_LOADING', true)
             const youtubeId = await this.$axios.$get('/api/songs/youtubeId/' + state.currentTrack._id)
@@ -182,6 +192,7 @@ export const actions = {
                 if (youtubeId !== youtubePlayer.getCurrentVideoId()) youtubePlayer.loadVideo(youtubeId)
                 youtubePlayer.play()
                 commit('SET_IS_PLAYING', true)
+                commit('SET_QUEUE_ENDED', false) // 재생이 시작되면 큐 종료 상태 해제
             } catch (error) {
                 console.error('Failed to play track:', error)
                 commit('SET_ERROR_MESSAGE', 'Failed to play the track. Please try again.')
@@ -214,6 +225,7 @@ export const actions = {
         } else {
             // 큐의 마지막 곡이었을 경우
             commit('SET_IS_PLAYING', false)
+            commit('SET_QUEUE_ENDED', true) // 큐가 끝났음을 표시
         }
     },
 
