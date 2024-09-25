@@ -67,14 +67,14 @@
                 </div>
             </div>
 
-            <div class="text-center">
+            <!-- <div class="text-center">
                 <p class="mt-2 text-sm text-gray-400">
                     계정이 없으신가요?
                     <nuxt-link to="/register" class="font-medium text-purple-400 hover:text-purple-300">
                         회원가입
                     </nuxt-link>
                 </p>
-            </div>
+            </div> -->
         </div>
     </div>
 </template>
@@ -148,24 +148,20 @@ export default {
                 this.$toast.error(errorMessage)
             }
         },
-        socialLogin(provider) {
-            console.log(`${provider} 로그인 시도`)
+        async socialLogin(provider) {
             this.$toast.info(`${provider} 로그인을 시도합니다.`)
-            // 여기에 소셜 로그인 로직 구현
-            if (provider === 'kakao') {
-                this.kakaoLogin()
-            } else if (provider === 'google') {
-                this.googleLogin()
+
+            const result = await this.$store.dispatch('auth/socialLogin', provider)
+            
+            if (result.success) {
+                this.$toast.success(`${provider} 로그인 성공`)
+                this.$router.push('/')
+            } else if (result.error) {
+                this.$toast.error(result.error || `${provider} 로그인 실패`)
+            } else {
+                this.$toast.error(result.message || `${provider} 로그인 실패`)
             }
         },
-        kakaoLogin() {
-            // Kakao SDK를 사용한 로그인 로직
-            this.$toast.info('카카오 로그인 기능은 아직 구현되지 않았습니다.')
-        },
-        googleLogin() {
-            // Google OAuth를 사용한 로그인 로직
-            this.$toast.info('구글 로그인 기능은 아직 구현되지 않았습니다.')
-        }
     }
 }
 </script>

@@ -17,6 +17,13 @@ export default {
       { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
       { rel: 'stylesheet', href: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css' },
     ],
+    script: [
+      {
+        src: 'https://accounts.google.com/gsi/client',
+        async: true,
+        defer: true
+      }
+    ],
   },
 
   // Global CSS: https://go.nuxtjs.dev/config-css
@@ -62,8 +69,8 @@ export default {
   build: {},
 
   serverMiddleware: [
+    // '~/server/middleware/errorHandler',
     '~/server/middleware/cors',
-    '~/server/middleware/errorHandler',
     '~/server/middleware/dbConnection',
     '~/server/middleware/session',
     '~/server/middleware/cron',
