@@ -96,7 +96,7 @@ export default {
     },
     data() {
         return {
-            tabs: ['전체', '제목', '가수', '앨범', '가사'],
+            tabs: ['제목', '가수', '앨범', '가사'],
             selectedSongs: [],
             selectAll: false,
             showPlaylistModal: false,
@@ -128,12 +128,11 @@ export default {
         },
         getApiType(tab) {
             switch (tab) {
-                case '전체': return 'all'
                 case '제목': return 'title'
                 case '가수': return 'artist'
                 case '앨범': return 'album'
                 case '가사': return 'lyrics'
-                default: return 'all'
+                default: return 'title'
             }
         },
         handleScroll() {
@@ -263,19 +262,6 @@ export default {
         transform: rotate(360deg);
     }
 }
-
-/* .lyrics-clamp {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    display: -moz-box;
-    -moz-line-clamp: 3;
-    -moz-box-orient: vertical;
-    display: flex;
-    line-clamp: 3;
-    box-orient: vertical;
-} */
 
 /* 폰트어썸 아이콘 크기 조정 */
 .fas {

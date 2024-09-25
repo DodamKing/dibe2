@@ -35,10 +35,19 @@
         </div>
 
         <!-- Add to Playlist Modal -->
-        <transition name="slide-up">
+        <transition name="fade">
             <div v-if="showAddToPlaylistModal"
-                class="modal fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-                <div class="bg-gray-800 rounded-lg p-6 max-w-sm w-full">
+                class="modal fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
+                @click.self="closeAddToPlaylistModal">
+                <div class="bg-gray-800 rounded-lg p-6 max-w-sm w-full relative">
+                    <button @click="closeAddToPlaylistModal"
+                        class="absolute top-2 right-2 text-gray-400 hover:text-white">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
                     <h3 class="text-xl font-semibold mb-4">플레이리스트 선택</h3>
                     <ul class="space-y-2 mb-4">
                         <li>
@@ -47,17 +56,25 @@
                                 현재 재생 목록에 추가
                             </button>
                         </li>
-                        <li v-for="playlist in playlists" :key="playlist._id">
-                            <button @click="addToSelectedPlaylist(playlist._id)"
-                                class="w-full text-left p-2 rounded hover:bg-gray-700 transition-colors duration-200">
-                                {{ playlist.name }}
+                        <li>
+                            <button @click="toggleMyPlaylists"
+                                class="w-full text-left p-2 rounded hover:bg-gray-700 transition-colors duration-200 flex justify-between items-center">
+                                <span>내 플레이리스트에 추가</span>
+                                <span class="transform transition-transform duration-200"
+                                    :class="{ 'rotate-180': showMyPlaylists }">▼</span>
                             </button>
+                            <transition name="fade">
+                                <ul v-if="showMyPlaylists" class="mt-2 ml-4 space-y-2">
+                                    <li v-for="playlist in playlists" :key="playlist._id">
+                                        <button @click="addToSelectedPlaylist(playlist._id)"
+                                            class="w-full text-left p-2 rounded hover:bg-gray-700 transition-colors duration-200">
+                                            {{ playlist.name }}
+                                        </button>
+                                    </li>
+                                </ul>
+                            </transition>
                         </li>
                     </ul>
-                    <button @click="closeAddToPlaylistModal"
-                        class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
-                        취소
-                    </button>
                 </div>
             </div>
         </transition>
@@ -135,7 +152,7 @@ export default {
             showCreatePlaylistModal: false,
             showDropdown: false,
             showAddToPlaylistModal: false,
-            // showCreatePlaylistModalFlag: false,
+            showMyPlaylists: false,
         }
     },
     methods: {
@@ -155,7 +172,11 @@ export default {
         },
         handleKeyDown(e) {
             if (e.key === 'Escape' && this.showQueue) {
-                this.closeQueue()
+                this.toggleQueue()
+            }
+
+            if (e.key === 'Escape' && this.showAddToPlaylistModal) {
+                this.closeAddToPlaylistModal();
             }
         },
         toggleSongSelection(song) {
@@ -181,6 +202,7 @@ export default {
         },
         closeAddToPlaylistModal() {
             this.showAddToPlaylistModal = false
+            this.showMyPlaylists = false
         },
         async addToCurrentPlaylist() {
             if (this.isAdding) return
@@ -265,6 +287,9 @@ export default {
         },
         _showCreatePlaylistModal() {
             this.showCreatePlaylistModal = true
+        },
+        toggleMyPlaylists() {
+            this.showMyPlaylists = !this.showMyPlaylists;
         },
     },
     mounted() {

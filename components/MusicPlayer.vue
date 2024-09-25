@@ -2,9 +2,10 @@
     <div class="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-purple-800 to-blue-700 shadow-lg">
         <div class="container mx-auto px-4 py-2">
             <div class="flex flex-row items-center justify-between h-14 sm:h-12">
+
                 <!-- Track Info -->
                 <div class="flex items-center w-1/3 sm:w-1/4 h-full">
-                    <div v-if="currentTrack" class="flex items-center w-full h-full">
+                    <div v-if="currentTrack" class="flex items-center w-full h-full" @click="toggleTrackInfo">
                         <div class="relative w-10 h-10 sm:w-12 sm:h-12 mr-2 sm:mr-3 flex-shrink-0">
                             <img :src="currentTrack.coverUrl" :alt="currentTrack.title"
                                 class="w-full h-full object-cover rounded-lg">
@@ -46,14 +47,14 @@
                         @click="playNext" :disabled="!hasNextTrack">
                         <i class="fas fa-step-forward text-lg sm:text-xl" :class="{ 'opacity-50': !hasNextTrack }"></i>
                     </button>
-                    <button class="text-gray-200 hover:text-white focus:outline-none" aria-label="셔플"
+                    <button class="text-gray-200 hover:text-white focus:outline-none z-10" aria-label="셔플"
                         @click="toggleShuffle" :title="shuffleOn ? '셔플 끄기' : '셔플 켜기'">
                         <i :class="['fas', 'fa-shuffle', { 'text-red': shuffleOn }]"></i>
                     </button>
                 </div>
 
                 <!-- Additional Controls -->
-                <div class="flex items-center justify-end space-x-2 sm:space-x-4 w-1/3 sm:w-1/4">
+                <div class="flex items-center justify-end space-x-2 sm:space-x-4 w-1/3 sm:w-1/2">
                     <div class="hidden sm:flex items-center space-x-1">
                         <button class="text-gray-200 hover:text-white focus:outline-none" @click="toggleMute">
                             <i
@@ -74,6 +75,22 @@
                     </button>
                 </div>
             </div>
+
+            <!-- Mobile Track Info Overlay -->
+            <div v-if="showTrackInfo"
+                class="absolute bottom-full left-2 mb-2 bg-gray-800 text-white p-2 rounded-lg shadow-lg"
+                style="width: 200px;">
+                <div class="overflow-hidden">
+                    <p class="text-sm font-medium whitespace-nowrap overflow-ellipsis" :title="currentTrack.title">{{
+                        currentTrack.title }}</p>
+                </div>
+                <div class="overflow-hidden mt-1">
+                    <p class="text-xs text-gray-300 whitespace-nowrap overflow-ellipsis" :title="currentTrack.artist">{{
+                        currentTrack.artist }}</p>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
             <div class="mt-1 flex items-center space-x-2 text-xs text-gray-200">
                 <span class="w-8 text-right">{{ formatTime(currentTime) }}</span>
                 <div class="flex-1 relative group" @mousedown="startSeek" @mousemove="updateSeek" @mouseup="endSeek"
@@ -196,6 +213,15 @@ export default {
                 this.timeUpdateInterval = null;
             }
         },
+
+        toggleTrackInfo() {
+            this.showTrackInfo = !this.showTrackInfo;
+            if (this.showTrackInfo) {
+                setTimeout(() => {
+                    this.showTrackInfo = false;
+                }, 5000); // 5초 후 자동으로 닫힘
+            }
+        },
     },
 
     data() {
@@ -204,7 +230,8 @@ export default {
             isDragging: false,
             dragProgress: 0,
             dragTime: 0,
-            timeUpdateInterval: null
+            timeUpdateInterval: null,
+            showTrackInfo: false,
         }
     },
 
@@ -233,7 +260,7 @@ export default {
             } else {
                 this.stopTimeUpdate()
             }
-        }
+        },
     }
 }
 </script>
@@ -314,5 +341,10 @@ input[type="range"]::-ms-track {
 
 .text-red {
     color: red;
+}
+
+.overflow-ellipsis {
+    text-overflow: ellipsis;
+    overflow: hidden;
 }
 </style>

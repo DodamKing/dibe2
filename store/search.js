@@ -7,7 +7,7 @@ export const state = () => ({
     error: null,
     currentPage: 1,
     hasMore: true,
-    activeTab: 'all'
+    activeTab: 'title'
 })
 
 export const mutations = {

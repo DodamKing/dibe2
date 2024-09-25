@@ -62,12 +62,12 @@ export default {
   build: {},
 
   serverMiddleware: [
+    '~/server/middleware/cors',
     '~/server/middleware/errorHandler',
     '~/server/middleware/dbConnection',
     '~/server/middleware/session',
     '~/server/middleware/cron',
     { path: '/api', handler: '~/server/api/index.js' },
-    '~/server/middleware/cors'
   ],
 
   watchers: {
