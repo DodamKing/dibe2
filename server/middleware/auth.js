@@ -11,7 +11,7 @@ module.exports = {
 
     sessionCheckMiddleware: (req, res, next) => {
         // 공개 경로 목록
-        const publicPaths = ['/users/login', '/users/register', '/users/google', '/users/kakao'];
+        const publicPaths = ['/users/login', '/users/register', '/users/google', '/users/google/callback', '/users/kakao', '/users/kakao/callback'];
 
         if (!req.session || typeof req.session.user === 'undefined') {
             if (publicPaths.includes(req.path) || req.path.startsWith('/public/')) {

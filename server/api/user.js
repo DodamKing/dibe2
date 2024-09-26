@@ -2,6 +2,7 @@ const express = require('express')
 const bcrypt = require('bcrypt')
 const db = require('../models')
 const { isNotAuthenticated } = require('../middleware/auth')
+const axios = require('axios')
 
 const router = express.Router()
 
@@ -65,45 +66,54 @@ router.get('/me', (req, res) => {
 })
 
 router.get('/google', async (req, res) => {
-    // const redirectUri = encodeURIComponent('http://localhost:3000/api/auth/google/callback')
-    // const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=email%20profile`
-    // res.redirect(googleAuthUrl);
-    const message = '구글 로그인 기능은 아직 구현되지 않았습니다.'
-    res.json({ success: false, message })
+    const redirectUri = encodeURIComponent('http://localhost:3000/api/users/google/callback')
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=email%20profile`
+    res.redirect(googleAuthUrl)
 })
 
-// app.get('/google/callback', async (req, res) => {
-//     const code = req.query.code
-//     try {
-//         // 액세스 토큰 요청
-//         const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
-//             code,
-//             client_id: process.env.GOOGLE_CLIENT_ID,
-//             client_secret: process.env.GOOGLE_CLIENT_SECRET,
-//             redirect_uri: 'http://localhost:3000/api/auth/google/callback',
-//             grant_type: 'authorization_code'
-//         })
+router.get('/google/callback', async (req, res) => {
+    const code = req.query.code
+    try {
+        // 액세스 토큰 요청
+        const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
+            code,
+            client_id: process.env.GOOGLE_CLIENT_ID,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET,
+            redirect_uri: 'http://localhost:3000/api/users/google/callback',
+            grant_type: 'authorization_code'
+        })
 
-//         const accessToken = tokenResponse.data.access_token
+        const accessToken = tokenResponse.data.access_token
 
-//         // 사용자 정보 요청
-//         const userInfoResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
-//             headers: { Authorization: `Bearer ${accessToken}` }
-//         })
+        // 사용자 정보 요청
+        const userInfoResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        })
 
-//         const userInfo = userInfoResponse.data
+        const userInfo = userInfoResponse.data
 
-//         // 여기서 userInfo를 사용하여 사용자를 데이터베이스에 저장하거나 조회합니다
-//         // const user = await User.findOrCreate({ googleId: userInfo.id, email: userInfo.email });
+        // 여기서 userInfo를 사용하여 사용자를 데이터베이스에 저장하거나 조회합니다
+        // const user = await db.User.findOrCreate({ provider: 'google', providerId: userInfo.id });
+        const googleUser = { provider: 'google', providerId: userInfo.id }
+        let user = await db.User.findOne(googleUser)
+        if (!user) user = await db.User.create(googleUser)
 
-//         // 세션에 사용자 정보 저장
-//         req.session.user = userInfo
-//         res.redirect('/') // 로그인 성공 후 리다이렉트할 페이지
-//     } catch (error) {
-//         console.error('Google login error:', error)
-//         res.redirect('/login?error=google_login_failed')
-//     }
-// });
+        // 세션에 사용자 정보 저장
+        const sessionUser = {
+            userId: user._id,
+            provider: 'google',
+            providerId: userInfo.id,
+            username: userInfo.name,
+            email: userInfo.email,
+            picture: userInfo.picture
+        }
+        req.session.user = sessionUser
+        res.redirect('/') // 로그인 성공 후 리다이렉트할 페이지
+    } catch (error) {
+        console.error('Google login error:', error)
+        res.redirect('/login?error=google_login_failed')
+    }
+});
 
 router.get('/kakao', async (req, res) => {
     const message = '카카오 로그인 기능은 아직 구현되지 않았습니다.'

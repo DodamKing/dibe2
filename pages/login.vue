@@ -148,18 +148,15 @@ export default {
                 this.$toast.error(errorMessage)
             }
         },
-        async socialLogin(provider) {
+        socialLogin(provider) {
             this.$toast.info(`${provider} 로그인을 시도합니다.`)
 
-            const result = await this.$store.dispatch('auth/socialLogin', provider)
-            
-            if (result.success) {
-                this.$toast.success(`${provider} 로그인 성공`)
-                this.$router.push('/')
-            } else if (result.error) {
-                this.$toast.error(result.error || `${provider} 로그인 실패`)
-            } else {
-                this.$toast.error(result.message || `${provider} 로그인 실패`)
+            if (provider === 'google') {
+                window.location.href = `/api/users/${provider}`
+            }
+
+            if (provider === 'kakao') {
+                this.$toast.error('카카로 로그인은 아직 구현되지 않았습니다.')
             }
         },
     }

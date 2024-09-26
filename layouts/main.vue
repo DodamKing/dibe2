@@ -2,9 +2,10 @@
     <div class="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white flex flex-col">
         <AppHeader />
         <Nuxt />
+
         <div id="youtube-player" class="hidden"></div>
-        <Playlist :show="showQueue" @close="toggleQueue" class="z-40" />
-        <MusicPlayer :current-track="currentTrack" @toggle-queue="toggleQueue" class="z-50" />
+        <Playlist :show="showQueue" @close="toggleQueue" />
+        <MusicPlayer :current-track="currentTrack" @toggle-queue="toggleQueue" />
 
         <CreatePlaylistModal :show="showCreatePlaylistModal" @close="showCreatePlaylistModal = false"
             @create="handleCreatePlaylist" @show-toast="showToast" />
@@ -132,7 +133,7 @@ export default {
         ...mapState('playlist', ['playlists']),
         allSelected() {
             return this.selectedSongs.length === this.popularChart.length
-        }
+        },
     },
     data() {
         return {

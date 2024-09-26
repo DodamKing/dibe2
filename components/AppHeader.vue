@@ -19,7 +19,7 @@
                             <div class="relative" ref="userMenuContainer">
                                 <button @click="toggleUserMenu"
                                     class="flex items-center space-x-2 text-white hover:text-gray-200">
-                                    <img src="https://via.placeholder.com/32" alt="User Avatar"
+                                    <img :src="avatarUrl" alt="User Avatar"
                                         class="w-8 h-8 rounded-full">
                                     <span class="hidden sm:inline">{{ userName }}</span>
                                     <i class="fas fa-chevron-down"></i>
@@ -79,7 +79,11 @@ export default {
     computed: {
         ...mapState('search', ['searchQuery', 'searchResults', 'showSearch', 'showSearchResults']),
         userName() {
-            return this.$store.state.auth.user?.username
+            return this.$store.state.auth.user?.username || this.$store.state.auth.user?.name
+        },
+        avatarUrl() {
+            const picture = this.$store.state.auth.user?.picture
+            return picture ? `${picture}?timestamp=${new Date().getTime()}` : 'https://via.placeholder.com/32'
         }
     },
     methods: {

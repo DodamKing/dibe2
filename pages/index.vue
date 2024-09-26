@@ -53,6 +53,7 @@
 import MyPlaylistSection from '~/components/MyPlaylistSection.vue'
 
 export default {
+	layout: 'main',
 	components: {
 		MyPlaylistSection,
 	},

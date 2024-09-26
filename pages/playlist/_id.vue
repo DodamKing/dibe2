@@ -79,6 +79,7 @@
 import { mapState, mapActions } from 'vuex'
 
 export default {
+    layout: 'main',
     data() {
         return {
             loading: true,

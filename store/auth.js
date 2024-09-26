@@ -39,19 +39,4 @@ export const actions = {
         }
     },
 
-    async socialLogin({ commit }, provider) {
-        try {
-            // 소셜 로그인 API 엔드포인트 호출
-            const { success, user, message } = await this.$axios.$get(`/api/users/${provider}`)
-
-            // 성공 시 사용자 정보 저장 및 인증 상태 변경
-            commit('setUser', user)
-
-            return { success, message }
-        } catch (error) {
-            console.error(`${provider} 로그인 실패:`, error)
-            return { success: false, error: error.response?.data?.message || '로그인 중 오류가 발생했습니다.' }
-        }
-    },
-
 }
