@@ -7,11 +7,11 @@ export const mutations = {
     setUser(state, user) {
         state.loggedIn = user !== null
         state.user = user
-    }
+    },
 }
 
 export const actions = {
-    async login({ commit }, credentials) {
+    async login({ commit, dispatch }, credentials) {
         try {
             const { user, code, message } = await this.$axios.$post('/api/users/login', credentials)
 
@@ -34,6 +34,7 @@ export const actions = {
         try {
             await this.$axios.post('/api/users/logout')
             commit('setUser', null)
+            window.location.reload()
         } catch (err) {
             console.error('로그아웃 에러:', err)
         }

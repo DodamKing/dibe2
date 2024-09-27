@@ -236,7 +236,6 @@ export default {
     },
 
     mounted() {
-        this.initYoutubePlayer();
         this.startTimeUpdate()
     },
 

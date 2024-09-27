@@ -53,11 +53,17 @@ router.post('/login', isNotAuthenticated, async (req, res) => {
     }
 })
 
-router.post('/logout', (req, res) => {
-    req.session.destroy((err) => {
-        if (err) return res.status(500).json({ message: '로그아웃 처리 중 오류 발상' })
-        res.json({ message: '로그아웃 되었습니다.' })
-    })
+router.post('/logout', async (req, res) => {
+    try {
+        req.session.destroy((err) => {
+            if (err) return res.status(500).json({ message: '세션 처리 중 오류 발생' })
+                res.clearCookie('dibe2_session_cookie')
+            res.json({ message: '로그아웃 되었습니다.' })
+        })
+    } catch (error) {
+        console.error('로그아웃 에러:', error)
+        res.status(500).json({ message: '로그아웃 처리 중 오류 발생'})
+    }
 })
 
 router.get('/me', (req, res) => {
@@ -93,7 +99,8 @@ router.get('/google/callback', async (req, res) => {
             providerId: userInfo.id,
             email: userInfo.email,
             name: userInfo.name,
-            picture: userInfo.picture
+            picture: userInfo.picture,
+            accessToken: tokens.access_token
         }
 
         res.redirect('/')
@@ -131,7 +138,8 @@ router.get('/kakao/callback', async (req, res) => {
             providerId: userInfo.id,
             email: userInfo.kakao_account.email,
             name: userInfo.properties.nickname,
-            picture: userInfo.properties.profile_image
+            picture: userInfo.properties.profile_image,
+            accessToken: tokens.access_token
         }
 
         res.redirect('/')

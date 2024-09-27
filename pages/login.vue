@@ -100,8 +100,12 @@ export default {
     },
     mounted() {
         this.checkForErrors()
+        this.updateTitle()
     },
     methods: {
+        updateTitle() {
+            document.title = '로그인 | DIBE2'
+        },
         validateEmail() {
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
             this.errors.email = !emailRegex.test(this.email) ? '유효한 이메일 주소를 입력해주세요.' : ''

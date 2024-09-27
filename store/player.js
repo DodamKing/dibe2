@@ -112,8 +112,8 @@ export const mutations = {
 export const actions = {
     async initializeAudioSystem({ commit, dispatch, state }) {
         if (!state.isInitialized) {
-            await dispatch('initializeQueue')
             await dispatch('initYoutubePlayer')
+            await dispatch('initializeQueue')
             commit('SET_IS_INITIALIZED', true)
         }
     },
@@ -124,6 +124,8 @@ export const actions = {
         const queueKey = getStorageKey(rootState, 'queue')
         const trackKey = getStorageKey(rootState, 'current_track')
         const volumeKey = getStorageKey(rootState, 'volume')
+        const repeatModeKey = getStorageKey(rootState, 'repeat_mode')
+        const shuffleKey = getStorageKey(rootState, 'shuffle')
 
         const savedQueue = localStorage.getItem(queueKey)
         if (savedQueue) {
@@ -134,7 +136,17 @@ export const actions = {
             commit('SET_CURRENT_TRACK', JSON.parse(savedCurrentTrack))
         }
         const savedVolume = localStorage.getItem(volumeKey)
-        if (savedVolume) commit('SET_VOLUME', parseFloat(savedVolume))
+        if (savedVolume) commit('SET_VOLUME', Number(savedVolume))
+
+        const savedRepeatMode = localStorage.getItem(repeatModeKey)
+        if (savedRepeatMode) commit('SET_REPEAT_MODE', savedRepeatMode)
+        
+        const savedShuffle = localStorage.getItem(shuffleKey)
+        if (savedShuffle) commit('SET_SHUFFLE', JSON.parse(savedShuffle))
+    },
+
+    resetIsInitialized({ commit }) {
+        commit('SET_IS_INITIALIZED', false)
     },
 
     async addToPlaylist({ commit, dispatch, state }, song) {
@@ -305,25 +317,30 @@ export const actions = {
         }
     },
 
-    toggleShuffle({ commit, state, dispatch }) {
-        if (!state.shuffleOn) {
-            // 셔플을 켤 때
+    toggleShuffle({ commit, rootState, state, dispatch }) {
+        const newShuffleState = !state.shuffleOn
+        if (newShuffleState) {
             commit('SET_ORIGINAL_QUEUE', state.queue) // 현재 큐를 원본으로 저장
             commit('SHUFFLE_QUEUE')
-            commit('SET_SHUFFLE', true)
         } else {
-            // 셔플을 끌 때
             commit('RESTORE_ORIGINAL_QUEUE')
-            commit('SET_SHUFFLE', false)
         }
+
+        commit('SET_SHUFFLE', newShuffleState)
         dispatch('saveQueue')
+
+        const shuffleKey = getStorageKey(rootState, 'shuffle')
+        if (shuffleKey) localStorage.setItem(shuffleKey, JSON.stringify(newShuffleState))
     },
 
-    toggleRepeat({ commit, state }) {
+    toggleRepeat({ commit, rootState, state }) {
         const modes = ['off', 'all', 'one'];
         const currentIndex = modes.indexOf(state.repeatMode);
-        const nextIndex = (currentIndex + 1) % modes.length;
-        commit('SET_REPEAT_MODE', modes[nextIndex]);
+        const nextMode = modes[(currentIndex + 1) % modes.length]
+        commit('SET_REPEAT_MODE', nextMode);
+
+        const repeatModeKey = getStorageKey(rootState, 'repeat_mode')
+        if (repeatModeKey) localStorage.setItem(repeatModeKey, nextMode)
     },
 
     async playEntirePlaylist({ commit, dispatch }, playlist) {

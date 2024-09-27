@@ -3,7 +3,7 @@ require('dotenv').config()
 export default {
   // Global page headers: https://go.nuxtjs.dev/config-head
   head: {
-    title: 'dibe2',
+    title: 'DIBE2',
     htmlAttrs: {
       lang: 'en',
     },
