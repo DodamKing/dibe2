@@ -34,7 +34,6 @@ export const actions = {
         try {
             await this.$axios.post('/api/users/logout')
             commit('setUser', null)
-            window.location.reload()
         } catch (err) {
             console.error('로그아웃 에러:', err)
         }
