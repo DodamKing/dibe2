@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt')
 const db = require('../models')
 const { isNotAuthenticated } = require('../middleware/auth')
 const axios = require('axios')
+const UserService = require('../services/userService')
 
 const router = express.Router()
 
@@ -66,58 +67,78 @@ router.get('/me', (req, res) => {
 })
 
 router.get('/google', async (req, res) => {
-    const redirectUri = encodeURIComponent('http://localhost:3000/api/users/google/callback')
-    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=email%20profile`
-    res.redirect(googleAuthUrl)
+    const state = UserService.generateState()
+    req.session.oauthState = state
+    const authUrl = UserService.getGoogleAuthUrl(state)
+    res.redirect(authUrl)
 })
 
 router.get('/google/callback', async (req, res) => {
-    const code = req.query.code
+    const { code, state } = req.query
+    const provider = 'google'
+
+    if (state !== req.session.oauthState) {
+        console.error('Invalid state parameter')
+        return res.status(400).redirect('/login?error=invalid_state')
+    }
+
     try {
-        // 액세스 토큰 요청
-        const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
-            code,
-            client_id: process.env.GOOGLE_CLIENT_ID,
-            client_secret: process.env.GOOGLE_CLIENT_SECRET,
-            redirect_uri: 'http://localhost:3000/api/users/google/callback',
-            grant_type: 'authorization_code'
-        })
+        const tokens = await UserService.getGoogleTokens(code)
+        const userInfo = await UserService.getGoogleUserInfo(tokens.access_token)
+        const user = await UserService.findOrCreateUser(provider, userInfo.id)
 
-        const accessToken = tokenResponse.data.access_token
-
-        // 사용자 정보 요청
-        const userInfoResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
-            headers: { Authorization: `Bearer ${accessToken}` }
-        })
-
-        const userInfo = userInfoResponse.data
-
-        // 여기서 userInfo를 사용하여 사용자를 데이터베이스에 저장하거나 조회합니다
-        // const user = await db.User.findOrCreate({ provider: 'google', providerId: userInfo.id });
-        const googleUser = { provider: 'google', providerId: userInfo.id }
-        let user = await db.User.findOne(googleUser)
-        if (!user) user = await db.User.create(googleUser)
-
-        // 세션에 사용자 정보 저장
-        const sessionUser = {
+        req.session.user = {
             userId: user._id,
-            provider: 'google',
+            provider,
             providerId: userInfo.id,
-            username: userInfo.name,
             email: userInfo.email,
+            name: userInfo.name,
             picture: userInfo.picture
         }
-        req.session.user = sessionUser
-        res.redirect('/') // 로그인 성공 후 리다이렉트할 페이지
+
+        res.redirect('/')
+
     } catch (error) {
         console.error('Google login error:', error)
         res.redirect('/login?error=google_login_failed')
     }
 });
 
-router.get('/kakao', async (req, res) => {
-    const message = '카카오 로그인 기능은 아직 구현되지 않았습니다.'
-    res.json({ success: false, message })
+router.get('/kakao', (req, res) => {
+    const state = UserService.generateState()
+    req.session.oauthState = state
+    const authUrl = UserService.getKakaoAuthUrl(state)
+    res.redirect(authUrl)
+})
+
+router.get('/kakao/callback', async (req, res) => {
+    const { code, state } = req.query
+    const provider = 'kakao'
+
+    if (state !== req.session.oauthState) {
+        console.error('Invalid state parameter')
+        return res.status(400).redirect('/login?error=invalid_state')
+    }
+
+    try {
+        const tokens = await UserService.getKakaoTokens(code)
+        const userInfo = await UserService.getKakaoUserInfo(tokens.access_token)
+        const user = await UserService.findOrCreateUser(provider, userInfo.id)
+
+        req.session.user = {
+            userId: user._id,
+            provider,
+            providerId: userInfo.id,
+            email: userInfo.kakao_account.email,
+            name: userInfo.properties.nickname,
+            picture: userInfo.properties.profile_image
+        }
+
+        res.redirect('/')
+    } catch (error) {
+        console.error('Kakao login error:', error)
+        res.redirect('/login?error=kakao_login_failed')
+    }
 })
 
 module.exports = router

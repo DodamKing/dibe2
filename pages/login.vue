@@ -98,6 +98,9 @@ export default {
             }
         }
     },
+    mounted() {
+        this.checkForErrors()
+    },
     methods: {
         validateEmail() {
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -150,15 +153,31 @@ export default {
         },
         socialLogin(provider) {
             this.$toast.info(`${provider} 로그인을 시도합니다.`)
-
-            if (provider === 'google') {
-                window.location.href = `/api/users/${provider}`
-            }
-
-            if (provider === 'kakao') {
-                this.$toast.error('카카로 로그인은 아직 구현되지 않았습니다.')
+            window.location.href = `/api/users/${provider}`
+        },
+        checkForErrors() {
+            const errorParam = this.$route.query.error
+            if (errorParam) {
+                this.showErrorToast(errorParam)
+                this.$router.replace({ query: {} })
             }
         },
+        showErrorToast(error) {
+            const errorMessage = this.getErrorMessage(error)
+            this.$toast.error(errorMessage)
+        },
+        getErrorMessage(error) {
+            switch(error) {
+                case 'invalid_state':
+                    return '보안 검증에 실패했습니다. 다시 시도해 주세요.'
+                case 'google_login_failed':
+                    return 'Google 로그인에 실패했습니다. 다시 시도해 주세요.'
+                case 'kakao_login_failed':
+                    return 'Kakao 로그인에 실패했습니다. 다시 시도해 주세요.'
+                default:
+                    return '로그인 중 오류가 발생했습니다. 다시 시도해 주세요.'
+            }
+        }
     }
 }
 </script>
