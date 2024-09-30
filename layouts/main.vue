@@ -4,8 +4,8 @@
         <Nuxt />
 
         <div id="youtube-player" class="hidden"></div>
-        <Playlist :show="showQueue" @close="toggleQueue" />
-        <MusicPlayer :current-track="currentTrack" @toggle-queue="toggleQueue" />
+        <Playlist :show="showQueue" @close="toggleQueue" class="z-40" />
+        <MusicPlayer :current-track="currentTrack" @toggle-queue="toggleQueue" class="z-50" />
 
         <CreatePlaylistModal :show="showCreatePlaylistModal" @close="showCreatePlaylistModal = false"
             @create="handleCreatePlaylist" @show-toast="showToast" />

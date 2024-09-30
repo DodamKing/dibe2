@@ -1,6 +1,6 @@
 const createError = require('http-errors')
 const express = require('express')
-const { sessionCheckMiddleware } = require('../middleware/auth')
+const { sessionCheckMiddleware, isAdmin } = require('../middleware/auth')
 const axios = require('axios')
 const { sendErrorToSlack } = require('../utils/helper')
 
@@ -8,6 +8,7 @@ const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL
 const userRoutes = require('./user')
 const songRoutes = require('./song')
 const playlistRoutes = require('./playlist')
+const adminRoutes = require('./admin')
 
 const app = express()
 
@@ -20,6 +21,8 @@ app.use(sessionCheckMiddleware)
 app.use('/users', userRoutes)
 app.use('/songs', songRoutes)
 app.use('/playlists', playlistRoutes)
+app.use('/admin',  adminRoutes)
+// app.use('/admin', isAdmin, adminRoutes)
 
 app.post('/send-slack-message', async (req, res) =>{
     const { message } = req.body

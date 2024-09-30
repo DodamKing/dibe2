@@ -14,7 +14,7 @@ export const state = () => ({
     isPlaying: false,
     currentTime: 0,
     duration: 0,
-    volume: 1,
+    volume: 100,
     shuffleOn: false,
     repeatOn: false,
     repeatMode: 'off',
@@ -126,6 +126,7 @@ export const actions = {
         const volumeKey = getStorageKey(rootState, 'volume')
         const repeatModeKey = getStorageKey(rootState, 'repeat_mode')
         const shuffleKey = getStorageKey(rootState, 'shuffle')
+        const originalQueueKey = getStorageKey(rootState, 'original_queue')
 
         const savedQueue = localStorage.getItem(queueKey)
         if (savedQueue) {
@@ -143,6 +144,9 @@ export const actions = {
         
         const savedShuffle = localStorage.getItem(shuffleKey)
         if (savedShuffle) commit('SET_SHUFFLE', JSON.parse(savedShuffle))
+
+        const savedOriginalQueue = localStorage.getItem(originalQueueKey)
+        if (savedOriginalQueue) commit('SET_ORIGINAL_QUEUE', JSON.parse(savedOriginalQueue))
     },
 
     resetIsInitialized({ commit }) {
@@ -241,11 +245,10 @@ export const actions = {
         }
     },
 
-    playPrevious({ commit, state, dispatch }) {
+    playPrevious({ state, dispatch }) {
         const currentIndex = state.queue.findIndex(track => track._id === state.currentTrack?._id)
         if (currentIndex > 0) {
             dispatch('setCurrentTrack', state.queue[currentIndex - 1])
-            // commit('SET_CURRENT_TRACK', state.queue[currentIndex - 1])
             dispatch('play')
         }
     },
@@ -261,8 +264,8 @@ export const actions = {
     },
 
     setVolume({ commit, rootState }, volume) {
-        youtubePlayer.setVolume(volume);
-        commit('SET_VOLUME', volume);
+        commit('SET_VOLUME', volume)
+        youtubePlayer.setVolume(volume)
 
         const volumeKey = getStorageKey(rootState, 'volume')
         if (volumeKey) localStorage.setItem(volumeKey, volume)
@@ -322,6 +325,9 @@ export const actions = {
         if (newShuffleState) {
             commit('SET_ORIGINAL_QUEUE', state.queue) // 현재 큐를 원본으로 저장
             commit('SHUFFLE_QUEUE')
+
+            const originalQueueKey = getStorageKey(rootState, 'original_queue')
+            if (originalQueueKey) localStorage.setItem(originalQueueKey, JSON.stringify(state.originalQueue))
         } else {
             commit('RESTORE_ORIGINAL_QUEUE')
         }
@@ -380,7 +386,7 @@ export const actions = {
                 dispatch('play')
             } else {
                 // 큐가 비어있으면 재생을 중지하고 현재 트랙을 null로 설정
-                commit('SET_CURRENT_TRACK', null)
+                await dispatch('setCurrentTrack', null)
                 commit('SET_IS_PLAYING', false)
                 youtubePlayer.stop()
             }

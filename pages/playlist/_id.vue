@@ -16,7 +16,6 @@
             <div class="bg-gray-800 bg-opacity-70 rounded-lg shadow-lg p-4 sm:p-6 transition-transform duration-300">
                 <div class="sticky top-0 z-10 pb-4">
                     <button @click="$router.go(-1)" class="mb-4 text-gray-400 hover:text-white">
-                    <!-- <button @click="$router.push('/')" class="mb-4 text-gray-400 hover:text-white"> -->
                         <i class="fas fa-arrow-left mr-2"></i>뒤로 가기
                     </button>
                     <div class="flex items-center mb-4">

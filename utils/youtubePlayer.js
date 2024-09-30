@@ -114,7 +114,7 @@ export default {
 
     setVolume(volume) {
         if (player && player.setVolume) {
-            player.setVolume(volume * 100);
+            player.setVolume(volume);
         }
     },
 

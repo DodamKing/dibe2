@@ -30,7 +30,7 @@
                 <div class="flex items-center justify-center space-x-2 sm:space-x-4 w-1/3 sm:w-1/2">
                     <button class="text-gray-200 hover:text-white focus:outline-none" aria-label="반복 재생"
                         @click="toggleRepeat" :title="getRepeatTitle">
-                        <i :class="['fas', repeatModeIcon, { 'text-red': repeatMode !== 'off' }]"></i>
+                        <i :class="['fas', repeatModeIcon, { 'text-blue-400': repeatMode !== 'off' }]"></i>
                     </button>
                     <button class="text-gray-200 hover:text-white focus:outline-none" aria-label="이전 곡"
                         @click="playPrevious" :disabled="!hasPreviousTrack">
@@ -49,7 +49,7 @@
                     </button>
                     <button class="text-gray-200 hover:text-white focus:outline-none z-10" aria-label="셔플"
                         @click="toggleShuffle" :title="shuffleOn ? '셔플 끄기' : '셔플 켜기'">
-                        <i :class="['fas', 'fa-shuffle', { 'text-red': shuffleOn }]"></i>
+                        <i :class="['fas', 'fa-shuffle', { 'text-blue-400': shuffleOn }]"></i>
                     </button>
                 </div>
 
@@ -112,7 +112,6 @@
             </div>
         </div>
         <div v-if="isLoading" class="absolute bottom-0 left-0 w-full h-0.5 bg-white animate-pulse"></div>
-        <!-- <div id="youtube-player" class="hidden"></div> -->
     </div>
 </template>
 
@@ -336,10 +335,6 @@ input[type="range"]::-ms-track {
         padding-left: 0.5rem;
         padding-right: 0.5rem;
     }
-}
-
-.text-red {
-    color: red;
 }
 
 .overflow-ellipsis {
