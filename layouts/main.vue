@@ -79,6 +79,9 @@
                 </div>
             </div>
         </transition>
+
+        <!-- 푸터 -->
+        <!-- 내가 만들었음 -->
     </div>
 </template>
 

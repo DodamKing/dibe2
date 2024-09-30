@@ -9,7 +9,7 @@ const corsOptions = {
 
 export default function (req, res, next) {
     if (process.env.NODE_ENV === 'production') {
-        cors(corsOptions)(req, res, next);
+        cors(corsOptions)(req, res, next)
     }
     else next()
 }

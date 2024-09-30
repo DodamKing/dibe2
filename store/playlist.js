@@ -70,11 +70,11 @@ export const actions = {
             console.error('내 플레이리스트 곡 추가 오류: ', err)
         }
     },
-    async removeSongsFromPlaylist({ commit }, { playlistId, songIds }) {
+    async removeSongsFromPlaylist({ commit, dispatch }, { playlistId, songIds }) {
         try {
             const { success, removedCount } = await this.$axios.$delete(`/api/playlists/${playlistId}/songs`, { data: { songIds } })
             if (success) {
-                commit('UPDATE_PLAYLIST', { playlistId, songIds })
+                commit('REMOVE_SONGS_FROM_PLAYLIST', { playlistId, songIds })
                 return { success, removedCount }
             }
         } catch (err) {

@@ -69,7 +69,6 @@ export default {
   build: {},
 
   serverMiddleware: [
-    // '~/server/middleware/errorHandler',
     '~/server/middleware/cors',
     '~/server/middleware/dbConnection',
     '~/server/middleware/session',

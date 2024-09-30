@@ -16,6 +16,17 @@ async function getLyrics(detailLink) {
     }
 }
 
+const formatter = new Intl.DateTimeFormat('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+});
+
 module.exports = {
     getLyrics: getLyrics,
     getBugsChart: async () => {
@@ -67,6 +78,75 @@ module.exports = {
             return detailLink
         } catch (err) {
             console.error('벅스 디테일 링크 크롤링 오류:', err)
+        }
+    },
+
+    sendErrorToSlack: async (err, req = null, additionalInfo = {}) => {
+        const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL;
+
+        const message = {
+            text: '🚨 DIBE2 에러 발생',
+            attachments: [
+                {
+                    color: '#FF0000',
+                    fields: [
+                        {
+                            title: 'Error Message',
+                            value: err.message,
+                            short: false,
+                        },
+                        {
+                            title: 'Time (KST)',
+                            value: formatter.format(err.occurredAt),
+                            short: false,
+                        },
+                    ],
+                },
+            ],
+        };
+
+        // req 객체가 제공된 경우 관련 정보 추가
+        if (req) {
+            message.attachments[0].fields.push(
+                {
+                    title: 'Request URL',
+                    value: req.originalUrl || 'N/A',
+                    short: false,
+                },
+                {
+                    title: 'Request Method',
+                    value: req.method || 'N/A',
+                    short: false,
+                },
+                {
+                    title: 'User Agent',
+                    value: req.headers['user-agent'] || 'N/A',
+                    short: false,
+                }
+            );
+        }
+
+        // 추가 정보 필드 추가
+        for (const [key, value] of Object.entries(additionalInfo)) {
+            message.attachments[0].fields.push({
+                title: key,
+                value: String(value),
+                short: false,
+            });
+        }
+
+        if (err.stack) {
+            message.attachments[0].fields.push({
+                title: 'Stack Trace',
+                value: err.stack.split('\n').slice(0, 5).join('\n'), // 첫 5줄만 포함
+                short: false,
+            });
+        }
+
+        try {
+            await axios.post(slackWebhookUrl, message);
+        } catch (error) {
+            console.error('Error sending message to Slack:', error);
         }
     }
 

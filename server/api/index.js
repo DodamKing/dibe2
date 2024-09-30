@@ -1,6 +1,8 @@
+const createError = require('http-errors')
 const express = require('express')
 const { sessionCheckMiddleware } = require('../middleware/auth')
 const axios = require('axios')
+const { sendErrorToSlack } = require('../utils/helper')
 
 const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL
 const userRoutes = require('./user')
@@ -36,9 +38,20 @@ app.post('/send-slack-message', async (req, res) =>{
     }
 })
 
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
     console.error(err)
-    res.status(500).json({ error: '서버 내부 오류 발생' })
+
+    if (process.env.NODE_ENV !== 'development') {
+        sendErrorToSlack(err, req, {
+            path: req.path,
+            method: req.method,
+            body: JSON.stringify(req.body),
+            params: JSON.stringify(req.params),
+            query: JSON.stringify(req.query)
+        })
+    }
+
+    res.status(err.status || 500).json({ message: err.message || '서버 내부 오류 발생' })
 })
 
 module.exports  = app

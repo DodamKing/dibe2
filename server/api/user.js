@@ -7,7 +7,7 @@ const UserService = require('../services/userService')
 
 const router = express.Router()
 
-router.get('/test', (req, res) => {
+router.get('/test', (req, res, next) => {
     res.json({ message: 'test' })
 })
 

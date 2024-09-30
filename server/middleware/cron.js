@@ -1,6 +1,7 @@
 const cron = require('node-cron')
 const helper = require('../utils/helper')
 const { songService } = require('../services')
+const { sendErrorToSlack } = require('../utils/helper')
 
 function setupCronJob(schedule, jobName, task) {
     if (process.env.NODE_ENV !== 'development') {
@@ -14,7 +15,12 @@ function setupCronJob(schedule, jobName, task) {
                     console.log(`${jobName} 완료: ${new Date().toISOString()}`);
                 } catch (error) {
                     console.error(`${jobName} 실행 중 오류 발생:`, error);
-                    // 여기에 오류 보고 로직 추가 (예: 이메일 알림, 로그 시스템 등)
+                    sendErrorToSlack(error, null, {
+                        context: 'Cron Job',
+                        jobName,
+                        schedule,
+                        scheduledTime: new Date().toISOString() 
+                    })
                 }
             });
             global.cronJobsRegistered[jobName] = true;
