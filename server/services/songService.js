@@ -16,6 +16,12 @@ function parseSimpleTextDuration(simpleText) {
     }
 }
 
+const createFlexibleRegex = (query) => {
+    // 쿼리의 각 문자 사이에 선택적 공백을 허용하는 정규표현식 생성
+    const flexibleQuery = query.split('').join('\\s*');
+    return new RegExp(flexibleQuery, 'i');
+};
+
 module.exports = {
     updateChartData: async (newChartData) => {
         try {
@@ -206,20 +212,25 @@ module.exports = {
 
     searchSong: async (query, type, page = 1, limit = 20) => {
         const skip = (page - 1) * limit;
+        const flexibleRegex = createFlexibleRegex(query);
         let searchCriteria;
 
         if (type === 'all') {
             searchCriteria = {
                 $or: [
-                    { title: { $regex: query, $options: 'i' } },
-                    { artist: { $regex: query, $options: 'i' } },
-                    // { album: { $regex: query, $options: 'i' } },
-                    // { lyrics: { $regex: query, $options: 'i' } }
+                    { title: { $regex: flexibleRegex } },
+                    { artist: { $regex: flexibleRegex } },
+                    // { album: { $regex: flexibleRegex } },
+                    // { lyrics: { $regex: exactRegex } }
                 ]
+            };
+        } else if (type === 'lyrics') {
+            searchCriteria = {
+                [type]: { $regex: query, $options: 'i' }
             };
         } else {
             searchCriteria = {
-                [type]: { $regex: query, $options: 'i' }
+                [type]: { $regex: flexibleRegex }
             };
         }
 
@@ -267,6 +278,19 @@ module.exports = {
         } catch (err) {
             console.error('유뷰트 아이디:', err)
             throw err
+        }
+    },
+
+    addSong: async (song) => {
+        try {
+            const existingSong = await db.Song.findOne({ title: song.title, artist: song.artist })
+            if (existingSong) return { success: false, message: '이미 존재하는 곡입니다.', song: existingSong }
+
+            const newSong = await db.Song.create(song)
+            return { success: true, message: '새 음원이 성공적으로 추가되었습니다.', song: newSong }
+        } catch (error) {
+            console.error('음원 추가 중 오류 발생:', error)
+            throw new Error('서버 오류가 발생했습니다.')
         }
     },
 

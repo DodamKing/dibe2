@@ -102,6 +102,18 @@ router.get('/youtubeId/:songId', async (req, res, next) => {
     }
 })
 
+router.post('/', async (req, res) => {
+    const song = req.body
+
+    try {
+        const result = await services.songService.addSong(song)
+        res.json(result)
+    } catch (error) {
+        console.error('음원 추가 중 오류 발생', error)
+        res.status(500).json({ message: '서버 오류로 음원 추가에 실패했습니다.' })
+    }
+})
+
 router.put('/:id', adminMiddleware, async (req, res) => {
     const songId = req.params.id
 
@@ -110,6 +122,18 @@ router.put('/:id', adminMiddleware, async (req, res) => {
         res.json(result);
     } catch (error) {
         console.error('라우터에서 음원 수정 처리 중 오류 발생:', error);
+        res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+    }
+})
+
+router.get('/search-bugs', async (req, res) => {
+    const { query } = req.query
+
+    try {
+        const results = await helper.searchBugsMusic(query);
+        res.json({ results });
+    } catch (error) {
+        console.error('Bugs 검색 중 오류:', error);
         res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
     }
 })

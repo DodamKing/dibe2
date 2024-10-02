@@ -39,8 +39,12 @@
                 <div v-else-if="songs.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div v-for="song in songs" :key="song._id"
                         class="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
-                        <img :src="song.coverUrl.replace('/50/', '/300/') || '/default-album-cover.jpg'"
-                            :alt="`${song.title} 앨범 커버`" class="w-full h-48 object-cover">
+                        <picture>
+                            <source :srcset="song.coverUrl.replace('/50/', '/700/') || '/default-album-cover.jpg'"
+                                media="(min-width: 640px)">
+                            <img :src="song.coverUrl.replace('/50/', '/300/') || '/default-album-cover.jpg'"
+                                :alt="`${song.title} 앨범 커버`" class="w-full h-48 object-cover">
+                        </picture>
                         <div class="p-4">
                             <div class="mb-3">
                                 <div class="group relative inline-block w-full">
@@ -116,52 +120,90 @@
         <!-- 음원 추가/수정 모달 -->
         <div v-if="showAddModal || editingSong"
             class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
                 <h3 class="text-lg font-semibold mb-4">{{ editingSong ? '음원 수정' : '새 음원 추가' }}</h3>
+
+                <!-- 검색 인터페이스 -->
+                <div v-if="!editingSong" class="mb-4">
+                    <div class="flex mb-2">
+                        <input v-model="bugsSearchQuery" @keyup.enter="searchBugs" type="text"
+                            placeholder="Bugs에서 음원 검색"
+                            class="flex-grow px-3 py-2 border border-gray-300 rounded-l-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                        <button @click="searchBugs"
+                            class="px-4 py-2 bg-blue-500 text-white rounded-r-md hover:bg-blue-600 text-sm">
+                            검색
+                        </button>
+                    </div>
+                    <!-- 검색 결과 토글 버튼 -->
+                    <button v-if="bugsSearchResults.length" @click="toggleSearchResults"
+                        class="text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20"
+                            fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                clip-rule="evenodd" />
+                        </svg>
+                        {{ showSearchResults ? '검색 결과 접기' : '검색 결과 펼치기' }}
+                    </button>
+                </div>
+
+                <!-- 검색 결과 -->
+                <div v-if="showSearchResults && bugsSearchResults.length" class="mb-4 max-h-96 overflow-y-auto">
+                    <div v-for="result in bugsSearchResults" :key="result.detailLink"
+                        class="p-2 hover:bg-gray-100 cursor-pointer flex items-center space-x-4"
+                        @click="selectBugsResult(result)">
+                        <img :src="result.coverUrl" :alt="result.title + ' 앨범 커버'"
+                            class="w-16 h-16 object-cover rounded-md">
+                        <div>
+                            <p class="font-semibold">{{ result.title }}</p>
+                            <p class="text-sm text-gray-600">{{ result.artist }} - {{ result.album }}</p>
+                        </div>
+                    </div>
+                </div>
+
                 <form @submit.prevent="saveSong" class="space-y-4">
                     <div>
                         <label for="title" class="block text-sm font-medium text-gray-700">제목</label>
                         <input id="title" v-model="currentSong.title" type="text"
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                     </div>
                     <div>
                         <label for="artist" class="block text-sm font-medium text-gray-700">아티스트</label>
                         <input id="artist" v-model="currentSong.artist" type="text"
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                     </div>
                     <div>
                         <label for="album" class="block text-sm font-medium text-gray-700">앨범</label>
                         <input id="album" v-model="currentSong.album" type="text"
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                     </div>
                     <div>
                         <label for="coverUrl" class="block text-sm font-medium text-gray-700">앨범 커버 URL</label>
                         <input id="coverUrl" v-model="currentSong.coverUrl" type="text"
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                     </div>
                     <div>
                         <label for="detailLink" class="block text-sm font-medium text-gray-700">상세 정보 링크</label>
                         <input id="detailLink" v-model="currentSong.detailLink" type="text"
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                     </div>
                     <div>
                         <label for="lyrics" class="block text-sm font-medium text-gray-700">가사</label>
                         <textarea id="lyrics" v-model="currentSong.lyrics"
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                             rows="3"></textarea>
                     </div>
                     <div>
                         <label for="youtubeUrl" class="block text-sm font-medium text-gray-700">YouTube URL</label>
                         <input id="youtubeUrl" v-model="currentSong.youtubeUrl" type="text"
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                     </div>
                     <div class="flex justify-end space-x-2">
                         <button type="button" @click="closeModal"
-                            class="bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 px-4 rounded">
+                            class="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400">
                             취소
                         </button>
-                        <button type="submit"
-                            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
                             저장
                         </button>
                     </div>
@@ -212,6 +254,8 @@ export default {
             loading: false,
             showAddModal: false,
             editingSong: null,
+            bugsSearchQuery: '',
+            bugsSearchResults: [],
             currentSong: {
                 title: '',
                 artist: '',
@@ -229,6 +273,7 @@ export default {
             total: 0,
             currentTime: 0,
             duration: 0,
+            showSearchResults: true,
         }
     },
     mounted() {
@@ -299,17 +344,14 @@ export default {
                         this.$toast.error(response.message || '음원 수정에 실패했습니다.');
                     }
                 } else {
-                    return this.$toast.info('아직 구현중입니다.')
-                    // 새 음원 추가 로직
-                    // const response = await this.$axios.$post('/api/songs', this.currentSong);
-                    // if (response.success) {
-                    //     this.songs.unshift(response.newSong);
-                    //     this.$toast.success(response.message || '새 음원이 성공적으로 추가되었습니다.');
-                    //     this.closeModal();
-                    //     await this.searchSongs(); // 목록 새로고침
-                    // } else {
-                    //     this.$toast.error(response.message || '음원 추가에 실패했습니다.');
-                    // }
+                    const response = await this.$axios.$post('/api/songs', this.currentSong);
+                    if (response.success) {
+                        this.$toast.success(response.message || '새 음원이 성공적으로 추가되었습니다.');
+                        this.closeModal();
+                        await this.searchSongs(); // 목록 새로고침
+                    } else {
+                        this.$toast.error(response.message || '음원 추가에 실패했습니다.');
+                    }
                 }
             } catch (error) {
                 console.error('음원 저장 중 오류 발생:', error);
@@ -328,6 +370,8 @@ export default {
                 lyrics: '',
                 youtubeUrl: ''
             };
+            this.bugsSearchQuery = '';
+            this.bugsSearchResults = [];
         },
         deleteSong(song) {
             if (confirm('정말로 이 음원을 삭제하시겠습니까?')) {
@@ -403,7 +447,37 @@ export default {
         },
         onPlayerError(event) {
             console.error('YouTube player error:', event.data);
-        }
+        },
+        async searchBugs() {
+            if (!this.bugsSearchQuery.trim()) return;
+
+            try {
+                const response = await this.$axios.$get('/api/songs/search-bugs', {
+                    params: { query: this.bugsSearchQuery }
+                });
+                this.bugsSearchResults = response.results;
+                this.showSearchResults = true;
+            } catch (error) {
+                console.error('Bugs 검색 중 오류 발생:', error);
+                this.$toast.error('검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+            }
+        },
+
+        selectBugsResult(result) {
+            this.currentSong = {
+                ...this.currentSong,
+                title: result.title,
+                artist: result.artist,
+                album: result.album,
+                coverUrl: result.coverUrl,
+                detailLink: result.detailLink,
+            };
+            this.showSearchResults = false;
+        },
+
+        toggleSearchResults() {
+            this.showSearchResults = !this.showSearchResults;
+        },
     }
 }
 </script>

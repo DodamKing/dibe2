@@ -182,29 +182,27 @@ export default {
             }
         },
         highlightLyrics(lyrics) {
-            if (!lyrics) return ''
-            const words = lyrics.split(/\s+/)
-            const queryRegex = new RegExp(this.searchQuery, 'gi')
-            let foundIndex = -1
+            if (!lyrics) return '';
 
-            for (let i = 0; i < words.length; i++) {
-                if (queryRegex.test(words[i])) {
-                    foundIndex = i
-                    break
-                }
-            }
+            const queryRegex = new RegExp(this.searchQuery.replace(/[-\\^$*+?.()|[\]{}]/g, '\\$&'), 'gi');
+            const match = lyrics.match(queryRegex);
 
-            if (foundIndex === -1) return lyrics.substring(0, 100) + '...'
+            if (!match) return lyrics.substring(0, 100) + '...';
 
-            const start = Math.max(0, foundIndex - 20)
-            const end = Math.min(words.length, foundIndex + 21)
-            const relevantWords = words.slice(start, end)
+            const matchIndex = lyrics.toLowerCase().indexOf(match[0].toLowerCase());
+            const start = Math.max(0, matchIndex - 100);
+            const end = Math.min(lyrics.length, matchIndex + match[0].length + 100);
 
-            const highlightedLyrics = relevantWords.map(word => {
-                return word.replace(queryRegex, match => `<mark class="bg-yellow-400 text-gray-800">${match}</mark>`)
-            }).join(' ')
+            let snippet = lyrics.substring(start, end);
 
-            return (start > 0 ? '... ' : '') + highlightedLyrics + (end < words.length ? ' ...' : '')
+            // 강조 처리
+            snippet = snippet.replace(queryRegex, match => `<mark class="bg-yellow-400 text-gray-800">${match}</mark>`);
+
+            // 시작과 끝 처리
+            if (start > 0) snippet = '... ' + snippet;
+            if (end < lyrics.length) snippet += ' ...';
+
+            return snippet;
         },
         toggleSongSelection(song) {
             const index = this.selectedSongs.findIndex(s => s._id === song._id);

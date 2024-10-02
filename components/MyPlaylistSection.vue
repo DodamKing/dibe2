@@ -33,9 +33,9 @@
                     <div v-else class="aspect-square w-full">
                         <div class="grid grid-cols-2 grid-rows-2 h-full transform transition-transform duration-300 group-hover:scale-105">
                             <img v-for="(song, index) in playlist.songs.slice(0, 4)" :key="index"
-                            :src="song.coverUrl.replace('/50/', '/200/') || 'https://via.placeholder.com/100x100'"
-                            :alt="`Cover for ${song.title}`"
-                            class="w-full h-full object-cover"
+                                :src="song.coverUrl.replace('/50/', '/200/') || 'https://via.placeholder.com/100x100'"
+                                :alt="`Cover for ${song.title}`"
+                                class="w-full h-full object-cover"
                             />
                         </div>
                     </div>

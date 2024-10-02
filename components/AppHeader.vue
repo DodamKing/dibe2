@@ -33,6 +33,7 @@
                 class="user-menu absolute right-4 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
                 <a @click.stop.prevent href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">프로필</a>
                 <a @click.stop.prevent href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">설정</a>
+                <a v-if="isAdmin" @click.stop.prevent="goAdmin" href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">관리자</a>
                 <a @click.stop.prevent="logout" href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">로그아웃</a>
             </div>
         </div>
@@ -57,8 +58,6 @@
         </transition>
 
         <SearchResultsModal :show="showSearchResults" @close="closeSearchResults" />
-        <!-- <SearchResultsModal :show="showSearchResults" :searchQuery="searchQuery" :results="searchResults"
-            @close="closeSearchResults" /> -->
     </div>
 </template>
 
@@ -84,6 +83,9 @@ export default {
         avatarUrl() {
             const picture = this.$store.state.auth.user?.picture
             return picture ? `${picture}?timestamp=${new Date().getTime()}` : 'https://via.placeholder.com/32'
+        },
+        isAdmin() {
+            return this.$store.state.auth.user.isAdmin
         }
     },
     methods: {
@@ -123,6 +125,9 @@ export default {
                 }
             })
         },
+        goAdmin() {
+            this.$router.push('/admin')
+        }
     },
     watch: {
         showSearch(newVal) {

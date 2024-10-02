@@ -7,7 +7,6 @@ async function getLyrics(detailLink) {
         const html = response.data;
         const $ = cheerio.load(html);
 
-        // const lyrics = $('.lyricsContainer').text().trim();
         const lyrics = $('xmp').text().trim();
         return lyrics;
     } catch (error) {
@@ -147,6 +146,46 @@ module.exports = {
             await axios.post(slackWebhookUrl, message);
         } catch (error) {
             console.error('Error sending message to Slack:', error);
+        }
+    },
+
+    searchBugsMusic: async (query) => {
+        try {
+            const encodedQuery = encodeURIComponent(query);
+            const url = `https://music.bugs.co.kr/search/integrated?q=${encodedQuery}`;
+            const response = await axios.get(url);
+            const html = response.data;
+            const $ = cheerio.load(html);
+    
+            const searchResults = [];
+    
+            $('table.list > tbody > tr').each((index, element) => {
+                const $el = $(element);
+                
+                if ($el.attr('rowtype') === 'track') {
+                    const title = $el.find('.title').text().trim();
+                    const artist = $el.find('.artist > a').text().trim();
+                    const album = $el.find('.album').text().trim();
+                    const coverUrl = $el.find('.thumbnail > img').attr('src');
+                    const detailLink = $(element).find('.trackInfo').attr('href');
+
+                    searchResults.push({
+                        title,
+                        artist,
+                        album,
+                        coverUrl,
+                        detailLink
+                    });
+                }
+    
+                // 결과를 20개로 제한
+                if (searchResults.length >= 20) return false;
+            });
+    
+            return searchResults;
+        } catch (err) {
+            console.error('Bugs 음악 검색 중 오류 발생:', err);
+            throw err;
         }
     }
 

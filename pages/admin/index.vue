@@ -11,6 +11,7 @@
                     <h1 class="text-xl sm:text-2xl font-semibold text-gray-900">관리자 패널</h1>
                 </div>
                 <button
+                    @click="exitAdmin"
                     class="p-2 rounded-md text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
                     <i class="fas fa-sign-out-alt"></i>
                 </button>
@@ -103,5 +104,11 @@ export default {
             selectMenuItem,
         }
     },
+
+    methods: {
+        exitAdmin () {
+            this.$router.push('/')
+        }
+    }
 }
 </script>
