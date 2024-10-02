@@ -61,9 +61,9 @@ class UserService {
         return response.data;
     }
 
-    static async findOrCreateUser(provider, providerId) {
+    static async findOrCreateUser(provider, providerId, email) {
         let user = await db.User.findOne({ provider, providerId });
-        if (!user) user = await db.User.create({ provider, providerId })
+        if (!user) user = await db.User.create({ provider, providerId, email })
         return user;
     }
 }

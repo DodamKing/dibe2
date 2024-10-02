@@ -2,6 +2,7 @@ const express = require('express')
 const helper = require('../utils/helper')
 const AdvancedInvidiousManager = require('../utils/advancedInvidiousManager')
 const services = require('../services')
+const { adminMiddleware } = require('../middleware/auth')
 
 const router = express.Router()
 const invidious = new AdvancedInvidiousManager()
@@ -30,11 +31,11 @@ router.get('/stream/:songId', async (req, res) => {
     const { songId } = req.params
     let youtubeUrl = await services.songService.getYoutubeUrlbySongId(songId)
     if (!youtubeUrl) youtubeUrl = await services.songService.updateYoutubeUrl(songId)
-        
+
     try {
         // const { audioStream, duration, contentLength } = await services.songService.getAudioStream(youtubeUrl)
         const { audioStream, duration, contentLength, mimeType } = await invidious.getAudioStream(youtubeUrl)
-            
+
         res.setHeader('Content-Type', mimeType)
         res.setHeader('Transfer-Encoding', 'chunked')
 
@@ -63,7 +64,7 @@ router.get('/stream/:songId', async (req, res) => {
 })
 
 router.get('/songdata', async (req, res) => {
-    const { title, artist } =  req.query
+    const { title, artist } = req.query
     const songData = await services.songService.getSongByTitleAndArtist(title, artist)
     res.json({ songData })
 })
@@ -78,17 +79,17 @@ router.post('/songsdata', async (req, res) => {
     res.json({ songDatas })
 }),
 
-router.get('/search', async (req, res) => {
-    const { query, type = 'all', page = 1, limit = 20 } = req.query
+    router.get('/search', async (req, res) => {
+        const { query, type = 'all', page = 1, limit = 20 } = req.query
 
-    try {
-        const results = await services.songService.searchSong(query, type, parseInt(page), parseInt(limit))
-        res.json(results)
-    } catch (err) {
-        console.error('곡 검색 api 에러 :', err)
-        res.status(500).json({ error: '검색 중 에러 발생' })
-    }
-})
+        try {
+            const results = await services.songService.searchSong(query, type, parseInt(page), parseInt(limit))
+            res.json(results)
+        } catch (err) {
+            console.error('곡 검색 api 에러 :', err)
+            res.status(500).json({ error: '검색 중 에러 발생' })
+        }
+    })
 
 router.get('/youtubeId/:songId', async (req, res, next) => {
     const { songId } = req.params
@@ -98,6 +99,18 @@ router.get('/youtubeId/:songId', async (req, res, next) => {
         res.json(youtubeId)
     } catch (err) {
         next(err)
+    }
+})
+
+router.put('/:id', adminMiddleware, async (req, res) => {
+    const songId = req.params.id
+
+    try {
+        const result = await services.songService.updateSong(songId, req.body)
+        res.json(result);
+    } catch (error) {
+        console.error('라우터에서 음원 수정 처리 중 오류 발생:', error);
+        res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
     }
 })
 

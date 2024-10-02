@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema({
     password: String,
     provider: { type: String, enum: ['google', 'kakao'] },
     providerId: String,
+    isAdmin: { type: Boolean, default: false }
 })
 
 userSchema.pre('save', async function(next) {

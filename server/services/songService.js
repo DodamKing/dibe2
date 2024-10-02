@@ -213,8 +213,8 @@ module.exports = {
                 $or: [
                     { title: { $regex: query, $options: 'i' } },
                     { artist: { $regex: query, $options: 'i' } },
-                    { album: { $regex: query, $options: 'i' } },
-                    { lyrics: { $regex: query, $options: 'i' } }
+                    // { album: { $regex: query, $options: 'i' } },
+                    // { lyrics: { $regex: query, $options: 'i' } }
                 ]
             };
         } else {
@@ -267,6 +267,19 @@ module.exports = {
         } catch (err) {
             console.error('유뷰트 아이디:', err)
             throw err
+        }
+    },
+
+    updateSong: async (songId, updateData) => {
+        try {
+            const updatedSong = await db.Song.findByIdAndUpdate(songId, updateData, { new: true })
+            if (!updatedSong) {
+                return { success: false, message: '음원을 찾을 수 없습니다.' }
+            }
+            return { success: true, updatedSong, message: '음원이 성공적으로 수정되었습니다.' }
+        } catch (error) {
+            console.error('음원 수정 중 오류 발생:', error)
+            throw new Error('서버 오류가 발생했습니다.')
         }
     }
 }

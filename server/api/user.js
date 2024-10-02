@@ -1,7 +1,7 @@
 const express = require('express')
 const bcrypt = require('bcrypt')
 const db = require('../models')
-const { isNotAuthenticated } = require('../middleware/auth')
+const { isNotAuthenticated, isAdmin } = require('../middleware/auth')
 const axios = require('axios')
 const UserService = require('../services/userService')
 
@@ -42,7 +42,8 @@ router.post('/login', isNotAuthenticated, async (req, res) => {
         const sessionUser = {
             userId: user._id,
             username: user.username,
-            email: user.email
+            email: user.email,
+            isAdmin: user.isAdmin
         }
 
         req.session.user = sessionUser
@@ -91,7 +92,7 @@ router.get('/google/callback', async (req, res) => {
     try {
         const tokens = await UserService.getGoogleTokens(code)
         const userInfo = await UserService.getGoogleUserInfo(tokens.access_token)
-        const user = await UserService.findOrCreateUser(provider, userInfo.id)
+        const user = await UserService.findOrCreateUser(provider, userInfo.id, userInfo.email)
 
         req.session.user = {
             userId: user._id,
@@ -100,7 +101,8 @@ router.get('/google/callback', async (req, res) => {
             email: userInfo.email,
             name: userInfo.name,
             picture: userInfo.picture,
-            accessToken: tokens.access_token
+            accessToken: tokens.access_token,
+            isAdmin: user.isAdmin
         }
 
         res.redirect('/')
@@ -130,7 +132,7 @@ router.get('/kakao/callback', async (req, res) => {
     try {
         const tokens = await UserService.getKakaoTokens(code)
         const userInfo = await UserService.getKakaoUserInfo(tokens.access_token)
-        const user = await UserService.findOrCreateUser(provider, userInfo.id)
+        const user = await UserService.findOrCreateUser(provider, userInfo.id, userInfo.kakao_account.email)
 
         req.session.user = {
             userId: user._id,
@@ -139,7 +141,8 @@ router.get('/kakao/callback', async (req, res) => {
             email: userInfo.kakao_account.email,
             name: userInfo.properties.nickname,
             picture: userInfo.properties.profile_image,
-            accessToken: tokens.access_token
+            accessToken: tokens.access_token,
+            isAdmin: user.isAdmin
         }
 
         res.redirect('/')
