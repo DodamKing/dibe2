@@ -152,7 +152,7 @@
                     <div v-for="result in bugsSearchResults" :key="result.detailLink"
                         class="p-2 hover:bg-gray-100 cursor-pointer flex items-center space-x-4"
                         @click="selectBugsResult(result)">
-                        <img :src="result.coverUrl" :alt="result.title + ' 앨범 커버'"
+                        <img :src="result.coverUrl.replace('/50/', '/150/')" :alt="result.title + ' 앨범 커버'"
                             class="w-16 h-16 object-cover rounded-md">
                         <div>
                             <p class="font-semibold">{{ result.title }}</p>
