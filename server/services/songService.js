@@ -89,7 +89,7 @@ module.exports = {
 
     updateYoutubeUrls: async () => {
         try {
-            const songs = await db.Song.find({ $or: [ { youtubeUrl: null }, { youtubeUrl: '' }] })
+            const songs = await db.Song.find({ youtubeUrl: { $in: [null, ''] } })
 
             for (const song of songs) {
                 try {
@@ -252,7 +252,7 @@ module.exports = {
 
     updateLyrics: async () => {
         try {
-            const songs = await db.Song.find({ $or: [ { lyrics: null }, { lyrics: '' }], detailLink: { $ne: null } })
+            const songs = await db.Song.find({ lyrics: { $in: [null, ''] }, detailLink: { $ne: null } })
 
             for (const song of songs) {
                 try {

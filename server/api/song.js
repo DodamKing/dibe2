@@ -79,17 +79,17 @@ router.post('/songsdata', async (req, res) => {
     res.json({ songDatas })
 }),
 
-    router.get('/search', async (req, res) => {
-        const { query, type = 'all', page = 1, limit = 20 } = req.query
+router.get('/search', async (req, res) => {
+    const { query, type = 'all', page = 1, limit = 20 } = req.query
 
-        try {
-            const results = await services.songService.searchSong(query, type, parseInt(page), parseInt(limit))
-            res.json(results)
-        } catch (err) {
-            console.error('곡 검색 api 에러 :', err)
-            res.status(500).json({ error: '검색 중 에러 발생' })
-        }
-    })
+    try {
+        const results = await services.songService.searchSong(query, type, parseInt(page), parseInt(limit))
+        res.json(results)
+    } catch (err) {
+        console.error('곡 검색 api 에러 :', err)
+        res.status(500).json({ error: '검색 중 에러 발생' })
+    }
+})
 
 router.get('/youtubeId/:songId', async (req, res, next) => {
     const { songId } = req.params

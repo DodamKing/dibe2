@@ -326,9 +326,16 @@ export default {
         },
         async saveSong() {
             try {
+                const songData = Object.entries(this.currentSong).reduce((acc, [key, value]) => {
+                    if (value !== null && value !== '') {
+                        acc[key] = value;
+                    }
+                    return acc;
+                }, {});
+
                 if (this.editingSong) {
                     // 음원 수정
-                    const response = await this.$axios.$put(`/api/songs/${this.editingSong._id}`, this.currentSong);
+                    const response = await this.$axios.$put(`/api/songs/${this.editingSong._id}`, songData);
 
                     if (response.success) {
                         // 성공적으로 수정된 경우
@@ -344,7 +351,7 @@ export default {
                         this.$toast.error(response.message || '음원 수정에 실패했습니다.');
                     }
                 } else {
-                    const response = await this.$axios.$post('/api/songs', this.currentSong);
+                    const response = await this.$axios.$post('/api/songs', songData);
                     if (response.success) {
                         this.$toast.success(response.message || '새 음원이 성공적으로 추가되었습니다.');
                         this.closeModal();
