@@ -2,6 +2,7 @@ const cron = require('node-cron')
 const helper = require('../utils/helper')
 const { songService } = require('../services')
 const { sendErrorToSlack } = require('../utils/helper')
+const { connectToMongoDB } = require('../models')
 
 function setupCronJob(schedule, jobName, task) {
     if (process.env.NODE_ENV !== 'development') {
@@ -11,6 +12,7 @@ function setupCronJob(schedule, jobName, task) {
             cron.schedule(schedule, async () => {
                 console.log(`${jobName} 시작: ${new Date().toISOString()}`);
                 try {
+                    await connectToMongoDB()
                     await task();
                     console.log(`${jobName} 완료: ${new Date().toISOString()}`);
                 } catch (error) {

@@ -72,6 +72,7 @@ export default {
     '~/server/middleware/cors',
     '~/server/middleware/dbConnection',
     '~/server/middleware/session',
+    '~/server/middleware/dailyVisitor.js',
     '~/server/middleware/cron',
     { path: '/api', handler: '~/server/api/index.js' },
   ],
