@@ -8,15 +8,6 @@ const statfs = util.promisify(fs.statfs)
 const uri = process.env.MONGODB_URI
 const client = new MongoClient(uri)
 
-let pm2;
-if (process.env.NODE_ENV === 'production') {
-	try {
-		pm2 = require('pm2');
-	} catch (err) {
-		console.warn('PM2 not available, uptime might be inaccurate');
-	}
-}
-
 class AdminService {
 	async getUserStats() {
 		await client.connect()
@@ -148,10 +139,10 @@ class AdminService {
 		// 디스크 사용량 계산
 		const path = os.platform() === 'win32' ? 'C:' : '/';
 		const stats = await statfs(path);
-		
+
 		const totalSpace = stats.blocks * stats.bsize;
-        const freeSpace = stats.bfree * stats.bsize;
-        const usedSpace = totalSpace - freeSpace;
+		const freeSpace = stats.bfree * stats.bsize;
+		const usedSpace = totalSpace - freeSpace;
 
 		return {
 			cpuUsage: cpuUsagePercent.toFixed(2),
@@ -160,49 +151,15 @@ class AdminService {
 		};
 	}
 
-  getAppUptime() {
-	if (process.env.NODE_ENV === 'production' && pm2) {
-		return new Promise((resolve, reject) => {
-			pm2.connect((err) => {
-				if (err) {
-					pm2.disconnect();
-					reject(err);
-					return;
-				}
-
-				pm2.list((err, processDescriptionList) => {
-					pm2.disconnect();
-					if (err) {
-						reject(err);
-						return;
-					}
-
-					const app = processDescriptionList.find(proc => proc.name === process.env.PM2_APP_NAME);
-					if (!app) {
-						reject(new Error('App not found'));
-						return;
-					}
-
-					const uptimeInSeconds = app.pm2_env.pm_uptime ? Math.floor((Date.now() - app.pm2_env.pm_uptime) / 1000) : 0;
-					const days = Math.floor(uptimeInSeconds / (3600 * 24));
-					const hours = Math.floor((uptimeInSeconds % (3600 * 24)) / 3600);
-					const minutes = Math.floor((uptimeInSeconds % 3600) / 60);
-
-					resolve(`${days}일 ${hours}시간 ${minutes}분`);
-				});
-			});
-		});
-	} else {
-		// 개발 환경이거나 PM2를 사용할 수 없는 경우 Node.js 프로세스의 가동 시간을 반환
+	getAppUptime() {
 		const uptimeInSeconds = Math.floor(process.uptime());
 		const days = Math.floor(uptimeInSeconds / (3600 * 24));
 		const hours = Math.floor((uptimeInSeconds % (3600 * 24)) / 3600);
 		const minutes = Math.floor((uptimeInSeconds % 3600) / 60);
 		return Promise.resolve(`${days}일 ${hours}시간 ${minutes}분`);
 	}
-}
 
-  // 여기에 다른 통계 메서드들을 추가할 수 있습니다 (예: 음원 통계, 문의사항 등)
+	// 여기에 다른 통계 메서드들을 추가할 수 있습니다 (예: 음원 통계, 문의사항 등)
 }
 
 module.exports = new AdminService()
