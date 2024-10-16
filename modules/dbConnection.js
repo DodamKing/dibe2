@@ -3,7 +3,7 @@ const { connectToMongoDB } = require('../server/models')
 
 module.exports = function () {
     // Nuxt 훅을 사용하여 서버 시작 시 실행
-    this.nuxt.hook('ready', async nuxt => {
+    this.nuxt.hook('listen', async nuxt => {
         try {
             await connectToMongoDB()
         } catch (error) {

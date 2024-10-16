@@ -62,7 +62,7 @@ function setupAllCronJobs() {
 
 module.exports = function() {
     // Nuxt 훅을 사용하여 서버 시작 시 실행
-    this.nuxt.hook('ready', () => {
+    this.nuxt.hook('listen', () => {
         setupAllCronJobs();
     });
 }
