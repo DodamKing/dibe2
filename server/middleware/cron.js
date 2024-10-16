@@ -60,7 +60,12 @@ function setupAllCronJobs() {
     }
 }
 
-module.exports = function (req, res, next) {
+try {
     setupAllCronJobs();
+} catch (error) {
+    console.error('크론 작업 등록 중 오류 발생:', error);
+}
+
+module.exports = function (req, res, next) {
     next();
 };
