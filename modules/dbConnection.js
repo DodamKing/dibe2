@@ -1,4 +1,4 @@
-// modules/db-connection.js
+// modules/dbConnection.js
 const { connectToMongoDB } = require('../server/models')
 
 module.exports = function () {
