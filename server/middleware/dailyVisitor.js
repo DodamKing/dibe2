@@ -27,21 +27,28 @@ export default async function visitorMiddleware(req, res, next) {
         const db = client.db('dibe2')
         const visitsCollection = db.collection('visitor_stats')
 
-        // 오늘의 통계 문서 가져오기 또는 생성 및 업데이트
-        await visitsCollection.updateOne(
-            { date: today },
-            { 
-                $setOnInsert: {
-                    totalPageviews: 0,
-                    uniqueVisitors: [],
-                    loggedInVisits: 0,
-                    uniqueLoggedInVisitors: []
-                },
-                $inc: { totalPageviews: 1 },
-                $addToSet: { uniqueVisitors: `${ip}:${userAgent}` }
-            },
-            { upsert: true }
-        )
+         // 오늘의 통계 문서 가져오기 또는 생성
+         const todayStats = await visitsCollection.findOne({ date: today })
+
+         if (!todayStats) {
+             // 오늘의 통계가 없으면 새로 생성
+             await visitsCollection.insertOne({
+                 date: today,
+                 totalPageviews: 1,
+                 uniqueVisitors: [`${ip}:${userAgent}`],
+                 loggedInVisits: 0,
+                 uniqueLoggedInVisitors: []
+             })
+         } else {
+             // 기존 통계 업데이트
+             await visitsCollection.updateOne(
+                 { date: today },
+                 { 
+                     $inc: { totalPageviews: 1 },
+                     $addToSet: { uniqueVisitors: `${ip}:${userAgent}` }
+                 }
+             )
+         }
 
         // 로그인한 사용자 추적 (현재 위치 유지)
         if (req.session && req.session.user) {
