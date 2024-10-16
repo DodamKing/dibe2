@@ -43,8 +43,8 @@ export default {
     '@nuxtjs/eslint-module',
     // https://go.nuxtjs.dev/tailwindcss
     '@nuxtjs/tailwindcss',
-    '~/modules/dbConnection.js',
-    '~/modules/cron.js',
+    // '~/modules/dbConnection.js',
+    // '~/modules/cron.js',
   ],
 
   // Modules: https://go.nuxtjs.dev/config-modules
@@ -72,10 +72,10 @@ export default {
 
   serverMiddleware: [
     '~/server/middleware/cors',
-    // '~/server/middleware/dbConnection',
+    '~/server/middleware/dbConnection',
     '~/server/middleware/session',
     '~/server/middleware/dailyVisitor.js',
-    // '~/server/middleware/cron',
+    '~/server/middleware/cron',
     { path: '/api', handler: '~/server/api/index.js' },
   ],
 
