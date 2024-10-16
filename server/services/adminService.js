@@ -8,6 +8,32 @@ const statfs = util.promisify(fs.statfs)
 const uri = process.env.MONGODB_URI
 const client = new MongoClient(uri)
 
+function fillMissingDates(stats, startDate, endDate) {
+    const filledStats = []
+    let currentDate = new Date(startDate)
+
+    while (currentDate <= endDate) {
+        const dateString = currentDate.toISOString().split('T')[0]
+        const existingStat = stats.find(stat => stat.date === dateString)
+
+        if (existingStat) {
+            filledStats.push(existingStat)
+        } else {
+            filledStats.push({
+                date: dateString,
+                totalPageviews: 0,
+                uniqueVisitors: 0,
+                loggedInVisits: 0,
+                uniqueLoggedInVisitors: 0
+            })
+        }
+
+        currentDate.setDate(currentDate.getDate() + 1)
+    }
+
+    return filledStats
+}
+
 class AdminService {
 	async getUserStats() {
 		await client.connect()
@@ -74,15 +100,23 @@ class AdminService {
 	async getVisitorStats() {
 		await client.connect()
 		const db = client.db('dibe2')
+		const now = new Date()
+		const utcNow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999))
+		
+		// 7일 전 UTC 시간 계산
+		const sevenDaysAgo = new Date(utcNow)
+		sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 6)
+		sevenDaysAgo.setUTCHours(0, 0, 0, 0)
+	
 		const visitorStats = await db.collection('visitor_stats').aggregate([
 			{
 				$match: {
-					date: { $gte: new Date(new Date().setDate(new Date().getDate() - 7)) }
+					date: { $gte: sevenDaysAgo, $lte: utcNow }
 				}
 			},
 			{
 				$group: {
-					_id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+					_id: { $dateToString: { format: "%Y-%m-%d", date: "$date", timezone: "Asia/Seoul" } },
 					totalPageviews: { $sum: '$totalPageviews' },
 					uniqueVisitors: { $addToSet: '$uniqueVisitors' },
 					loggedInVisits: { $sum: '$loggedInVisits' },
@@ -103,13 +137,11 @@ class AdminService {
 				$sort: { date: 1 }
 			}
 		]).toArray()
-
-		return visitorStats[0] || {
-			totalPageviews: 0,
-			uniqueVisitors: 0,
-			loggedInVisits: 0,
-			uniqueLoggedInVisitors: 0
-		}
+	
+		// 결과가 7일 미만인 경우 빈 날짜 추가
+		const filledStats = fillMissingDates(visitorStats, sevenDaysAgo, now)
+	
+		return filledStats
 	}
 
 	async getSystemStats() {

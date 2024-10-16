@@ -1,14 +1,26 @@
 const express = require('express')
 const bcrypt = require('bcrypt')
 const db = require('../models')
-const { isNotAuthenticated, isAdmin } = require('../middleware/auth')
-const axios = require('axios')
+const { isNotAuthenticated, adminMiddleware } = require('../middleware/auth')
 const UserService = require('../services/userService')
 
 const router = express.Router()
 
 router.get('/test', (req, res, next) => {
     res.json({ message: 'test' })
+})
+
+router.get('/', adminMiddleware, async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1
+        const limit = parseInt(req.query.limit) || 10
+        const search = req.query.search || ''
+        const result = await UserService.findUser({ search, page, limit })
+
+        res.json(result)
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message })
+    }
 })
 
 router.post('/register', isNotAuthenticated, async (req, res) => {
@@ -46,6 +58,8 @@ router.post('/login', isNotAuthenticated, async (req, res) => {
             isAdmin: user.isAdmin
         }
 
+        if (process.env.NODE_ENV === 'development') sessionUser.isAdmin = true
+
         req.session.user = sessionUser
         res.json({ message: '로그인 성공', user: { userId: user._id, username: user.username, email: user.email }, code: 1 })
     } catch (err) {
@@ -58,12 +72,12 @@ router.post('/logout', async (req, res) => {
     try {
         req.session.destroy((err) => {
             if (err) return res.status(500).json({ message: '세션 처리 중 오류 발생' })
-                res.clearCookie('dibe2_session_cookie')
+            res.clearCookie('dibe2_session_cookie')
             res.json({ message: '로그아웃 되었습니다.' })
         })
     } catch (error) {
         console.error('로그아웃 에러:', error)
-        res.status(500).json({ message: '로그아웃 처리 중 오류 발생'})
+        res.status(500).json({ message: '로그아웃 처리 중 오류 발생' })
     }
 })
 
@@ -149,6 +163,18 @@ router.get('/kakao/callback', async (req, res) => {
     } catch (error) {
         console.error('Kakao login error:', error)
         res.redirect('/login?error=kakao_login_failed')
+    }
+})
+
+router.patch('/:userId/toggle-admin', adminMiddleware, async (req, res) => {
+    try {
+        const userId = req.params.userId
+        const result = await UserService.toggleAdmin(userId)
+        if (!result.success) return res.json({ message: result.message })
+
+        res.json({ message: 'Admin status updated successfully' })
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message })
     }
 })
 

@@ -66,6 +66,30 @@ class UserService {
         if (!user) user = await db.User.create({ provider, providerId, email })
         return user;
     }
+
+    static async findUser({ search, page = 1, limit = 10 }) {
+        const query = search
+            ? { $or: [{ username: { $regex: search, $options: 'i' } }, { email: { $regex: search, $options: 'i' } }] }
+            : {}
+
+        const total = await db.User.countDocuments(query)
+        const users = await db.User.find(query)
+            .select('-password -providerId')  // 비밀번호와 providerId 제외
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .sort({ createdAt: -1 })
+        return { users, total, page, totalPages: Math.ceil(total / limit) }
+    }
+
+    static async toggleAdmin(id) {
+        const user = await db.User.findById(id)
+        if (!user) return { success: false, message: 'User not found' }
+        else {
+            user.isAdmin = !user.isAdmin
+            await user.save()
+            return { success: true }
+        } 
+    }
 }
 
 module.exports = UserService

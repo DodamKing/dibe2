@@ -31,7 +31,7 @@ export default {
 
   // Plugins to run before rendering page: https://go.nuxtjs.dev/config-plugins
   plugins: [
-    '~/plugins/error-handler'
+    '~/plugins/error-handler',
   ],
 
   // Auto import components: https://go.nuxtjs.dev/config-components
@@ -43,6 +43,8 @@ export default {
     '@nuxtjs/eslint-module',
     // https://go.nuxtjs.dev/tailwindcss
     '@nuxtjs/tailwindcss',
+    '~/modules/dbConnection.js',
+    '~/modules/cron.js',
   ],
 
   // Modules: https://go.nuxtjs.dev/config-modules
@@ -70,10 +72,10 @@ export default {
 
   serverMiddleware: [
     '~/server/middleware/cors',
-    '~/server/middleware/dbConnection',
+    // '~/server/middleware/dbConnection',
     '~/server/middleware/session',
     '~/server/middleware/dailyVisitor.js',
-    '~/server/middleware/cron',
+    // '~/server/middleware/cron',
     { path: '/api', handler: '~/server/api/index.js' },
   ],
 
