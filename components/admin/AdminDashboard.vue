@@ -211,11 +211,36 @@ export default {
             }
         },
         prepareUserChartData() {
+            if (!this.userStats?.dates) {
+                // 서버에서 날짜 정보가 오지 않은 경우의 폴백
+                this.userChartData = {
+                    labels: ['6일 전', '5일 전', '4일 전', '3일 전', '2일 전', '어제', '오늘'],
+                    datasets: [{
+                        label: '일일 신규 사용자',
+                        data: this.userStats.newUsersLastWeek || new Array(7).fill(0),
+                        fill: false,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    }]
+                }
+                return
+            }
+
+            // 서버에서 받은 날짜를 기반으로 레이블 생성
+            const labels = this.userStats.dates.map(date => {
+                const d = new Date(date)
+                return new Intl.DateTimeFormat('ko-KR', { 
+                    month: 'numeric', 
+                    day: 'numeric',
+                    weekday: 'short'
+                }).format(d)
+            })
+
             this.userChartData = {
-                labels: ['6일 전', '5일 전', '4일 전', '3일 전', '2일 전', '어제', '오늘'],
+                labels,
                 datasets: [{
                     label: '일일 신규 사용자',
-                    data: this.userStats.newUsersLastWeek?.map(Math.round) || [0, 0, 0, 0, 0, 0, 0],
+                    data: this.userStats.newUsersLastWeek,
                     fill: false,
                     borderColor: 'rgb(75, 192, 192)',
                     tension: 0.1

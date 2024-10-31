@@ -86,14 +86,27 @@ class AdminService {
 			]).toArray()
 		])
 
-		const newUsersLastWeek = new Array(7).fill(0)
-		dailyStats.forEach((day, index) => {
-			newUsersLastWeek[index] = day.newUsers
+		 // 최근 7일의 날짜 배열 생성
+		 const last7Days = Array.from({ length: 7 }, (_, i) => {
+			const date = new Date()
+			date.setDate(date.getDate() - (6 - i))
+			return date.toISOString().split('T')[0]
 		})
+	
+		// 날짜별 데이터 매핑
+		const dailyStatsMap = Object.fromEntries(
+			dailyStats.map(day => [day._id, day.newUsers])
+		)
+
+		// 각 날짜에 대해 데이터가 있으면 사용, 없으면 0
+		const newUsersLastWeek = last7Days.map(date => 
+			dailyStatsMap[date] || 0
+		)
 
 		return {
 			...(totalStats[0] || { totalUsers: 0, newUsersToday: 0 }),
-			newUsersLastWeek
+			newUsersLastWeek,
+			dates: last7Days
 		}
 	}
 

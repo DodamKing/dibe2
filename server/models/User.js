@@ -1,8 +1,6 @@
 const mongoose = require('mongoose')
 const bcrypt = require('bcrypt')
 
-let User
-
 const userSchema = new mongoose.Schema({
     username: String,
     email: { type: String, unique: true },
@@ -10,11 +8,16 @@ const userSchema = new mongoose.Schema({
     provider: { type: String, enum: ['google', 'kakao'] },
     providerId: String,
     isAdmin: { type: Boolean, default: false }
+}, {
+    timestamps: true
 })
 
 userSchema.pre('save', async function(next) {
     if (!this.isModified('password')) return next()
-    this.password = await bcrypt.hash(this.password, 10)
+    if (!this.password) return next()
+
+    const salt = await bcrypt.genSalt(10)
+    this.password = await bcrypt.hash(this.password, salt)
     next()
 })
 
