@@ -203,7 +203,7 @@ module.exports = {
     getSongByTitleAndArtist: async (title, artist) => {
         try {
             const song = await db.Song.findOne({ title, artist })
-                .select('_id title artist coverUrl')
+                .select('_id title artist coverUrl lyrics')
             return song
         } catch (err) {
             console.error(err)
