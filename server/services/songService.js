@@ -174,6 +174,53 @@ module.exports = {
         }
     },
 
+    getYoutubeUrlsByYouTubeSearch: async (query) => {
+        try {
+            const searchResults = await YouTubeSearch.GetListByKeyword(query, false, 5)
+            let youtubeUrls = [];
+
+            if (searchResults?.items?.length > 0) {
+                for (const item of searchResults.items) {
+                    if (!item.length?.simpleText) continue
+
+                    const durationInSeconds = parseSimpleTextDuration(item.length.simpleText)
+
+                    if (durationInSeconds === null) continue
+
+                    // 2분(120초) ~ 6분(360초) 사이의 영상만 수집
+                    if (durationInSeconds >= 120 && durationInSeconds <= 360) {
+                        youtubeUrls.push({
+                            id: item.id,
+                            url: `https://www.youtube.com/watch?v=${item.id}`,
+                            title: item.title,
+                            duration: item.length.simpleText,
+                            thumbnail: item.thumbnail?.thumbnails?.[0]?.url || '',
+                            channelTitle: item.channelTitle || ''
+                        });
+                    }
+                }
+            }
+
+            if (youtubeUrls.length === 0) {
+                return {
+                    success: false,
+                    message: '적절한 YouTube 동영상을 찾을 수 없습니다.',
+                    results: []
+                }
+            } 
+
+            return {
+                success: true,
+                message: `${youtubeUrls.length}개의 YouTube 동영상을 찾았습니다.`,
+                results: youtubeUrls
+            }
+
+        } catch (err) {
+            console.error('YouTube URL 수집 중 오류 발생:', err)
+            throw err
+        }
+    },
+
     getAudioStream: async (youtubeUrl) => {
         try {
             const info = await ytdl.getInfo(youtubeUrl)
@@ -304,6 +351,16 @@ module.exports = {
         } catch (error) {
             console.error('음원 수정 중 오류 발생:', error)
             throw new Error('서버 오류가 발생했습니다.')
+        }
+    },
+
+    delete: async (songId) => {
+        try {
+            const deleteSong = await db.Song.findByIdAndDelete(songId)
+            return deleteSong
+        } catch (error) {
+            if (error.name === 'CastError') return null
+            throw error
         }
     }
 }

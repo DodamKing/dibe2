@@ -138,4 +138,46 @@ router.get('/search-bugs', async (req, res) => {
     }
 })
 
+router.get('/search-youtube', async (req, res) => {
+    try {
+        const { query } = req.query;
+        if (!query) {
+            return res.status(400).json({
+                success: false,
+                message: '검색어가 필요합니다.',
+                results: []
+            })
+        }
+
+        const response = await services.songService.getYoutubeUrlsByYouTubeSearch(query);
+        res.json(response);
+
+    } catch (error) {
+        console.error('YouTube 검색 오류:', error)
+        res.status(500).json({
+            success: false,
+            message: 'YouTube 검색 중 오류가 발생했습니다.',
+            results: []
+        })
+    }
+})
+
+router.delete('/delete/:id', async (req, res) => {
+    try {
+        const result = await services.songService.delete(req.params.id)
+
+        if (!result) {
+            return res.status(404).json({
+                success: false,
+                message: '해당하는 음원을 찾을 수 없습니다.'
+            })
+        }
+        
+        res.json({ success: true, message: '음원이 성공적으로 삭제되었습니다.' })
+    } catch (error) {
+        console.error('음원 삭제 중 오류 발생:', error)
+        res.status(500).json({ success: false, message: '음원 삭제 중 오류가 발생했습니다.' })
+    }
+})
+
 module.exports = router

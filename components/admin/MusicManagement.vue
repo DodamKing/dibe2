@@ -195,8 +195,83 @@
                     </div>
                     <div>
                         <label for="youtubeUrl" class="block text-sm font-medium text-gray-700">YouTube URL</label>
-                        <input id="youtubeUrl" v-model="currentSong.youtubeUrl" type="text"
-                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        <div class="flex space-x-2">
+                            <input id="youtubeUrl" v-model="currentSong.youtubeUrl" type="text"
+                                class="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <button type="button" @click="searchYoutubeUrl"
+                                :disabled="!currentSong.title || !currentSong.artist"
+                                class="mt-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                                <i class="fab fa-youtube mr-2"></i>검색
+                            </button>
+                        </div>
+
+                        <!-- 검색 결과 토글 버튼 -->
+                        <button type="button" v-if="youtubeSearchResults.length" @click="toggleYoutubeResults"
+                            class="mt-2 text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                            <svg :class="['h-4 w-4 mr-1 transition-transform duration-200',
+                                showYoutubeResults ? 'transform rotate-180' : '']" viewBox="0 0 20 20"
+                                fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            {{ showYoutubeResults ? '검색 결과 접기' : '검색 결과 펼치기' }}
+                        </button>
+
+                        <!-- Youtube 검색 결과 -->
+                        <div v-if="showYoutubeResults && youtubeSearchResults.length"
+                            class="mt-2 border rounded-md overflow-hidden">
+                            <div class="max-h-64 overflow-y-auto">
+                                <!-- form 태그 밖으로 이동시켜야 함 -->
+                                <div v-for="result in youtubeSearchResults" :key="result.id"
+                                    class="p-3 hover:bg-gray-50 border-b last:border-b-0">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="relative w-24 h-16 flex-shrink-0">
+                                            <img :src="result.thumbnail" class="w-full h-full object-cover rounded">
+                                            <div class="absolute inset-0 bg-black bg-opacity-50 rounded flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer"
+                                                @click.prevent="previewYoutubeInModal(result, $envet)">
+                                                <i class="fas fa-play text-white text-lg"></i>
+                                            </div>
+                                        </div>
+                                        <div class="flex-1 min-w-0 cursor-pointer" @click="selectYoutubeUrl(result)">
+                                            <p class="font-medium text-gray-900 truncate">{{ result.title }}</p>
+                                            <p class="text-sm text-gray-500 truncate">{{ result.channelTitle }}</p>
+                                            <p class="text-xs text-gray-400">{{ result.duration }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- 미리보기 플레이어에 seek bar 추가 -->
+                            <div v-if="isPlaying && previewVideoId" class="border rounded-md bg-gray-50 shadow-sm">
+                                <div class="p-3">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex-1 mr-4">
+                                            <p class="text-sm font-medium truncate">
+                                                {{ currentSong.previewTitle || '미리듣기 중...' }}
+                                            </p>
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            <button type="button" @click.prevent="togglePreviewPlay"
+                                                class="p-1.5 text-gray-600 hover:text-gray-800">
+                                                <i :class="['fas', isPaused ? 'fa-play' : 'fa-pause']"></i>
+                                            </button>
+                                            <button type="button" @click.prevent="stopPreview"
+                                                class="p-1.5 text-red-600 hover:text-red-800">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <!-- Seek bar -->
+                                    <div class="flex items-center space-x-2 mt-2">
+                                        <span class="text-xs text-gray-500">{{ formatTime(currentTime) }}</span>
+                                        <input type="range" min="0" :max="duration" :value="currentTime"
+                                            @input="handleSeek"
+                                            class="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                        <span class="text-xs text-gray-500">{{ formatTime(duration) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="flex justify-end space-x-2">
                         <button type="button" @click="closeModal"
@@ -274,6 +349,8 @@ export default {
             currentTime: 0,
             duration: 0,
             showSearchResults: true,
+            showYoutubeResults: true,
+            youtubeSearchResults: [],
         }
     },
     mounted() {
@@ -379,12 +456,25 @@ export default {
             };
             this.bugsSearchQuery = '';
             this.bugsSearchResults = [];
+            this.youtubeSearchResults = [];
+            if (this.isPlaying) {
+                this.stopPlay();
+            }
+            this.stopPreview();
         },
-        deleteSong(song) {
+        async deleteSong(song) {
             if (confirm('정말로 이 음원을 삭제하시겠습니까?')) {
-                // API 호출하여 음원 삭제
-                // await deleteSong(song._id);
-                this.searchSongs();
+                try {
+                    const response = await this.$axios.$delete('/api/songs/delete/' + song._id);
+                    if (response.success) {
+                        this.$toast.success(response.message);
+                        await this.searchSongs();
+                    } else {
+                        this.$toast.error(response.message);
+                    }
+                } catch (error) {
+                    this.$toast.error('음원 삭제 중 오류가 발생했습니다.');
+                }
             }
         },
         playSong(song) {
@@ -399,15 +489,6 @@ export default {
                 };
             } else {
                 alert('유효한 YouTube URL이 아닙니다.');
-            }
-        },
-        pausePlay() {
-            if (this.isPaused) {
-                YouTubePlayer.play();
-                this.isPaused = false;
-            } else {
-                YouTubePlayer.pause();
-                this.isPaused = true;
             }
         },
         stopPlay() {
@@ -485,6 +566,106 @@ export default {
         toggleSearchResults() {
             this.showSearchResults = !this.showSearchResults;
         },
+
+        async searchYoutubeUrl() {
+            if (!this.currentSong.title || !this.currentSong.artist) return;
+
+            try {
+                const response = await this.$axios.$get('/api/songs/search-youtube', {
+                    params: {
+                        query: `${this.currentSong.title} ${this.currentSong.artist} official audio`
+                    }
+                });
+                this.youtubeSearchResults = response.results;
+            } catch (error) {
+                console.error('YouTube 검색 중 오류:', error);
+                this.$toast.error('YouTube 검색 중 오류가 발생했습니다.');
+            }
+        },
+
+        selectYoutubeUrl(result) {
+            this.currentSong = {
+                ...this.currentSong,  // 기존 곡 정보 유지
+                youtubeUrl: `https://www.youtube.com/watch?v=${result.id}`  // URL만 업데이트
+            };
+            this.showYoutubeResults = false;
+        },
+
+        toggleYoutubeResults() {
+            this.showYoutubeResults = !this.showYoutubeResults;
+        },
+
+        previewYoutubeInModal(result, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            // 같은 영상 클릭 시 토글 동작
+            if (this.previewVideoId === result.id) {
+                if (this.isPlaying) {
+                    if (this.isPaused) {
+                        YouTubePlayer.play();
+                        this.isPaused = false;
+                    } else {
+                        YouTubePlayer.pause();
+                        this.isPaused = true;
+                    }
+                } else {
+                    // 정지된 상태면 다시 재생
+                    YouTubePlayer.loadVideo(result.id);
+                    this.isPlaying = true;
+                    this.isPaused = false;
+                }
+            } else {
+                // 다른 영상이면 새로 재생
+                if (this.isPlaying) {
+                    YouTubePlayer.stop();
+                }
+                this.previewVideoId = result.id;
+                YouTubePlayer.loadVideo(result.id);
+                this.isPlaying = true;
+                this.isPaused = false;
+                this.currentSong = {
+                    ...this.currentSong,
+                    previewTitle: result.title
+                };
+            }
+        },
+
+        // 미리듣기 전용 토글 함수
+        togglePreviewPlay(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            if (this.isPaused) {
+                YouTubePlayer.play();
+            } else {
+                YouTubePlayer.pause();
+            }
+            this.isPaused = !this.isPaused;
+        },
+
+        stopPreview(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            YouTubePlayer.stop();
+            this.isPlaying = false;
+            this.isPaused = false;
+            this.previewVideoId = null;
+            this.currentTime = 0;
+        },
+
+        handleSeek(event) {
+            const time = parseFloat(event.target.value);
+            YouTubePlayer.seek(time);
+            this.currentTime = time;
+        }
     }
 }
 </script>
