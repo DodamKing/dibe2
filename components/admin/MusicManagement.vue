@@ -229,7 +229,7 @@
                                         <div class="relative w-24 h-16 flex-shrink-0">
                                             <img :src="result.thumbnail" class="w-full h-full object-cover rounded">
                                             <div class="absolute inset-0 bg-black bg-opacity-50 rounded flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer"
-                                                @click.prevent="previewYoutubeInModal(result, $envet)">
+                                                @click.prevent="previewYoutubeInModal(result, $event)">
                                                 <i class="fas fa-play text-white text-lg"></i>
                                             </div>
                                         </div>
@@ -349,7 +349,7 @@ export default {
             currentTime: 0,
             duration: 0,
             showSearchResults: true,
-            showYoutubeResults: true,
+            showYoutubeResults: false,
             youtubeSearchResults: [],
         }
     },
@@ -577,6 +577,7 @@ export default {
                     }
                 });
                 this.youtubeSearchResults = response.results;
+                this.showYoutubeResults = true;  
             } catch (error) {
                 console.error('YouTube 검색 중 오류:', error);
                 this.$toast.error('YouTube 검색 중 오류가 발생했습니다.');
