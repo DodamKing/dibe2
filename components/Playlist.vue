@@ -7,8 +7,16 @@
                 <div class="p-4 bg-gray-800 sticky top-0 z-10 lg:hidden">
                     <div class="w-12 h-1 bg-gray-600 rounded-full mx-auto mb-4"></div>
 
+                    <!-- Mobile Header Controls -->
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-purple-300">재생 목록 ({{ queue.length }}곡)</h2>
+                        <button class="text-gray-400 hover:text-white transition-colors duration-200" @click="close">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
                     <!-- Mobile Current Track Info -->
-                    <div v-if="currentTrack" class="flex items-center mb-4">
+                    <div v-if="currentTrack" class="flex items-center">
                         <img :src="currentTrack.coverUrl" :alt="currentTrack.title"
                             class="w-12 h-12 rounded-lg mr-4 object-cover">
                         <div class="flex-grow min-w-0">
@@ -22,14 +30,6 @@
                             <i class="fas fa-align-left"></i>
                         </button>
                     </div>
-
-                    <!-- Mobile Header Controls -->
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-xl font-semibold text-purple-300">재생 목록 ({{ queue.length }}곡)</h2>
-                        <button class="text-gray-400 hover:text-white transition-colors duration-200" @click="close">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
                 </div>
 
                 <!-- Mobile Lyrics View -->
@@ -38,7 +38,7 @@
                         class="flex-grow lg:hidden bg-gray-900 overflow-y-auto custom-scrollbar">
                         <div class="p-6 mb-24">
                             <div class="bg-gray-800 bg-opacity-50 rounded-lg p-6">
-                                <div class="text-lg leading-relaxed text-white"
+                                <div class="text-base lg:text-lg leading-relaxed text-white"
                                     style="white-space: pre-line; word-break: keep-all;">
                                     {{ currentTrack.lyrics || '가사 정보가 없습니다.' }}
                                 </div>
@@ -98,7 +98,8 @@
                                     class="absolute inset-0 flex items-start justify-center pt-8 pb-16 overflow-y-auto custom-scrollbar">
                                     <div v-if="currentTrack" class="w-full max-w-3xl">
                                         <div class="bg-gray-800 bg-opacity-50 rounded-lg">
-                                            <div class="text-lg leading-relaxed text-white p-8" ref="lyricsContent"
+                                            <div class="text-base lg:text-lg leading-relaxed text-white p-8"
+                                                ref="lyricsContent"
                                                 style="white-space: pre-line; word-break: keep-all;">
                                                 {{ currentTrack?.lyrics || '가사 정보가 없습니다.' }}
                                             </div>
@@ -138,18 +139,23 @@
                         <!-- Playlist Items -->
                         <div ref="queueContainer" class="flex-grow overflow-y-auto custom-scrollbar">
                             <draggable v-model="localQueue" class="p-4 space-y-3" handle=".drag-handle" @end="onDragEnd"
-                                :animation="200" :delay="50" :delayOnTouchOnly="true" :touchStartThreshold="50">
+                                :animation="200" :delay="100" :delayOnTouchOnly="true" :touchStartThreshold="5"
+                                :scroll="true" :scrollSensitivity="30" :forceFallback="true" ghost-class="ghost-item"
+                                chosen-class="chosen-item" drag-class="drag-item">
                                 <transition-group name="list">
                                     <li v-for="(song) in localQueue" :key="song._id"
-                                        :ref="song._id === currentTrack?._id ? 'currentTrack' : null" :class="['flex items-center p-3 mb-2 rounded-lg transition-all duration-300 ease-in-out',
+                                        :ref="song._id === currentTrack?._id ? 'currentTrack' : null" :class="[
+                                            'flex items-center p-3 mb-2 rounded-lg transition-all duration-300 ease-in-out relative',
                                             song._id === currentTrack?._id
                                                 ? 'bg-purple-700 bg-opacity-50 hover:bg-opacity-70 shadow-lg transform scale-102 border-l-4 border-purple-500'
-                                                : 'bg-gray-700 bg-opacity-50 hover:bg-opacity-70']">
+                                                : 'bg-gray-700 bg-opacity-50 hover:bg-opacity-70'
+                                        ]">
                                         <div class="flex items-center justify-center w-6 h-6 mr-2">
                                             <input type="checkbox" :checked="isSongSelected(song)"
                                                 @change="toggleSongSelection(song)"
                                                 class="form-checkbox h-3 w-3 text-purple-600">
                                         </div>
+
                                         <div class="flex-grow flex items-center min-w-0 cursor-pointer group"
                                             @click="playSong(song)">
                                             <div class="relative w-12 h-12 mr-4 flex-shrink-0">
@@ -171,12 +177,19 @@
                                                 <p class="text-sm text-gray-300 truncate">{{ song.artist }}</p>
                                             </div>
                                         </div>
+
                                         <div v-if="song._id === currentTrack?._id"
                                             class="text-purple-400 mr-2 animate-pulse">
                                             <i class="fas fa-volume-up"></i>
                                         </div>
-                                        <div class="drag-handle cursor-move text-gray-400 ml-2 touch-manipulation">
-                                            <i class="fas fa-grip-vertical"></i>
+
+                                        <div class="drag-handle cursor-move touch-manipulation
+                                            flex items-center justify-center px-2 py-4 -my-3 -mr-2">
+                                            <div class="flex flex-col items-center space-y-1">
+                                                <div class="w-1 h-1 rounded-full bg-gray-400"></div>
+                                                <div class="w-1 h-1 rounded-full bg-gray-400"></div>
+                                                <div class="w-1 h-1 rounded-full bg-gray-400"></div>
+                                            </div>
                                         </div>
                                     </li>
                                 </transition-group>
@@ -301,6 +314,11 @@ export default {
     opacity: 0;
 }
 
+/* List Transitions */
+.list-move {
+    transition: transform 0.5s ease;
+}
+
 .list-enter-active,
 .list-leave-active {
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -308,15 +326,46 @@ export default {
 
 .list-enter-from {
     opacity: 0;
-    transform: translateY(-30px);
+    transform: translateX(30px);
 }
 
 .list-leave-to {
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateX(30px);
 }
 
-/* Scrollbar */
+/* Drag and Drop Styles */
+.ghost-item {
+    opacity: 0.6;
+    background-color: #1a202c !important;
+    border: 2px solid #4a5568 !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2) !important;
+    transform: scale(1.02) !important;
+}
+
+.ghost-item.bg-purple-700 {
+    border-left: 4px solid #9f7aea !important;
+}
+
+.chosen-item {
+    z-index: 10;
+}
+
+.drag-item {
+    opacity: 0.9;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    cursor: grabbing;
+}
+
+/* Touch Optimizations */
+.drag-handle {
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* Scrollbar Styles */
 .custom-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: rgba(155, 155, 155, 0.5) transparent;
@@ -338,11 +387,6 @@ export default {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background-color: rgba(155, 155, 155, 0.7);
-}
-
-/* Touch Action */
-.touch-manipulation {
-    touch-action: manipulation;
 }
 
 /* Hover Effects */
