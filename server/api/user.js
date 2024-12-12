@@ -55,13 +55,14 @@ router.post('/login', isNotAuthenticated, async (req, res) => {
             userId: user._id,
             username: user.username,
             email: user.email,
-            isAdmin: user.isAdmin
+            isAdmin: user.isAdmin,
+            expiryDate: user.expiryDate
         }
 
         if (process.env.NODE_ENV === 'development') sessionUser.isAdmin = true
 
         req.session.user = sessionUser
-        res.json({ message: '로그인 성공', user: { userId: user._id, username: user.username, email: user.email }, code: 1 })
+        res.json({ message: '로그인 성공', user: sessionUser, code: 1 })
     } catch (err) {
         console.error('로그인 에러', err)
         res.status(500).json({ message: '서버 오류가 발생했습니다.', code: 4 })
@@ -81,10 +82,12 @@ router.post('/logout', async (req, res) => {
     }
 })
 
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
     const user = req.session.user
     if (!user) return res.status(401).json({ user: null })
-    res.json({ user })
+    const currentUser = await db.User.findById(user.userId)
+    const userWithExpiry = { ...user, expiryDate: currentUser.expiryDate }
+    res.json({ user: userWithExpiry })
 })
 
 router.get('/google', async (req, res) => {

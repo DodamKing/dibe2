@@ -90,6 +90,11 @@ class UserService {
             return { success: true }
         } 
     }
+
+    async checkAcess(userId) {
+        const user = await db.User.findById(userId)
+        return user.canAccess()
+    }
 }
 
 module.exports = UserService

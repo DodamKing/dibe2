@@ -4,12 +4,8 @@
         <div class="bg-white shadow rounded-lg p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row justify-between mb-4">
                 <div class="flex mb-2 sm:mb-0">
-                    <input 
-                        v-model="searchTerm" 
-                        type="text" 
-                        placeholder="사용자 검색" 
-                        class="border p-2 rounded mr-2 w-full sm:w-auto"
-                    >
+                    <input v-model="searchTerm" type="text" placeholder="사용자 검색"
+                        class="border p-2 rounded mr-2 w-full sm:w-auto">
                     <button @click="search" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
                         검색
                     </button>
@@ -17,12 +13,14 @@
                 <div class="flex items-center justify-between sm:justify-end w-full sm:w-auto mt-2 sm:mt-0">
                     <span class="mr-2">페이지 {{ currentPage }} / {{ totalPages }}</span>
                     <div>
-                        <button @click="changePage(-1)" :disabled="currentPage === 1" class="px-2 py-1 bg-gray-200 rounded mr-1">&lt;</button>
-                        <button @click="changePage(1)" :disabled="currentPage === totalPages" class="px-2 py-1 bg-gray-200 rounded">&gt;</button>
+                        <button @click="changePage(-1)" :disabled="currentPage === 1"
+                            class="px-2 py-1 bg-gray-200 rounded mr-1">&lt;</button>
+                        <button @click="changePage(1)" :disabled="currentPage === totalPages"
+                            class="px-2 py-1 bg-gray-200 rounded">&gt;</button>
                     </div>
                 </div>
             </div>
-            
+
             <!-- 데스크탑 뷰 -->
             <div class="hidden sm:block">
                 <table class="w-full">
@@ -32,6 +30,7 @@
                             <th class="text-left p-2">이름</th>
                             <th class="text-left p-2">가입 방법</th>
                             <th class="text-left p-2">관리자</th>
+                            <th class="text-left p-2">사용 기간</th>
                             <th class="text-left p-2">액션</th>
                         </tr>
                     </thead>
@@ -41,26 +40,30 @@
                             <td class="p-2">{{ user.username || '이름 없음' }}</td>
                             <td class="p-2">{{ user.provider || '로컬' }}</td>
                             <td class="p-2">
-                                <span 
+                                <span
                                     :class="user.isAdmin ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
-                                    class="px-2 py-1 rounded-full text-xs font-medium"
-                                >
+                                    class="px-2 py-1 rounded-full text-xs font-medium">
                                     {{ user.isAdmin ? '관리자' : '일반 사용자' }}
                                 </span>
                             </td>
                             <td class="p-2">
-                                <span 
-                                    @click="showToggleAdminToast(user)"
+                                <span v-if="!user.expiryDate" class="text-red-600 text-sm">
+                                    미설정
+                                </span>
+                                <span v-else :class="getExpiryStatusClass(user.expiryDate)"
+                                    class="px-2 py-1 rounded-full text-xs font-medium">
+                                    {{ formatExpiryDate(user.expiryDate) }}
+                                </span>
+                            </td>
+                            <td class="p-2">
+                                <span @click="showToggleAdminToast(user)"
                                     :class="user.isAdmin ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' : 'bg-blue-100 text-blue-800 hover:bg-blue-200'"
-                                    class="px-2 py-1 rounded-full text-xs font-medium cursor-pointer mr-2"
-                                >
+                                    class="px-2 py-1 rounded-full text-xs font-medium cursor-pointer mr-2">
                                     {{ user.isAdmin ? '관리자 해제' : '관리자 지정' }}
                                 </span>
-                                <span 
-                                    @click="showDeactivateToast(user)"
-                                    class="bg-red-100 text-red-800 hover:bg-red-200 px-2 py-1 rounded-full text-xs font-medium cursor-pointer"
-                                >
-                                    계정 비활성화
+                                <span @click="showAccessPeriodModal(user)"
+                                    class="bg-green-100 text-green-800 hover:bg-green-200 px-2 py-1 rounded-full text-xs font-medium cursor-pointer mr-2">
+                                    사용 기간 설정
                                 </span>
                             </td>
                         </tr>
@@ -82,28 +85,61 @@
                     </div>
                     <div class="mb-2">
                         <strong>관리자:</strong>
-                        <span 
-                            :class="user.isAdmin ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
-                            class="px-2 py-1 rounded-full text-xs font-medium ml-2"
-                        >
+                        <span :class="user.isAdmin ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
+                            class="px-2 py-1 rounded-full text-xs font-medium ml-2">
                             {{ user.isAdmin ? '관리자' : '일반 사용자' }}
                         </span>
                     </div>
-                    <div class="flex flex-wrap gap-2 mt-2">
-                        <span 
-                            @click="showToggleAdminToast(user)"
-                            :class="user.isAdmin ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' : 'bg-blue-100 text-blue-800 hover:bg-blue-200'"
-                            class="px-2 py-1 rounded-full text-xs font-medium cursor-pointer"
-                        >
-                            {{ user.isAdmin ? '관리자 해제' : '관리자 지정' }}
+                    <div class="mb-2">
+                        <strong>사용 기간:</strong>
+                        <span v-if="!user.expiryDate" class="text-red-600 text-sm ml-2">
+                            미설정
                         </span>
-                        <span 
-                            @click="showDeactivateToast(user)"
-                            class="bg-red-100 text-red-800 hover:bg-red-200 px-2 py-1 rounded-full text-xs font-medium cursor-pointer"
-                        >
-                            계정 비활성화
+                        <span v-else :class="getExpiryStatusClass(user.expiryDate)"
+                            class="px-2 py-1 rounded-full text-xs font-medium ml-2">
+                            {{ formatExpiryDate(user.expiryDate) }}
                         </span>
                     </div>
+                    <div class="flex flex-wrap gap-2 mt-2">
+                        <span @click="showToggleAdminToast(user)"
+                            :class="user.isAdmin ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' : 'bg-blue-100 text-blue-800 hover:bg-blue-200'"
+                            class="px-2 py-1 rounded-full text-xs font-medium cursor-pointer">
+                            {{ user.isAdmin ? '관리자 해제' : '관리자 지정' }}
+                        </span>
+                        <span @click="showAccessPeriodModal(user)"
+                            class="bg-green-100 text-green-800 hover:bg-green-200 px-2 py-1 rounded-full text-xs font-medium cursor-pointer">
+                            사용 기간 설정
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 사용 기간 설정 모달 -->
+        <div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+                <h3 class="text-lg font-semibold mb-4">사용 기간 설정</h3>
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600 mb-2">
+                        {{ selectedUser?.username || '선택된 사용자' }}의 사용 기간을 설정합니다.
+                    </p>
+                    <select v-model="selectedPeriod" class="w-full border p-2 rounded mb-2">
+                        <option value="1">1일</option>
+                        <option value="7">7일</option>
+                        <option value="30">30일</option>
+                        <option value="90">90일</option>
+                        <option value="180">180일</option>
+                        <option value="365">1년</option>
+                        <option value="unlimited">무제한</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button @click="closeModal" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">
+                        취소
+                    </button>
+                    <button @click="setAccessPeriod" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                        설정
+                    </button>
                 </div>
             </div>
         </div>
@@ -119,7 +155,10 @@ export default {
             currentPage: 1,
             totalPages: 1,
             searchTerm: '',
-            limit: 10
+            limit: 10,
+            showModal: false,
+            selectedUser: null,
+            selectedPeriod: '30'
         }
     },
     fetch() {
@@ -150,6 +189,47 @@ export default {
             this.currentPage = 1
             this.fetchUsers()
         },
+        formatExpiryDate(expiryDate) {
+            const expiry = new Date(expiryDate)
+            const now = new Date()
+
+            // 100년 이상 남은 경우 무제한으로 표시
+            if (expiry.getFullYear() - now.getFullYear() >= 100) {
+                return '무제한'
+            }
+
+            // 남은 일수 계산
+            const diffTime = expiry - now
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+            if (diffDays < 0) {
+                return '만료됨'
+            } else if (diffDays === 0) {
+                return '오늘 만료'
+            } else {
+                return `${diffDays}일 남음`
+            }
+        },
+        getExpiryStatusClass(expiryDate) {
+            const expiry = new Date(expiryDate)
+            const now = new Date()
+
+            // 무제한인 경우
+            if (expiry.getFullYear() - now.getFullYear() >= 100) {
+                return 'bg-purple-100 text-purple-800'
+            }
+
+            const diffTime = expiry - now
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+            if (diffDays < 0) {
+                return 'bg-red-100 text-red-800'
+            } else if (diffDays <= 7) {
+                return 'bg-yellow-100 text-yellow-800'
+            } else {
+                return 'bg-green-100 text-green-800'
+            }
+        },
         showToggleAdminToast(user) {
             this.$toast.show(`${user.username || '이 사용자'}의 관리자 권한을 변경하시겠습니까?`, {
                 duration: 5000,
@@ -162,6 +242,30 @@ export default {
                 }
             })
         },
+        showAccessPeriodModal(user) {
+            this.selectedUser = user
+            if (user.expiryDate) {
+                const expiry = new Date(user.expiryDate)
+                const now = new Date()
+                if (expiry.getFullYear() - now.getFullYear() >= 100) {
+                    this.selectedPeriod = 'unlimited'
+                } else {
+                    const diffDays = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24))
+                    const periods = [1, 7, 30, 90, 180, 365]
+                    this.selectedPeriod = periods.reduce((prev, curr) => {
+                        return Math.abs(curr - diffDays) < Math.abs(prev - diffDays) ? curr : prev
+                    }, 30).toString()
+                }
+            } else {
+                this.selectedPeriod = '30'
+            }
+            this.showModal = true
+        },
+        closeModal() {
+            this.showModal = false
+            this.selectedUser = null
+            this.selectedPeriod = '30'
+        },
         async toggleAdminStatus(user) {
             try {
                 await this.$axios.$patch(`/api/users/${user._id}/toggle-admin`)
@@ -172,22 +276,29 @@ export default {
                 this.$toast.error('관리자 상태 변경에 실패했습니다.')
             }
         },
-        showDeactivateToast(user) {
-            this.$toast.show(`${user.username || '이 사용자'}의 계정을 비활성화하시겠습니까?`, {
-                duration: 5000,
-                action: {
-                    text: '확인',
-                    onClick: (e, toastObject) => {
-                        this.deactivateUser(user)
-                        toastObject.goAway(0)
-                    }
+        async setAccessPeriod() {
+            try {
+                const response = await this.$axios.$put(`/api/admin/users/${this.selectedUser._id}/access`, {
+                    days: this.selectedPeriod === 'unlimited' ? 'unlimited' : parseInt(this.selectedPeriod)
+                })
+
+                // API 호출 성공 후 사용자 목록 새로고침
+                await this.fetchUsers()
+                this.$toast.success(response.message)
+                this.closeModal()
+            } catch (error) {
+                console.error('Failed to set access period:', error)
+                // 서버의 에러 응답 처리
+                if (error.response?.data?.message) {
+                    // 서버에서 정의한 에러 메시지 사용
+                    this.$toast.error(error.response.data.message)
+                } else {
+                    // 네트워크 오류 등 예상치 못한 에러
+                    this.$toast.error('서버와 통신 중 오류가 발생했습니다.')
                 }
-            })
+            }
         },
-        deactivateUser() {
-            // 실제 비활성화 로직은 아직 구현되지 않았으므로, 임시 메시지를 표시합니다.
-            this.$toast.info('계정 비활성화 기능은 현재 구현 중입니다.', { duration: 3000 })
-        }
     }
 }
 </script>
+                

@@ -2,6 +2,7 @@ const { MongoClient } = require('mongodb')
 const os = require('os')
 const fs = require('fs')
 const util = require('util')
+const db = require('../models')
 
 const statfs = util.promisify(fs.statfs)
 
@@ -36,15 +37,15 @@ function fillMissingDates(stats, startDate, endDate) {
 
 class AdminService {
 	async getUserStats() {
-		await client.connect()
-		const db = client.db('dibe2')
+		// await client.connect()
+		// const db = client.db('dibe2')
 
 		const sevenDaysAgo = new Date()
 		sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 		sevenDaysAgo.setHours(0, 0, 0, 0)
 
 		const [totalStats, dailyStats] = await Promise.all([
-			db.collection('users').aggregate([
+			db.User.aggregate([
 				{
 					$group: {
 						_id: null,
@@ -67,8 +68,8 @@ class AdminService {
 						newUsersToday: 1
 					}
 				}
-			]).toArray(),
-			db.collection('users').aggregate([
+			]),
+			db.User.aggregate([
 				{
 					$match: {
 						createdAt: { $gte: sevenDaysAgo }
@@ -83,7 +84,7 @@ class AdminService {
 				{
 					$sort: { _id: 1 }
 				}
-			]).toArray()
+			])
 		])
 
 		 // 최근 7일의 날짜 배열 생성
@@ -110,9 +111,27 @@ class AdminService {
 		}
 	}
 
+	async setUserAccessPeriod(userId, days) {
+		try {
+			const expiryDate = new Date()
+	
+			if (days === 'unlimited') expiryDate.setFullYear(expiryDate.getFullYear() + 100)
+			else expiryDate.setDate(expiryDate.getDate() + days)
+
+			const updateUser = await db.User.findByIdAndUpdate(userId, { expiryDate }, { new: true })
+
+			if (!updateUser) throw new Error('User not found')
+	
+			return updateUser
+		} catch (error) {
+			console.error('Error in setUserAccessPeriod:', error)
+			throw error
+		}
+	}
+
 	async getVisitorStats() {
 		await client.connect()
-		const db = client.db('dibe2')
+		const _db = client.db('dibe2')
 		const now = new Date()
 		const utcNow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999))
 		
@@ -121,7 +140,7 @@ class AdminService {
 		sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 6)
 		sevenDaysAgo.setUTCHours(0, 0, 0, 0)
 	
-		const visitorStats = await db.collection('visitor_stats').aggregate([
+		const visitorStats = await _db.collection('visitor_stats').aggregate([
 			{
 				$match: {
 					date: { $gte: sevenDaysAgo, $lte: utcNow }

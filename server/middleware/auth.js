@@ -28,6 +28,22 @@ module.exports = {
             return res.json()
         }
 
+        // 로그아웃 요청인 경우: 구독 만료 여부와 상관없이 통과
+        if (req.path === '/users/logout') {
+            return next();
+        }
+
+        // 관리자가 아닌 경우 기간 체크
+        if (!req.session.user.isAdmin) {
+            const expiryDate = req.session.user.expiryDate ? new Date(req.session.user.expiryDate) : null
+            if (!expiryDate || expiryDate < new Date()) {
+                return res.status(403).json({
+                    message: '사용 기간이 만료되었습니다.',
+                    requireSubscription: true
+                })
+            }
+        }
+
         next();
     },
 
