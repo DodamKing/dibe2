@@ -98,7 +98,7 @@
                                     class="absolute inset-0 flex items-start justify-center pt-8 pb-16 overflow-y-auto custom-scrollbar">
                                     <div v-if="currentTrack" class="w-full max-w-3xl">
                                         <div class="bg-gray-800 bg-opacity-50 rounded-lg">
-                                            <div class="text-base lg:text-lg leading-relaxed text-white p-8"
+                                            <div class="text-base lg:text-lg leading-relaxed text-white p-8 mb-40"
                                                 ref="lyricsContent"
                                                 style="white-space: pre-line; word-break: keep-all;">
                                                 {{ currentTrack?.lyrics || '가사 정보가 없습니다.' }}
@@ -118,7 +118,7 @@
                     </div>
 
                     <!-- Playlist Section -->
-                    <div class="flex-grow lg:w-1/5 flex flex-col bg-gray-800 lg:border-l border-gray-700">
+                    <div class="flex-grow lg:w-1/5 flex flex-col bg-gray-800 lg:border-l border-gray-700 pb-32">
                         <!-- Playlist Controls -->
                         <div class="p-4 bg-gray-800 sticky top-0 z-10 border-b border-gray-700">
                             <div class="flex justify-between items-center">
@@ -137,11 +137,13 @@
                         </div>
 
                         <!-- Playlist Items -->
-                        <div ref="queueContainer" class="flex-grow overflow-y-auto custom-scrollbar">
-                            <draggable v-model="localQueue" class="p-4 space-y-3" handle=".drag-handle" @end="onDragEnd"
-                                :animation="200" :delay="100" :delayOnTouchOnly="true" :touchStartThreshold="5"
-                                :scroll="true" :scrollSensitivity="30" :forceFallback="true" ghost-class="ghost-item"
-                                chosen-class="chosen-item" drag-class="drag-item">
+                        <div ref="queueContainer"
+                            class="flex-grow overflow-y-auto custom-scrollbar h-[calc(100vh-280px)] lg:h-[calc(100vh-80px)]">
+                            <draggable v-model="localQueue" class="p-4 space-y-3 pb-16" handle=".drag-handle"
+                                @end="onDragEnd" :animation="200" :delay="0" :delayOnTouchOnly="true"
+                                :touchStartThreshold="2" :scroll="true" :scrollSensitivity="50" :forceFallback="true"
+                                :fallbackTolerance="5" ghost-class="ghost-item" chosen-class="chosen-item"
+                                drag-class="drag-item">
                                 <transition-group name="list">
                                     <li v-for="(song) in localQueue" :key="song._id"
                                         :ref="song._id === currentTrack?._id ? 'currentTrack' : null" :class="[
@@ -178,14 +180,12 @@
                                             </div>
                                         </div>
 
-                                        <div v-if="song._id === currentTrack?._id"
-                                            class="text-purple-400 mr-2 animate-pulse">
-                                            <i class="fas fa-volume-up"></i>
-                                        </div>
-
                                         <div class="drag-handle cursor-move touch-manipulation
-                                            flex items-center justify-center px-2 py-4 -my-3 -mr-2">
-                                            <div class="flex flex-col items-center space-y-1">
+                                            flex items-center justify-center px-2 py-4 -my-3 -mr-2 active:bg-gray-600 active:bg-opacity-30 rounded-lg">
+                                            <div class="grid grid-cols-2 gap-1">
+                                                <div class="w-1 h-1 rounded-full bg-gray-400"></div>
+                                                <div class="w-1 h-1 rounded-full bg-gray-400"></div>
+                                                <div class="w-1 h-1 rounded-full bg-gray-400"></div>
                                                 <div class="w-1 h-1 rounded-full bg-gray-400"></div>
                                                 <div class="w-1 h-1 rounded-full bg-gray-400"></div>
                                                 <div class="w-1 h-1 rounded-full bg-gray-400"></div>
@@ -258,8 +258,16 @@ export default {
         close() {
             this.$emit('close')
         },
+        onDragStart() {
+            if ('vibrate' in navigator) {
+                navigator.vibrate(50);  // 짧은 진동
+            }
+        },
         onDragEnd() {
             this.SET_QUEUE(this.localQueue)
+            if ('vibrate' in navigator) {
+                navigator.vibrate(30);  // 더 짧은 진동
+            }
         },
         toggleMobileLyrics() {
             this.showMobileLyrics = !this.showMobileLyrics
@@ -296,7 +304,7 @@ export default {
             if (currentTrackElement && currentTrackElement[0]) {
                 currentTrackElement[0].scrollIntoView({ behavior: 'smooth', block: 'start' })
             }
-        }
+        },
     }
 }
 </script>
@@ -354,7 +362,9 @@ export default {
 .drag-item {
     opacity: 0.9;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
     cursor: grabbing;
+    background-color: rgba(76, 29, 149, 0.3) !important;
 }
 
 /* Touch Optimizations */
@@ -363,6 +373,12 @@ export default {
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.drag-handle:active {
+    background-color: rgba(107, 114, 128, 0.3);
+    border-radius: 8px;
 }
 
 /* Scrollbar Styles */

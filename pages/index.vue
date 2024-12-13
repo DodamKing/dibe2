@@ -1,6 +1,6 @@
 <template>
 	<main class="container mx-auto px-4 sm:px-6 py-8 flex-grow overflow-y-auto pb-24 sm:pb-32">
-		<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+		<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 mb-10">
 			<div
 				class="bg-gray-800 bg-opacity-70 rounded-lg shadow-lg p-4 sm:p-6 transition-transform duration-300">
 				<div class="sticky top-0 z-10 pb-4">

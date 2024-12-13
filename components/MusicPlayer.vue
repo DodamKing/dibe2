@@ -21,16 +21,24 @@
                             <p class="text-xs sm:text-sm text-gray-200 truncate">{{ currentTrack.artist }}</p>
                         </div>
                     </div>
-                    <div v-else class="flex items-center w-full h-full text-white text-sm sm:text-base">
-                        재생할 곡을 선택해주세요
+                    <div v-else class="flex items-center w-full h-full">
+                        <span class="text-white text-sm sm:text-base truncate">
+                            <span class="hidden sm:inline">재생할 곡을 선택해주세요</span>
+                            <span class="inline sm:hidden">곡 선택</span>
+                        </span>
                     </div>
                 </div>
 
                 <!-- Playback Controls -->
                 <div class="flex items-center justify-center space-x-2 sm:space-x-4 w-1/3 sm:w-1/2">
-                    <button class="text-gray-200 hover:text-white focus:outline-none" aria-label="반복 재생"
+                    <button class="text-gray-200 hover:text-white focus:outline-none relative" aria-label="반복 재생"
                         @click="toggleRepeat" :title="getRepeatTitle">
-                        <i :class="['fas', repeatModeIcon, { 'text-blue-400': repeatMode !== 'off' }]"></i>
+                        <i class="fas fa-repeat" :class="{ 'text-green-400': repeatMode !== 'off' }"></i>
+                        <span v-if="repeatMode === 'one'"
+                            class="absolute text-[10px] font-bold leading-none"
+                            :class="{ 'text-green-400': repeatMode !== 'off' }">
+                            1
+                        </span>
                     </button>
                     <button class="text-gray-200 hover:text-white focus:outline-none" aria-label="이전 곡"
                         @click="playPrevious" :disabled="!hasPreviousTrack">
@@ -49,7 +57,7 @@
                     </button>
                     <button class="text-gray-200 hover:text-white focus:outline-none z-10" aria-label="셔플"
                         @click="toggleShuffle" :title="shuffleOn ? '셔플 끄기' : '셔플 켜기'">
-                        <i :class="['fas', 'fa-shuffle', { 'text-blue-400': shuffleOn }]"></i>
+                        <i :class="['fas', 'fa-shuffle', { 'text-green-400': shuffleOn }]"></i>
                     </button>
                 </div>
 
@@ -121,7 +129,7 @@ import { mapState, mapActions, mapGetters } from 'vuex'
 export default {
     computed: {
         ...mapState('player', ['currentTrack', 'isPlaying', 'currentTime', 'duration', 'volume', 'shuffleOn', 'repeatMode', 'isLoading', 'isYouTubeReady']),
-        ...mapGetters('player', ['hasPreviousTrack', 'hasNextTrack', 'repeatModeIcon']),
+        ...mapGetters('player', ['hasPreviousTrack', 'hasNextTrack']),
         progress() {
             return this.duration > 0 ? (this.currentTime / this.duration) * 100 : 0
         },

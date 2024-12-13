@@ -19,7 +19,7 @@
         </transition>
 
         <!-- Loading Overlay -->
-        <div v-if="isAdding" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+        <div v-if="isAdding" class="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center">
             <div class="bg-gray-800 rounded-lg p-6 max-w-sm w-full text-center">
                 <svg class="animate-spin h-10 w-10 text-blue-500 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg"
                     fill="none" viewBox="0 0 24 24">
@@ -211,14 +211,32 @@ export default {
         async addToCurrentPlaylist() {
             if (this.isAdding) return
 
+            const TOAST_MESSAGES = {
+                QUEUE_FULL: '재생목록이 가득 찼습니다. 일부 곡을 제거해주세요.',
+                QUEUE_LIMIT_EXCEEDED: (remaining) => `재생목록에 ${remaining}곡만 더 추가할 수 있습니다.`,
+                ALL_DUPLICATES: '선택한 모든 곡이 이미 재생목록에 있습니다.',
+                SUCCESS: (added, duplicates) => {
+                    const duplicateMsg = duplicates ? ` (중복 ${duplicates}곡 제외)` : ''
+                    return `${added}곡이 현재 재생목록에 추가되었습니다.${duplicateMsg}`
+                },
+                ERROR: '곡을 현재 재생목록에 추가하는 데 실패했습니다.'
+            }
+
             this.isAdding = true
             try {
-                const addedCount = await this.addMultipleToPlaylist(this.selectedSongs)
-                this.showToast(`${addedCount}곡이 현재 재생목록에 추가되었습니다.`)
-                this.selectedSongs = []
+                const result = await this.addMultipleToPlaylist(this.selectedSongs)
+                const message = result.message === 'QUEUE_LIMIT_EXCEEDED' ? TOAST_MESSAGES[result.message](result.remaining)
+                    : result.message === 'SUCCESS' ? TOAST_MESSAGES[result.message](result.added, result.duplicates)
+                        : TOAST_MESSAGES[result.message] || TOAST_MESSAGES.ERROR
+
+                this.showToast(message)
+
+                if (result.message === 'SUCCESS') {
+                    this.selectedSongs = []
+                }
             } catch (err) {
                 console.error('Failed to add songs to current playlist:', err)
-                this.showToast('곡을 현재 재생목록에 추가하는 데 실패했습니다.')
+                this.showToast(TOAST_MESSAGES.ERROR)
             } finally {
                 this.isAdding = false
                 this.closeAddToPlaylistModal()
@@ -253,21 +271,24 @@ export default {
         },
         startProgress() {
             this.progressPercentage = 0
+            clearInterval(this.intervalId)
             this.intervalId = setInterval(() => {
                 if (this.progressPercentage < 90) {
                     this.progressPercentage += Math.random() * 15 + 5
                     if (this.progressPercentage > 90) {
-                        this.progressPercentage = 90
+                        const increment = Math.random() * 10 + 2
+                        this.progressPercentage = Math.min(90, this.progressPercentage + increment)
                     }
                 }
-            }, 100)
+            }, 200)
         },
         stopProgress() {
             clearInterval(this.intervalId)
             this.progressPercentage = 100
             setTimeout(() => {
+                this.isAdding = false
                 this.progressPercentage = 0
-            }, 300)
+            }, 500)
         },
         async handleCreatePlaylist(name) {
             try {

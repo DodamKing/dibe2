@@ -170,14 +170,48 @@ export const actions = {
 
     async addMultipleToPlaylist({ commit, state, dispatch }, songs) {
         try {
-            const { songDatas } = await this.$axios.$post('/api/songs/songsdata', { songs })
+            const QUEUE_LIMIT = 1000;
+
+            // 큐 제한 체크
+            if (state.queue.length >= QUEUE_LIMIT) {
+                return { added: 0, message: 'QUEUE_FULL' };
+            }
+
+            // 추가 가능한 곡 수 체크
+            if (state.queue.length + songs.length > QUEUE_LIMIT) {
+                const remainingSlots = QUEUE_LIMIT - state.queue.length;
+                return { added: 0, message: 'QUEUE_LIMIT_EXCEEDED', remaining: remainingSlots };
+            }
+
+            const plainSongs = [...songs];
+            const uniqueSongs = plainSongs.filter(newSong =>
+                !state.queue.some(queuedSong =>
+                    queuedSong.title === newSong.title &&
+                    queuedSong.artist === newSong.artist
+                )
+            );
+
+            // 모든 곡이 중복인 경우
+            if (uniqueSongs.length === 0) {
+                return { added: 0, message: 'ALL_DUPLICATES' };
+            }
+
+            const { songDatas } = await this.$axios.$post('/api/songs/songsdata', { songs: uniqueSongs })
             commit('ADD_MULTIPLE_TO_QUEUE', songDatas)
             await dispatch('saveQueue')
 
             if (!state.currentTrack) await dispatch('setCurrentTrack', songDatas[0])
-            return songDatas.length
+
+            // 중복 곡 수 계산해서 함께 전달
+            const duplicateCount = songs.length - uniqueSongs.length;
+            return {
+                added: songDatas.length,
+                duplicates: duplicateCount,
+                message: 'SUCCESS'
+            };
         } catch (err) {
             console.error(err)
+            return { added: 0, message: 'ERROR' };
         }
     },
 
@@ -403,18 +437,6 @@ export const getters = {
         if (!state.currentTrack) return false;
         const currentIndex = state.queue.findIndex(track => track._id === state.currentTrack._id);
         return currentIndex < state.queue.length - 1;
-    },
-    repeatModeIcon: (state) => {
-        switch (state.repeatMode) {
-            case 'off':
-                return 'fa-repeat'
-            case 'all':
-                return 'fa-repeat'
-            case 'one':
-                return 'fa-redo'
-            default:
-                return 'fa-repeat'
-        }
     },
     shuffleIcon: (state) => {
         return state.shuffleOn ? 'shuffle' : 'shuffle-off'
