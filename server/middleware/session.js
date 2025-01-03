@@ -14,7 +14,8 @@ const sessionMiddleware = session({
         touchAfter: 24 * 3600
     }),
     cookie: {
-        secure: process.env.NODE_ENV === 'production',
+        // secure: process.env.NODE_ENV === 'production',
+        secure: false, // http 사용시 반드시 false, true로 하면 쿠키 전송이 안됨됨
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000,
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
