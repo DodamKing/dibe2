@@ -32,10 +32,9 @@ module.exports = {
 
         // 관리자가 아닌 경우 구독 기간 체크
         if (!req.session.user.isAdmin) {
-            const expiryDate = req.session.user.expiryDate ? new Date(req.session.user.expiryDate) : null;
-            const isExpired = !expiryDate || expiryDate < new Date();
+            const expiryTimestamp = req.session.user.expiryDate ? new Date(req.session.user.expiryDate).getTime() : null;
+            const isExpired = !expiryTimestamp || expiryTimestamp < Date.now();
 
-            // 만료된 경우, 로그아웃 요청만 허용
             if (isExpired && req.path !== '/users/logout') {
                 return res.status(403).json({
                     message: '사용 기간이 만료되었습니다.',

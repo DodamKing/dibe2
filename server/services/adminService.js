@@ -115,7 +115,7 @@ class AdminService {
 		try {
 			const expiryDate = new Date()
 	
-			if (days === 'unlimited') expiryDate.setFullYear(expiryDate.getFullYear() + 100)
+			if (days === 'unlimited') expiryDate.setFullYear(expiryDate.getFullYear() + 1000)
 			else expiryDate.setDate(expiryDate.getDate() + days)
 
 			const updateUser = await db.User.findByIdAndUpdate(userId, { expiryDate }, { new: true })

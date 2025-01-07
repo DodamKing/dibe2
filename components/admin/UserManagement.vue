@@ -190,22 +190,27 @@ export default {
             this.fetchUsers()
         },
         formatExpiryDate(expiryDate) {
-            const expiry = new Date(expiryDate)
-            const now = new Date()
+            const expiryTimestamp = new Date(expiryDate).getTime()
+            const nowTimestamp = Date.now()
 
-            // 100년 이상 남은 경우 무제한으로 표시
-            if (expiry.getFullYear() - now.getFullYear() >= 100) {
+            // 100년 이상 남은 경우 무제한으로 표시 (100년 * 365.25일 * 24시간 * 60분 * 60초 * 1000밀리초)
+            if ((expiryTimestamp - nowTimestamp) > (100 * 365.25 * 24 * 60 * 60 * 1000)) {
                 return '무제한'
             }
 
             // 남은 일수 계산
-            const diffTime = expiry - now
+            const diffTime = expiryTimestamp - nowTimestamp
+            const diffHours = Math.ceil(diffTime / (1000 * 60 * 60))
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
-            if (diffDays < 0) {
+            if (diffTime < 0) {
                 return '만료됨'
-            } else if (diffDays === 0) {
-                return '오늘 만료'
+            } else if (diffHours <= 24) {  // 24시간 이하인 경우
+                if (diffHours <= 0) {
+                    return '1시간 이내 만료'
+                } else {
+                    return `${diffHours}시간 남음`
+                }
             } else {
                 return `${diffDays}일 남음`
             }

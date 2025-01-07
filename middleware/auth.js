@@ -29,8 +29,8 @@ export default function ({ store, redirect, route }) {
 
         // 구독 상태 체크 (관리자는 제외)
         if (!user.isAdmin) {  // 관리자 체크를 먼저
-            const expiryDate = user.expiryDate ? new Date(user.expiryDate) : null
-            if (!expiryDate || expiryDate < new Date()) {
+            const expiryTimestamp = user.expiryDate ? new Date(user.expiryDate).getTime() : null
+            if (!expiryTimestamp || expiryTimestamp < Date.now()) {
                 return redirect('/subscription-notice')
             }
         }
