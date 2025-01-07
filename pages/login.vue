@@ -53,17 +53,15 @@
                         icon="comment" 
                         @login="socialLogin"
                         class="flex-1 py-3 px-4 rounded-full text-black bg-yellow-400 hover:bg-yellow-500 transition duration-300"
-                    >
-                        카카오로 로그인
-                    </SocialLoginButton>
+                    />
                     <SocialLoginButton 
                         provider="google" 
                         icon="google" 
+                        :disabled="true"
+                        tooltip-text="도메인 만료로 인해 구글 OAuth 인증을 처리할 수 없어 로그인이 비활성화되었습니다"
                         @login="socialLogin"
                         class="flex-1 py-3 px-4 rounded-full text-gray-900 bg-white hover:bg-gray-100 transition duration-300"
-                    >
-                        Google로 로그인
-                    </SocialLoginButton>
+                    />
                 </div>
             </div>
 
