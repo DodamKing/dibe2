@@ -74,11 +74,10 @@ export default {
 
 .social-login-btn-disabled {
     cursor: not-allowed;
+    background-color: #858585;
+    color: #ffffff;
 }
 
-.social-login-btn-google.social-login-btn-disabled:hover {
-    background-color: #858585
-}
 
 /* 툴팁 스타일 */ 
 .tooltip {
@@ -92,7 +91,10 @@ export default {
     padding: 8px 12px;
     border-radius: 4px;
     font-size: 14px;
-    white-space: nowrap;
+    white-space: normal;
+    max-width: 280px;
+    width: max-content;
+    text-align: center;
     z-index: 1;
 }
 
