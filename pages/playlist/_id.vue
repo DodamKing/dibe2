@@ -19,7 +19,9 @@
                         <i class="fas fa-arrow-left mr-2"></i>뒤로 가기
                     </button>
                     <div class="flex items-center mb-4">
-                        <div class="w-24 h-24 sm:w-32 sm:h-32 grid grid-cols-2 gap-1 rounded-lg overflow-hidden mr-4">
+                        <!-- 커버 이미지 부분 - 기존 크기 유지 -->
+                        <div
+                            class="w-24 h-24 sm:w-32 sm:h-32 grid grid-cols-2 gap-1 rounded-lg overflow-hidden mr-4 shrink-0">
                             <template v-for="(song, index) in (currentPlaylist.songs.slice(0, 4) || [])">
                                 <img v-if="index === 0 || currentPlaylist.songs.length > 1" :key="index"
                                     :src="song.coverUrl.replace('/50/', '/100/') || 'https://via.placeholder.com/100x100'"
@@ -29,10 +31,36 @@
                                     ]">
                             </template>
                         </div>
-                        <div>
-                            <h1 class="text-2xl sm:text-3xl font-bold mb-1">{{ currentPlaylist.name }}</h1>
-                            <p class="text-sm sm:text-base text-gray-400">{{ currentPlaylist.songs.length }}곡 {{ estimatedDuration }}
-                            </p>
+
+                        <!-- 제목과 정보 부분 -->
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center min-h-[40px] sm:min-h-[48px]">
+                                <h1 v-if="!isEditing" @click="startEditing"
+                                    class="text-xl sm:text-2xl md:text-3xl font-bold hover:text-gray-300 cursor-pointer flex items-center truncate">
+                                    {{ currentPlaylist.name }}
+                                    <i class="fas fa-pen text-xs sm:text-sm ml-2 text-gray-400 shrink-0"></i>
+                                </h1>
+                                <div v-else class="flex items-center gap-2 w-full sm:w-auto">
+                                    <input ref="nameInput" v-model="editingName" @keyup.enter="saveName"
+                                        @keyup.esc="cancelEditing" class="text-xl sm:text-2xl md:text-3xl font-bold bg-gray-700 text-white rounded 
+                                        px-3 py-1.5 sm:py-1 w-[calc(100%-100px)] sm:w-auto sm:min-w-[300px] sm:max-w-[500px] 
+                                        focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                                    <div class="flex gap-2 sm:gap-1 shrink-0">
+                                        <button @click="saveName"
+                                            class="text-green-500 hover:text-green-400 p-2.5 sm:p-2 rounded-full hover:bg-gray-700"
+                                            title="저장">
+                                            <i class="fas fa-check text-lg sm:text-base"></i>
+                                        </button>
+                                        <button @click="cancelEditing"
+                                            class="text-gray-500 hover:text-gray-400 p-2.5 sm:p-2 rounded-full hover:bg-gray-700"
+                                            title="취소">
+                                            <i class="fas fa-times text-lg sm:text-base"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="text-sm sm:text-base text-gray-400">{{ currentPlaylist.songs.length }}곡 {{
+                                estimatedDuration }}</p>
                         </div>
                     </div>
                     <div class="flex space-x-2">
@@ -83,7 +111,9 @@ export default {
     data() {
         return {
             loading: true,
-            error: null
+            error: null,
+            isEditing: false,
+            editingName: '',
         }
     },
     computed: {
@@ -102,7 +132,7 @@ export default {
     },
     methods: {
         ...mapActions('player', ['playEntirePlaylist', 'playShuffledPlaylist']),
-        ...mapActions('playlist', ['fetchPlaylistDetail', 'updatePlaylist', 'removeSongsFromPlaylist']),
+        ...mapActions('playlist', ['fetchPlaylistDetail', 'updatePlaylistName', 'removeSongsFromPlaylist']),
         async playAll() {
             if (this.currentPlaylist.songs.length) {
                 await this.playEntirePlaylist(this.currentPlaylist)
@@ -125,6 +155,49 @@ export default {
                 }
             } catch (error) {
                 this.$toast.error('곡 제거 중 오류가 발생했습니다.')
+            }
+        },
+        startEditing() {
+            this.editingName = this.currentPlaylist.name
+            this.isEditing = true
+            this.$nextTick(() => {
+                this.$refs.nameInput.focus()
+                this.$refs.nameInput.select()
+            })
+        },
+
+        cancelEditing() {
+            this.isEditing = false
+            this.editingName = ''
+        },
+
+        async saveName() {
+            if (!this.editingName.trim()) {
+                this.cancelEditing()
+                return
+            }
+
+            if (this.editingName.trim() === this.currentPlaylist.name) {
+                this.cancelEditing()
+                return
+            }
+
+            try {
+                const result = await this.updatePlaylistName({
+                    playlistId: this.currentPlaylist._id,
+                    name: this.editingName.trim()
+                })
+                
+                if (result.success) {
+                    this.$toast.success('플레이리스트 이름이 변경되었습니다.')
+                } else {
+                    this.$toast.error('플레이리스트 이름 변경에 실패했습니다.')
+                }
+            } catch (error) {
+                this.$toast.error('이름 변경 중 오류가 발생했습니다.')
+                console.error('Error updating playlist name:', error)
+            } finally {
+                this.cancelEditing()
             }
         }
     },

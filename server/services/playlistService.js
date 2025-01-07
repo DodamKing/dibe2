@@ -91,5 +91,15 @@ module.exports = {
             console.error('플레이리스트 불러오기 서비스 에러:', err)
             return { success: false, error: err }
         }
+    },
+
+    rename: async (id, name) => {
+        try {
+            const playlist = await db.Playlist.findByIdAndUpdate(id, { name }, { new: true })
+            return { success: true, playlist }
+        } catch (err) {
+            console.error('프렐이리스트 이름 수정 서비스 에러:', err)
+            return { success: false, error: err }
+        }
     }
 }

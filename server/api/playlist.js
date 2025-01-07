@@ -84,4 +84,17 @@ router.get('/:id', async (req, res) => {
     }
 })
 
+router.put('/:id/name', async (req, res) => {
+    const { id } = req.params
+    const { name } = req.body
+
+    try {
+        const { success, playlist } = await playlistService.rename(id, name)
+        res.json({ success, name: playlist.name })
+    } catch (err) {
+        console.error('플레이리스트 이름 수정 api 오류:', err)
+        res.status(500).json({ success: false, error: err })
+    }
+})
+
 module.exports = router

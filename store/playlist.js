@@ -27,6 +27,11 @@ export const mutations = {
     SET_CURRENT_PLAYLIST(state, playlist) {
         state.currentPlaylist = playlist;
     },
+    SET_PLAYLIST_NAME(state, { name }) {
+        if (state.currentPlaylist) {
+            state.currentPlaylist.name = name
+        }
+    }
 }
 
 export const actions = {
@@ -91,6 +96,16 @@ export const actions = {
             throw error;
         }
     },
+    async updatePlaylistName({ commit }, { playlistId, name }) {
+        try {
+            const result = await this.$axios.$put(`/api/playlists/${playlistId}/name`, { name })
+            if (result.success) commit('SET_PLAYLIST_NAME', { name: result.name})
+            return result
+        } catch (error) {
+            console.error('플레이리스트 제목 수정 중 오류 발생:', error);
+            throw error;
+        }
+    }
 }
 
 export const getters = {
