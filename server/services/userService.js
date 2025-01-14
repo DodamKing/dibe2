@@ -4,12 +4,11 @@ const db = require('../models')
 const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, KAKAO_CLIENT_ID, NODE_ENV } = process.env
 
 const GOOGLE_REDIRECT_URI = NODE_ENV === 'production'
-    ? 'https://dibe2.dimad.site/api/users/google/callback'
+    ? 'https://dibe2.dimad.kr/api/users/google/callback'
     : 'http://localhost:3000/api/users/google/callback'
 
     const KAKAO_REDIRECT_URI = NODE_ENV === 'production'
-    // ? 'https://dibe2.dimad.site/api/users/kakao/callback'
-    ? 'http://3.39.122.169/api/users/kakao/callback'
+    ? 'https://dibe2.dimad.kr/api/users/kakao/callback'
     : 'http://localhost:3000/api/users/kakao/callback'
 
 class UserService {
