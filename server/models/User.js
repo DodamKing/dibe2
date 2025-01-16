@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema({
     provider: { type: String, enum: ['google', 'kakao'] },
     providerId: String,
     isAdmin: { type: Boolean, default: false },
-    expiryDate: { type: Date, default: null },
+    expiryDate: { type: Date, default: () => new Date(Date.now() + 24 * 60 * 60 * 1000) },
 }, {
     timestamps: true
 })

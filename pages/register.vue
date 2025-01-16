@@ -81,42 +81,44 @@ export default {
         validatePassword() {
             this.errors.password = this.password.length < 8 ? '비밀번호는 8자 이상이어야 합니다.' : ''
         },
-        async register() {
-            this.validateUsername()
-            this.validateEmail()
-            this.validatePassword()
+        register() {
+            return this.$toast.success('기능 막아둠.')
 
-            if (this.errors.username || this.errors.email || this.errors.password) {
-                this.$toast.error('입력 정보를 확인해주세요.')
-                return
-            }
+            // this.validateUsername()
+            // this.validateEmail()
+            // this.validatePassword()
 
-            this.isSubmitting = true
+            // if (this.errors.username || this.errors.email || this.errors.password) {
+            //     this.$toast.error('입력 정보를 확인해주세요.')
+            //     return
+            // }
 
-            try {
-                const response = await this.$axios.$post('/api/users/register', {
-                    username: this.username,
-                    email: this.email,
-                    password: this.password
-                })
+            // this.isSubmitting = true
 
-                this.$toast.success(response.message || '회원가입이 완료되었습니다.')
+            // try {
+            //     const response = await this.$axios.$post('/api/users/register', {
+            //         username: this.username,
+            //         email: this.email,
+            //         password: this.password
+            //     })
 
-                setTimeout(() => {
-                    this.$router.push('/login')
-                }, 2000)
-            } catch (error) {
-                console.error('회원가입 실패:', error)
-                const errorMessage = error.response?.data?.message || '회원가입 중 오류가 발생했습니다.'
-                this.$toast.error(errorMessage)
+            //     this.$toast.success(response.message || '회원가입이 완료되었습니다.')
 
-                // 이메일 중복 에러 처리
-                if (errorMessage === '이미 사용 중인 이메일입니다.') {
-                    this.errors.email = errorMessage
-                }
-            } finally {
-                this.isSubmitting = false
-            }
+            //     setTimeout(() => {
+            //         this.$router.push('/login')
+            //     }, 2000)
+            // } catch (error) {
+            //     console.error('회원가입 실패:', error)
+            //     const errorMessage = error.response?.data?.message || '회원가입 중 오류가 발생했습니다.'
+            //     this.$toast.error(errorMessage)
+
+            //     // 이메일 중복 에러 처리
+            //     if (errorMessage === '이미 사용 중인 이메일입니다.') {
+            //         this.errors.email = errorMessage
+            //     }
+            // } finally {
+            //     this.isSubmitting = false
+            // }
         }
     }
 }

@@ -55,6 +55,11 @@ import MusicManagement from '~/components/admin/MusicManagement.vue'
 import UserManagement from '~/components/admin/UserManagement.vue'
 
 export default {
+    head() {
+        return {
+            title: 'DIBE2 | 관리자'
+        }
+    },
     components: {
         Dashboard,
         MusicManagement,
