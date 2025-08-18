@@ -119,7 +119,8 @@ router.get('/google/callback', async (req, res) => {
             name: userInfo.name,
             picture: userInfo.picture,
             accessToken: tokens.access_token,
-            isAdmin: user.isAdmin
+            isAdmin: user.isAdmin,
+            expiryDate: user.expiryDate
         }
 
         res.redirect('/')
@@ -159,7 +160,8 @@ router.get('/kakao/callback', async (req, res) => {
             name: userInfo.properties.nickname,
             picture: userInfo.properties.profile_image,
             accessToken: tokens.access_token,
-            isAdmin: user.isAdmin
+            isAdmin: user.isAdmin,
+            expiryDate: user.expiryDate
         }
 
         res.redirect('/')

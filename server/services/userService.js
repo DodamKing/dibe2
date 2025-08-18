@@ -91,7 +91,7 @@ class UserService {
         } 
     }
 
-    async checkAcess(userId) {
+    static async checkAccess(userId) {
         const user = await db.User.findById(userId)
         return user.canAccess()
     }
