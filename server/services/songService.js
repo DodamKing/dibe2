@@ -1,7 +1,6 @@
 const db = require('../models')
 const helper = require('../utils/helper')
 const YouTubeSearch = require('youtube-search-api')
-const ytdl = require('@distube/ytdl-core')
 
 // simpleText 형식의 duration을 초 단위로 변환
 function parseSimpleTextDuration(simpleText) {
@@ -217,23 +216,6 @@ module.exports = {
 
         } catch (err) {
             console.error('YouTube URL 수집 중 오류 발생:', err)
-            throw err
-        }
-    },
-
-    getAudioStream: async (youtubeUrl) => {
-        try {
-            const info = await ytdl.getInfo(youtubeUrl)
-            const audioFormat = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly' })
-
-            const result = {
-                audioStream: ytdl(youtubeUrl, { format: audioFormat }),
-                duration: parseInt(info.videoDetails.lengthSeconds),
-                contentLength: audioFormat.contentLength
-            }
-            return result
-        } catch (err) {
-            console.error('오디오 스트림 추출 중 에러 발생:', err)
             throw err
         }
     },

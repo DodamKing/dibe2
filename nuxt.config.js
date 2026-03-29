@@ -1,6 +1,9 @@
 require('dotenv').config()
 
 export default {
+  ssr: false,
+  target: 'static',
+
   // Global page headers: https://go.nuxtjs.dev/config-head
   head: {
     title: 'DIBE2',
@@ -32,6 +35,7 @@ export default {
   // Plugins to run before rendering page: https://go.nuxtjs.dev/config-plugins
   plugins: [
     '~/plugins/error-handler',
+    { src: '~/plugins/auth-init', mode: 'client' },
   ],
 
   // Auto import components: https://go.nuxtjs.dev/config-components
@@ -70,27 +74,11 @@ export default {
   // Build Configuration: https://go.nuxtjs.dev/config-build
   build: {},
 
-  serverMiddleware: [
-    '~/server/middleware/cors',
-    '~/server/middleware/dbConnection',
-    '~/server/middleware/session',
-    '~/server/middleware/cron',
-    { path: '/api', handler: '~/server/api/index.js' },
-    '~/server/middleware/dailyVisitor.js',
-  ],
-
-  watchers: {
-    webpack: {
-      ignored: '/node_modules/',
-      poll: 1000
-    }
-  },
-
   router: {
     middleware: 'auth'
   },
 
   server: {
-    host: '0.0.0.0',
+    port: 3333
   },
 }

@@ -13,9 +13,11 @@ export const mutations = {
 export const actions = {
     async login({ commit, dispatch }, credentials) {
         try {
-            const { user, code, message } = await this.$axios.$post('/api/users/login', credentials)
+            const { user, code, message, token } = await this.$axios.$post('/api/users/login', credentials)
 
             if (code === 1) {
+                localStorage.setItem('dibe2_token', token)
+                this.$axios.setToken(token, 'Bearer')
                 commit('setUser', user)
                 return { success: true, message }
             }
@@ -33,9 +35,12 @@ export const actions = {
     async logout({ commit }) {
         try {
             await this.$axios.post('/api/users/logout')
-            commit('setUser', null)
         } catch (err) {
             console.error('로그아웃 에러:', err)
+        } finally {
+            localStorage.removeItem('dibe2_token')
+            this.$axios.setToken(false)
+            commit('setUser', null)
         }
     },
 

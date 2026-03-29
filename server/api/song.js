@@ -1,11 +1,9 @@
 const express = require('express')
 const helper = require('../utils/helper')
-const AdvancedInvidiousManager = require('../utils/advancedInvidiousManager')
 const services = require('../services')
 const { adminMiddleware } = require('../middleware/auth')
 
 const router = express.Router()
-const invidious = new AdvancedInvidiousManager()
 
 router.get('/test', async (req, res) => {
     try {
@@ -24,42 +22,6 @@ router.get('/chart', async (req, res) => {
     } catch (err) {
         console.error('차트 가져오는 엔드포인트 에러', err)
         res.status(500).end()
-    }
-})
-
-router.get('/stream/:songId', async (req, res) => {
-    const { songId } = req.params
-    let youtubeUrl = await services.songService.getYoutubeUrlbySongId(songId)
-    if (!youtubeUrl) youtubeUrl = await services.songService.updateYoutubeUrl(songId)
-
-    try {
-        // const { audioStream, duration, contentLength } = await services.songService.getAudioStream(youtubeUrl)
-        const { audioStream, duration, contentLength, mimeType } = await invidious.getAudioStream(youtubeUrl)
-
-        res.setHeader('Content-Type', mimeType)
-        res.setHeader('Transfer-Encoding', 'chunked')
-
-        res.setHeader('X-Content-Duration', duration);
-        res.setHeader('Content-Length', contentLength);
-        res.setHeader('Accept-Ranges', 'bytes');
-
-        audioStream.pipe(res)
-
-        audioStream.on('error', (err) => {
-            console.error('Audio stream error:', err.message || 'Unknown error');
-            if (!res.headersSent) {
-                res.status(500).send('Audio stream error');
-            } else {
-                res.end();
-            }
-        });
-
-        res.on('close', () => {
-            audioStream.destroy();
-        });
-    } catch (err) {
-        console.error('오디오 스트림 에러:', err)
-        res.status(500).send('오디오 스트림 서버 에러')
     }
 })
 

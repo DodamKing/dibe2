@@ -1,15 +1,10 @@
-import cors from 'cors'
+const cors = require('cors')
 
 const corsOptions = {
-    origin: ['https://www.youtube.com', 'https://www.youtube-nocookie.com', 'https://dibe2.dimad.site'],
-    methods: ['GET', 'POST', 'OPTIONS'],
+    origin: process.env.SITE_URL || 'https://dibe2.dimad.site',
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
-};
-
-export default function (req, res, next) {
-    if (process.env.NODE_ENV === 'production') {
-        cors(corsOptions)(req, res, next)
-    }
-    else next()
 }
+
+module.exports = cors(corsOptions)

@@ -1,0 +1,35 @@
+function getCookie(name) {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
+  return match ? decodeURIComponent(match[2]) : null
+}
+
+function deleteCookie(name) {
+  document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'
+}
+
+export default async function ({ store, $axios }) {
+  if (!process.client) return
+
+  // OAuth 콜백에서 쿠키로 전달된 토큰 수신
+  const oauthToken = getCookie('dibe2_oauth_token')
+  if (oauthToken) {
+    localStorage.setItem('dibe2_token', oauthToken)
+    deleteCookie('dibe2_oauth_token')
+  }
+
+  // localStorage에서 토큰 복원
+  const savedToken = localStorage.getItem('dibe2_token')
+  if (savedToken) {
+    $axios.setToken(savedToken, 'Bearer')
+    try {
+      const { user } = await $axios.$get('/api/users/me')
+      if (user) {
+        store.commit('auth/setUser', user)
+      }
+    } catch (err) {
+      // 토큰 만료/무효 → 정리
+      localStorage.removeItem('dibe2_token')
+      $axios.setToken(false)
+    }
+  }
+}

@@ -1,7 +1,7 @@
 const express = require('express')
 const bcrypt = require('bcrypt')
 const db = require('../models')
-const { isNotAuthenticated, adminMiddleware } = require('../middleware/auth')
+const { adminMiddleware, generateToken, generateStateToken, verifyStateToken } = require('../middleware/auth')
 const UserService = require('../services/userService')
 
 const router = express.Router()
@@ -23,7 +23,7 @@ router.get('/', adminMiddleware, async (req, res) => {
     }
 })
 
-router.post('/register', isNotAuthenticated, async (req, res) => {
+router.post('/register', async (req, res) => {
     try {
         const { username, email, password } = req.body
 
@@ -41,7 +41,7 @@ router.post('/register', isNotAuthenticated, async (req, res) => {
     }
 })
 
-router.post('/login', isNotAuthenticated, async (req, res) => {
+router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body
         const user = await db.User.findOne({ email })
@@ -51,18 +51,17 @@ router.post('/login', isNotAuthenticated, async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password)
         if (!isMatch) return res.json({ message: '비밀번호가 일치하지 않습니다.', code: 3 })
 
-        const sessionUser = {
+        const tokenPayload = {
             userId: user._id,
             username: user.username,
             email: user.email,
-            isAdmin: user.isAdmin,
+            isAdmin: process.env.NODE_ENV === 'development' ? true : user.isAdmin,
             expiryDate: user.expiryDate
         }
 
-        if (process.env.NODE_ENV === 'development') sessionUser.isAdmin = true
+        const token = generateToken(tokenPayload)
 
-        req.session.user = sessionUser
-        res.json({ message: '로그인 성공', user: sessionUser, code: 1 })
+        res.json({ message: '로그인 성공', user: tokenPayload, token, code: 1 })
     } catch (err) {
         console.error('로그인 에러', err)
         res.status(500).json({ message: '서버 오류가 발생했습니다.', code: 4 })
@@ -70,29 +69,19 @@ router.post('/login', isNotAuthenticated, async (req, res) => {
 })
 
 router.post('/logout', async (req, res) => {
-    try {
-        req.session.destroy((err) => {
-            if (err) return res.status(500).json({ message: '세션 처리 중 오류 발생' })
-            res.clearCookie('dibe2_session_cookie')
-            res.json({ message: '로그아웃 되었습니다.' })
-        })
-    } catch (error) {
-        console.error('로그아웃 에러:', error)
-        res.status(500).json({ message: '로그아웃 처리 중 오류 발생' })
-    }
+    res.json({ message: '로그아웃 되었습니다.' })
 })
 
 router.get('/me', async (req, res) => {
-    const user = req.session.user
-    if (!user) return res.status(401).json({ user: null })
-    const currentUser = await db.User.findById(user.userId)
-    const userWithExpiry = { ...user, expiryDate: currentUser.expiryDate }
+    if (!req.user) return res.status(401).json({ user: null })
+    const currentUser = await db.User.findById(req.user.userId)
+    if (!currentUser) return res.status(401).json({ user: null })
+    const userWithExpiry = { ...req.user, expiryDate: currentUser.expiryDate }
     res.json({ user: userWithExpiry })
 })
 
 router.get('/google', async (req, res) => {
-    const state = UserService.generateState()
-    req.session.oauthState = state
+    const state = generateStateToken()
     const authUrl = UserService.getGoogleAuthUrl(state)
     res.redirect(authUrl)
 })
@@ -101,7 +90,7 @@ router.get('/google/callback', async (req, res) => {
     const { code, state } = req.query
     const provider = 'google'
 
-    if (state !== req.session.oauthState) {
+    if (!verifyStateToken(state)) {
         console.error('Invalid state parameter')
         return res.status(400).redirect('/login?error=invalid_state')
     }
@@ -111,18 +100,25 @@ router.get('/google/callback', async (req, res) => {
         const userInfo = await UserService.getGoogleUserInfo(tokens.access_token)
         const user = await UserService.findOrCreateUser(provider, userInfo.id, userInfo.email)
 
-        req.session.user = {
+        const tokenPayload = {
             userId: user._id,
             provider,
             providerId: userInfo.id,
             email: userInfo.email,
             name: userInfo.name,
             picture: userInfo.picture,
-            accessToken: tokens.access_token,
             isAdmin: user.isAdmin,
             expiryDate: user.expiryDate
         }
 
+        const token = generateToken(tokenPayload)
+        res.cookie('dibe2_oauth_token', token, {
+            httpOnly: false,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 1000,
+            path: '/'
+        })
         res.redirect('/')
 
     } catch (error) {
@@ -132,8 +128,7 @@ router.get('/google/callback', async (req, res) => {
 });
 
 router.get('/kakao', (req, res) => {
-    const state = UserService.generateState()
-    req.session.oauthState = state
+    const state = generateStateToken()
     const authUrl = UserService.getKakaoAuthUrl(state)
     res.redirect(authUrl)
 })
@@ -142,7 +137,7 @@ router.get('/kakao/callback', async (req, res) => {
     const { code, state } = req.query
     const provider = 'kakao'
 
-    if (state !== req.session.oauthState) {
+    if (!verifyStateToken(state)) {
         console.error('Invalid state parameter')
         return res.status(400).redirect('/login?error=invalid_state')
     }
@@ -152,18 +147,25 @@ router.get('/kakao/callback', async (req, res) => {
         const userInfo = await UserService.getKakaoUserInfo(tokens.access_token)
         const user = await UserService.findOrCreateUser(provider, userInfo.id, userInfo.kakao_account.email)
 
-        req.session.user = {
+        const tokenPayload = {
             userId: user._id,
             provider,
             providerId: userInfo.id,
             email: userInfo.kakao_account.email,
             name: userInfo.properties.nickname,
             picture: userInfo.properties.profile_image,
-            accessToken: tokens.access_token,
             isAdmin: user.isAdmin,
             expiryDate: user.expiryDate
         }
 
+        const token = generateToken(tokenPayload)
+        res.cookie('dibe2_oauth_token', token, {
+            httpOnly: false,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 1000,
+            path: '/'
+        })
         res.redirect('/')
     } catch (error) {
         console.error('Kakao login error:', error)

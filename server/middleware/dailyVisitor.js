@@ -51,8 +51,8 @@ export default async function visitorMiddleware(req, res, next) {
          }
 
         // 로그인한 사용자 추적 (현재 위치 유지)
-        if (req.session && req.session.user) {
-            const userId = req.session.user.userId
+        if (req.user) {
+            const userId = req.user.userId
             const loggedInVisitorKey = `${userId}:${ip}:${userAgent}`
 
             await visitsCollection.updateOne(

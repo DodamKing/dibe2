@@ -6,7 +6,7 @@ const { playlistService } = require('../services')
 router.post('/', async (req, res) => {
     try {
         const { name } = req.body
-        const userId = req.session.user.userId
+        const userId = req.user.userId
         const playlist = await playlistService.createPlaylist(name, userId)
 
         res.status(201).json({ playlist })
@@ -18,7 +18,7 @@ router.post('/', async (req, res) => {
 
 router.get('/', async (req, res) => {
     try {
-        const userId = req.session.user.userId
+        const userId = req.user.userId
         const playlists = await playlistService.readPlaylists(userId)
         res.json({ playlists })
     } catch (err) {
@@ -33,7 +33,7 @@ router.get('/', async (req, res) => {
 router.delete('/:playlistId', async (req, res) => {
     try {
         const { playlistId } = req.params
-        const userId = req.session.user.userId
+        const userId = req.user.userId
         const updatedPlaylists = await playlistService.deletePlaylist(playlistId, userId)
 
         res.json({ updatedPlaylists })
