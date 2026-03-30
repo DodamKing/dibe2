@@ -22,23 +22,6 @@ router.get('/visitor-stats', async (req, res) => {
     }
 })
 
-router.get('/system-stats', async (req, res) => {
-    try {
-        const [stats, uptime] = await Promise.all([
-            services.adminService.getSystemStats(),
-            services.adminService.getAppUptime()
-        ]);
-
-        res.json({
-            ...stats,
-            uptime: uptime
-        });
-    } catch (error) {
-        console.error('Error getting system stats:', error);
-        res.status(500).json({ error: 'Failed to get system stats' });
-    }
-})
-
 router.put('/users/:userId/access', async (req, res) => {
     try {
         const { userId } = req.params

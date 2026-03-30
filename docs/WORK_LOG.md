@@ -14,8 +14,8 @@
 ## 배포 전 남은 작업
 - [ ] Netlify Dashboard 환경변수 설정
 - [ ] OAuth 콘솔 콜백 URL 업데이트 (배포 도메인)
-- [ ] 방문자 통계(dailyVisitor) Netlify Function에 추가
-- [ ] 관리자 시스템 통계 serverless 대응 (os.cpus 등 무의미)
+- [x] 방문자 통계(dailyVisitor) 미들웨어 등록 및 집계 쿼리 버그 수정
+- [x] 관리자 시스템 통계 카드 삭제 (serverless에서 os.cpus 등 무의미)
 
 ### 2026-03-30 - JWT 인증 전환
 - 세션 기반(express-session + connect-mongo) → JWT 토큰 기반으로 전환 완료

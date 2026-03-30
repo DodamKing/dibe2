@@ -60,37 +60,6 @@
                 <p>오늘 해결된 문의: {{ supportStats.resolvedToday }}</p>
             </div>
 
-            <!-- 시스템 상태 -->
-            <div class="bg-white shadow rounded-lg p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-bold text-gray-800">시스템 상태</h3>
-                    <button @click="refreshSystemStats"
-                        class="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-300 ease-in-out">
-                        새로고침
-                    </button>
-                </div>
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div class="bg-blue-100 p-4 rounded-lg">
-                        <p class="text-sm text-blue-800 font-medium">서버 운영 시간</p>
-                        <p class="text-lg font-bold text-blue-900">{{ systemStats.uptime }}</p>
-                    </div>
-                    <div class="bg-green-100 p-4 rounded-lg">
-                        <p class="text-sm text-green-800 font-medium">CPU 사용률</p>
-                        <p class="text-lg font-bold text-green-900">{{ systemStats.cpuUsage }}%</p>
-                    </div>
-                    <div class="bg-yellow-100 p-4 rounded-lg">
-                        <p class="text-sm text-yellow-800 font-medium">메모리 사용률</p>
-                        <p class="text-lg font-bold text-yellow-900">{{ systemStats.memoryUsage }}%</p>
-                    </div>
-                    <div class="bg-red-100 p-4 rounded-lg">
-                        <p class="text-sm text-red-800 font-medium">디스크 사용률</p>
-                        <p class="text-lg font-bold text-red-900">{{ systemStats.diskUsage }}%</p>
-                    </div>
-                </div>
-                <div class="flex justify-between items-center">
-                    <p class="text-sm text-gray-600">마지막 업데이트: {{ lastUpdated }}</p>
-                </div>
-            </div>
         </div>
     </div>
 </template>
@@ -138,12 +107,10 @@ export default {
             visitorChartData: null,
             musicStats: {},
             supportStats: {},
-            systemStats: {},
             isLoading: true,
             visitorStatsLoading: false,
             error: null,
             userChartData: null,
-            lastUpdated: '로딩 중...',
             selectedVisitorPeriod: 'today',
             chartOptions: {
                 responsive: true,
@@ -195,8 +162,6 @@ export default {
 
                 this.userStats = userStatsResponse
                 this.visitorStats = visitorStatsResponse
-
-                await this.refreshSystemStats()
 
                 this.prepareUserChartData()
                 this.prepareVisitorChartData()
@@ -288,15 +253,6 @@ export default {
                         borderWidth: 1
                     }
                 ]
-            }
-        },
-        async refreshSystemStats() {
-            try {
-                const response = await this.$axios.get('/api/admin/system-stats')
-                this.systemStats = response.data
-                this.lastUpdated = new Date().toLocaleString()
-            } catch (error) {
-                console.error('Error fetching system stats:', error)
             }
         },
         async refreshVisitorStats() {

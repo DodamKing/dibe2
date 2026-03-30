@@ -1,6 +1,7 @@
 const createError = require('http-errors')
 const express = require('express')
-const { sessionCheckMiddleware, adminMiddleware } = require('../middleware/auth')
+const { jwtCheckMiddleware, adminMiddleware } = require('../middleware/auth')
+const visitorMiddleware = require('../middleware/dailyVisitor')
 const axios = require('axios')
 const { sendErrorToSlack } = require('../utils/helper')
 
@@ -16,7 +17,8 @@ app.set('trust proxy', 1)
 
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
-app.use(sessionCheckMiddleware)
+app.use(jwtCheckMiddleware)
+app.use(visitorMiddleware)
 
 app.use('/users', userRoutes)
 app.use('/songs', songRoutes)

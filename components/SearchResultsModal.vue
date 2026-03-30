@@ -1,9 +1,15 @@
 <template>
     <div v-if="show" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2 sm:p-4">
         <div class="bg-gray-800 w-full max-w-4xl rounded-lg shadow-lg overflow-hidden text-white">
-            <div class="p-3 sm:p-4 bg-gray-700 flex justify-between items-center">
-                <h2 class="text-lg sm:text-xl font-semibold truncate mr-2">검색 결과: "{{ searchQuery }}"</h2>
-                <button @click="$emit('close')" class="text-gray-300 hover:text-white p-1">
+            <div class="p-3 sm:p-4 bg-gray-700 flex items-center gap-2">
+                <div class="flex-grow relative">
+                    <input v-model="localQuery" @keyup.enter="executeSearch" type="text"
+                        placeholder="검색어 입력"
+                        class="w-full bg-gray-600 text-white placeholder-gray-400 rounded-full py-2 px-4 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <i @click="executeSearch"
+                        class="fas fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 cursor-pointer hover:text-white"></i>
+                </div>
+                <button @click="$emit('close')" class="text-gray-300 hover:text-white p-1 flex-shrink-0">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -100,6 +106,7 @@ export default {
             selectedSongs: [],
             selectAll: false,
             showPlaylistModal: false,
+            localQuery: '',
         }
     },
     computed: {
@@ -120,9 +127,17 @@ export default {
         ...mapActions({
             fetchResults: 'search/fetchResults',
             changeActiveTab: 'search/changeActiveTab',
+            performSearch: 'search/performSearch',
+            updateSearchQuery: 'search/updateSearchQuery',
             addMultipleToPlaylist: 'player/addMultipleToPlaylist',
             addSongsToPlaylist: 'playlist/addSongsToPlaylist',
         }),
+        executeSearch() {
+            if (this.localQuery.trim() !== '') {
+                this.updateSearchQuery(this.localQuery)
+                this.performSearch()
+            }
+        },
         changeTab(tab) {
             this.changeActiveTab(this.getApiType(tab))
         },
@@ -214,6 +229,11 @@ export default {
         },
     },
     watch: {
+        show(newVal) {
+            if (newVal) {
+                this.localQuery = this.searchQuery
+            }
+        },
         filteredResults() {
             this.selectAll = false
             this.selectedSongs = []

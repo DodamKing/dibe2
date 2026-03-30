@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb'
+const { MongoClient } = require('mongodb')
 
 let mongoClient = null
 
@@ -10,12 +10,7 @@ async function getMongoClient() {
     return mongoClient
 }
 
-export default async function visitorMiddleware(req, res, next) {
-    // 개발 환경에서는 미들웨어를 실행하지 않음
-    if (process.env.NODE_ENV === 'development') {
-        return next()
-    }
-
+async function visitorMiddleware(req, res, next) {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
@@ -27,30 +22,30 @@ export default async function visitorMiddleware(req, res, next) {
         const db = client.db('dibe2')
         const visitsCollection = db.collection('visitor_stats')
 
-         // 오늘의 통계 문서 가져오기 또는 생성
-         const todayStats = await visitsCollection.findOne({ date: today })
+        // 오늘의 통계 문서 가져오기 또는 생성
+        const todayStats = await visitsCollection.findOne({ date: today })
 
-         if (!todayStats) {
-             // 오늘의 통계가 없으면 새로 생성
-             await visitsCollection.insertOne({
-                 date: today,
-                 totalPageviews: 1,
-                 uniqueVisitors: [`${ip}:${userAgent}`],
-                 loggedInVisits: 0,
-                 uniqueLoggedInVisitors: []
-             })
-         } else {
-             // 기존 통계 업데이트
-             await visitsCollection.updateOne(
-                 { date: today },
-                 { 
-                     $inc: { totalPageviews: 1 },
-                     $addToSet: { uniqueVisitors: `${ip}:${userAgent}` }
-                 }
-             )
-         }
+        if (!todayStats) {
+            // 오늘의 통계가 없으면 새로 생성
+            await visitsCollection.insertOne({
+                date: today,
+                totalPageviews: 1,
+                uniqueVisitors: [`${ip}:${userAgent}`],
+                loggedInVisits: 0,
+                uniqueLoggedInVisitors: []
+            })
+        } else {
+            // 기존 통계 업데이트
+            await visitsCollection.updateOne(
+                { date: today },
+                {
+                    $inc: { totalPageviews: 1 },
+                    $addToSet: { uniqueVisitors: `${ip}:${userAgent}` }
+                }
+            )
+        }
 
-        // 로그인한 사용자 추적 (현재 위치 유지)
+        // 로그인한 사용자 추적
         if (req.user) {
             const userId = req.user.userId
             const loggedInVisitorKey = `${userId}:${ip}:${userAgent}`
@@ -69,3 +64,5 @@ export default async function visitorMiddleware(req, res, next) {
 
     next()
 }
+
+module.exports = visitorMiddleware
