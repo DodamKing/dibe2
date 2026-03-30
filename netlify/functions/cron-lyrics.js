@@ -5,7 +5,7 @@ const { connectToMongoDB } = require('../../server/models')
 const { songService } = require('../../server/services')
 const { sendErrorToSlack } = require('../../server/utils/helper')
 
-module.exports.handler = schedule('0 2 * * *', async () => {
+module.exports.handler = schedule('0 17 * * *', async () => {
     console.log('가사 업데이트 시작:', new Date().toISOString())
     try {
         await connectToMongoDB()

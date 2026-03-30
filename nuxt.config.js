@@ -35,6 +35,7 @@ export default {
   // Plugins to run before rendering page: https://go.nuxtjs.dev/config-plugins
   plugins: [
     '~/plugins/error-handler',
+    { src: '~/plugins/axios-interceptor', mode: 'client' },
     { src: '~/plugins/auth-init', mode: 'client' },
   ],
 

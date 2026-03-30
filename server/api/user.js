@@ -116,7 +116,7 @@ router.get('/google/callback', async (req, res) => {
             httpOnly: false,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
-            maxAge: 60 * 1000,
+            maxAge: 300 * 1000,
             path: '/'
         })
         res.redirect('/')
@@ -163,7 +163,7 @@ router.get('/kakao/callback', async (req, res) => {
             httpOnly: false,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
-            maxAge: 60 * 1000,
+            maxAge: 300 * 1000,
             path: '/'
         })
         res.redirect('/')

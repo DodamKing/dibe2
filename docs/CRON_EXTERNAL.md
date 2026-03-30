@@ -1,13 +1,15 @@
 # 크론잡 및 외부 연동
 
-## 크론잡 (server/middleware/cron.js)
-프로덕션에서만 실행. `node-cron` 사용.
+## 크론잡 (Netlify Scheduled Functions)
+`netlify/functions/cron-*.js` — Netlify Scheduled Functions 사용. 스케줄은 UTC 기준.
 
-| 시간 | 작업 | 설명 |
-|------|------|------|
-| 매일 08:00 | `updateChartData` | Bugs 차트 크롤링 → Song 저장 → Chart 갱신 |
-| 매일 08:10 | `updateYoutubeUrls` | youtubeUrl 없는 곡에 YouTube 검색 → URL 저장 |
-| 매일 02:00 | `updateLyrics` | lyrics 없는 곡에 Bugs 상세페이지에서 가사 크롤링 |
+| KST 시간 | UTC 스케줄 | 함수 파일 | 작업 |
+|----------|-----------|----------|------|
+| 매일 08:00 | `0 23 * * *` | `cron-chart.js` | Bugs 차트 크롤링 → Song 저장 → Chart 갱신 |
+| 매일 08:10 | `10 23 * * *` | `cron-youtube.js` | youtubeUrl 없는 곡에 YouTube 검색 → URL 저장 |
+| 매일 02:00 | `0 17 * * *` | `cron-lyrics.js` | lyrics 없는 곡에 Bugs 상세페이지에서 가사 크롤링 |
+
+> 참고: `server/middleware/cron.js`는 이전 node-cron 방식 (로컬 개발용으로 남아있음)
 
 ## 외부 서비스
 

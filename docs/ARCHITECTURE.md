@@ -96,7 +96,8 @@ dibe2/
 2. JSON 파싱
 3. MongoDB 연결
 4. `jwtCheckMiddleware` (JWT 인증)
-5. 라우터
+5. `visitorMiddleware` (방문자 통계)
+6. 라우터
 
 ## 데이터 흐름
 - Bugs Music → 크롤링 → Chart/Song 모델에 저장

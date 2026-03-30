@@ -27,9 +27,11 @@ export default async function ({ store, $axios }) {
         store.commit('auth/setUser', user)
       }
     } catch (err) {
-      // 토큰 만료/무효 → 정리
-      localStorage.removeItem('dibe2_token')
-      $axios.setToken(false)
+      // 401 응답일 때만 토큰 삭제 (네트워크 에러, 타임아웃 등은 무시)
+      if (err.response && err.response.status === 401) {
+        localStorage.removeItem('dibe2_token')
+        $axios.setToken(false)
+      }
     }
   }
 }

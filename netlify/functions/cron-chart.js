@@ -6,7 +6,7 @@ const helper = require('../../server/utils/helper')
 const { songService } = require('../../server/services')
 const { sendErrorToSlack } = require('../../server/utils/helper')
 
-module.exports.handler = schedule('0 8 * * *', async () => {
+module.exports.handler = schedule('0 23 * * *', async () => {
     console.log('차트 업데이트 시작:', new Date().toISOString())
     try {
         await connectToMongoDB()

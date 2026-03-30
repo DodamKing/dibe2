@@ -2,11 +2,17 @@ import Vue from 'vue'
 import axios from 'axios'
 
 export default ({ app }, inject) => {
+    let isSendingSlack = false
+
     const sendSlackMessage = async (message) => {
+        if (isSendingSlack) return
+        isSendingSlack = true
         try {
             await axios.post('/api/send-slack-message', { message })
         } catch (err) {
             console.error('Slack 메시지 보내기 오류:', err)
+        } finally {
+            isSendingSlack = false
         }
     }
 

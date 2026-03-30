@@ -28,7 +28,7 @@ function extractToken(req) {
 }
 
 const jwtCheckMiddleware = (req, res, next) => {
-    const publicPaths = ['/users/login', '/users/register', '/users/google', '/users/google/callback', '/users/kakao', '/users/kakao/callback']
+    const publicPaths = ['/users/login', '/users/register', '/users/google', '/users/google/callback', '/users/kakao', '/users/kakao/callback', '/send-slack-message']
 
     const token = extractToken(req)
 

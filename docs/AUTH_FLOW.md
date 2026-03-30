@@ -41,6 +41,7 @@ Secret: process.env.JWT_SECRET
 - `/users/login`, `/users/register`
 - `/users/google`, `/users/google/callback`
 - `/users/kakao`, `/users/kakao/callback`
+- `/send-slack-message`
 
 ### adminMiddleware
 - `req.user.isAdmin === true` 확인
@@ -60,12 +61,16 @@ Secret: process.env.JWT_SECRET
 
 ### 로그인 플로우
 1. 일반 로그인: POST /api/users/login → 응답 body에 `token` 포함 → localStorage 저장
-2. OAuth 로그인: 서버에서 `/?token=xxx`로 리다이렉트 → `plugins/auth-init.js`에서 URL 파라미터 수신 → localStorage 저장
+2. OAuth 로그인: 서버에서 쿠키(`dibe2_oauth_token`, maxAge 5분)로 토큰 전달 → 리다이렉트 → `plugins/auth-init.js`에서 쿠키 수신 → localStorage 저장
 
 ### 앱 초기화 (plugins/auth-init.js)
-1. URL에 `?token=` 파라미터 있으면 → localStorage 저장 + URL 정리
+1. 쿠키에 `dibe2_oauth_token` 있으면 → localStorage 저장 + 쿠키 삭제
 2. localStorage에 토큰 있으면 → axios 헤더 세팅 → GET /api/users/me 호출 → store 복원
-3. 토큰 만료/무효 시 → localStorage 정리
+3. 401 응답 시에만 → localStorage 정리 (네트워크 에러 등은 토큰 유지)
+
+### Axios 401 인터셉터 (plugins/axios-interceptor.js)
+- 모든 API 응답에서 401 감지 시 → 토큰 삭제 + /login 리다이렉트
+- 네트워크 에러, 타임아웃 등에서는 토큰 삭제하지 않음
 
 ### 클라이언트 라우터 미들웨어 (middleware/auth.js)
 - Nuxt router middleware로 전 페이지에 적용
