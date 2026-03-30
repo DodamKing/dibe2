@@ -29,6 +29,14 @@
 - JWT 토큰 관리 정비: 401일 때만 토큰 삭제, axios 인터셉터 추가, 순환 에러 방지
 - /send-slack-message publicPaths 추가, OAuth 쿠키 maxAge 60초→5분
 
+### 2026-03-30 - 검색 팝업 ESC 닫기 + 음원 추가 메시지 수정
+- 검색 결과 모달 ESC 키로 닫기 추가 (layouts/main.vue handleKeyDown)
+  - Vuex search 스토어의 showSearchResults/closeSearchResults 매핑
+  - 로컬 data의 미사용 showSearchResults 제거
+- 음원 추가 toast 메시지 [object Object] 버그 수정 (SearchResultsModal.vue)
+  - addMultipleToPlaylist 반환 객체를 올바르게 처리
+  - 상태별 메시지: 성공(중복 제외 안내), 전체 중복, 큐 가득 참, 큐 공간 부족
+
 ## 예정된 작업 (우선순위순)
 
 ### 1. 모바일 백그라운드 재생

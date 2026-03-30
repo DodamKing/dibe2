@@ -134,6 +134,7 @@ export default {
     computed: {
         ...mapState('player', ['queue', 'currentTrack']),
         ...mapState('playlist', ['playlists']),
+        ...mapState('search', ['showSearchResults']),
         allSelected() {
             return this.selectedSongs.length === this.popularChart.length
         },
@@ -151,7 +152,6 @@ export default {
             toastMessage: '',
             isAdding: false,
             progressPercentage: 0,
-            showSearchResults: false,
             searchResults: [],
             showCreatePlaylistModal: false,
             showDropdown: false,
@@ -162,6 +162,7 @@ export default {
     methods: {
         ...mapActions('player', ['addToPlaylist', 'setCurrentTrack', 'addMultipleToPlaylist', 'initializeQueue']),
         ...mapActions('playlist', ['fetchPlaylists', 'createPlaylist', 'deletePlaylist', 'addSongsToPlaylist']),
+        ...mapActions('search', ['closeSearchResults']),
         toggleQueue() {
             this.showQueue = !this.showQueue;
         },
@@ -181,6 +182,10 @@ export default {
 
             if (e.key === 'Escape' && this.showAddToPlaylistModal) {
                 this.closeAddToPlaylistModal();
+            }
+
+            if (e.key === 'Escape' && this.showSearchResults) {
+                this.closeSearchResults()
             }
         },
         toggleSongSelection(song) {

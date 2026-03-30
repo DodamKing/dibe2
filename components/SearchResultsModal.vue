@@ -167,8 +167,20 @@ export default {
         async addSelectedToCurrentPlaylist() {
             if (this.selectedSongs.length > 0) {
                 try {
-                    const addedCount = await this.addMultipleToPlaylist(this.selectedSongs)
-                    this.$toast.success(`${addedCount}곡이 현재 재생목록에 추가되었습니다.`)
+                    const result = await this.addMultipleToPlaylist(this.selectedSongs)
+                    if (result.message === 'SUCCESS') {
+                        let msg = `${result.added}곡이 현재 재생목록에 추가되었습니다.`
+                        if (result.duplicates > 0) {
+                            msg += ` (중복 ${result.duplicates}곡 제외)`
+                        }
+                        this.$toast.success(msg)
+                    } else if (result.message === 'ALL_DUPLICATES') {
+                        this.$toast.info('이미 재생목록에 있는 곡입니다.')
+                    } else if (result.message === 'QUEUE_FULL') {
+                        this.$toast.error('재생목록이 가득 찼습니다. (최대 1000곡)')
+                    } else if (result.message === 'QUEUE_LIMIT_EXCEEDED') {
+                        this.$toast.error(`재생목록 공간이 부족합니다. (남은 자리: ${result.remaining}곡)`)
+                    }
                     this.selectedSongs = []
                     this.selectAll = false
                 } catch (error) {
