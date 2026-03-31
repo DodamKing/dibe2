@@ -1,4 +1,9 @@
 export default function ({ store, redirect, route }) {
+    // OAuth 리다이렉트 후 URL 정리 (?state, ?code 등 제거)
+    if (route.query.state && route.query.code) {
+        return redirect(route.path)
+    }
+
     const publicPages = ['/login', '/register', '/subscription-notice']
     const user = store.state.auth.user
 

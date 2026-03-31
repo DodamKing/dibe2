@@ -17,12 +17,6 @@ export default async function ({ store, $axios }) {
     deleteCookie('dibe2_oauth_token')
   }
 
-  // OAuth 리다이렉트 후 URL 정리 (?state, ?code 등 제거)
-  const params = new URLSearchParams(window.location.search)
-  if (params.has('state') || params.has('code')) {
-    window.history.replaceState({}, '', window.location.pathname)
-  }
-
   // localStorage에서 토큰 복원
   const savedToken = localStorage.getItem('dibe2_token')
   if (savedToken) {
