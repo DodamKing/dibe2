@@ -75,6 +75,7 @@ Secret: process.env.JWT_SECRET
 ### 클라이언트 라우터 미들웨어 (middleware/auth.js)
 - Nuxt router middleware로 전 페이지에 적용
 - 서버 미들웨어와 별도로 클라이언트에서도 라우팅 가드
+- OAuth 리다이렉트 후 URL 정리: `?state`, `?code` 등 쿼리 파라미터 감지 시 클린 리다이렉트
 
 ## OAuth State (CSRF 방지)
 - 세션 대신 짧은 만료(5분) JWT로 state 생성
