@@ -14,6 +14,7 @@
 | `docs/FRONTEND.md` | 페이지/컴포넌트 수정 시 |
 | `docs/AUTH_FLOW.md` | 인증/권한 관련 작업 시 |
 | `docs/CRON_EXTERNAL.md` | 크론잡/외부API 관련 작업 시 |
+| `docs/MOBILE_APP_PLAN.md` | 모바일 앱(Flutter) 관련 작업 시 |
 
 ## 핵심 기술 스택
 - **Frontend**: Nuxt 2 (Vue 2) + Vuex + TailwindCSS
