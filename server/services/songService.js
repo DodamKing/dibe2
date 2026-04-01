@@ -53,7 +53,6 @@ module.exports = {
 
             if (needsUpdate) {
                 await db.Chart.findOneAndUpdate({}, { $set: { items: newChartData } })
-                console.log('차트 업데이트 성공')
             }
             else console.log('차트 변경점 없음')
         } catch (err) {
@@ -79,8 +78,6 @@ module.exports = {
                     console.log(`새로운 곡 저장: ${song.title} by ${song.artist}`)
                 }
             }
-
-            console.log('음원 데이터 저장 완료')
         } catch (err) {
             console.error('음원 데이터 저장 중 에러 발생:', err)
         }
@@ -126,8 +123,6 @@ module.exports = {
                     console.error('유튜브 검색하다 에러남:', searchErr)
                 }
             }
-
-            console.log('YouTube URL 업데이트 완료')
         } catch (err) {
             console.error('YouTube URL 업데이트 중 오류 발생:', err)
         }
@@ -292,7 +287,6 @@ module.exports = {
                     console.error(`가사 업데이트 에러: ${song.title} by ${song.artist}`)
                 }
             }
-            console.log('가사 업데이트 완료')
         } catch (err) {
             console.error('가사 업데이트 중 에러: ', err)
         }

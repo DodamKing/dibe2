@@ -37,6 +37,16 @@
   - addMultipleToPlaylist 반환 객체를 올바르게 처리
   - 상태별 메시지: 성공(중복 제외 안내), 전체 중복, 큐 가득 참, 큐 공간 부족
 
+### 2026-04-01 - 크론 중복 로그 정리 + 레거시 코드 제거
+- songService.js 중복 완료 로그 제거 (크론 함수에서만 완료 로그 출력)
+  - "차트 업데이트 성공", "음원 데이터 저장 완료", "YouTube URL 업데이트 완료", "가사 업데이트 완료" 제거
+  - "차트 변경점 없음"은 유지 (의미 있는 정보)
+- Netlify 서버리스 전환 후 미사용 레거시 파일 삭제
+  - server/middleware/cron.js (node-cron, 서버리스에서 불필요)
+  - server/middleware/dailyVisitor.js (미사용)
+  - server/middleware/dbConnection.js (models/index.js가 대체)
+  - server/api/index.js (구 Express 진입점, netlify/functions/api.js가 대체)
+
 ## 예정된 작업 (우선순위순)
 
 ### 1. 모바일 백그라운드 재생
