@@ -91,3 +91,6 @@ sw.*
 
 # Local Netlify folder
 .netlify
+
+# Deno lockfile (netlify dev가 Edge Functions 런타임 초기화 시 생성. 본 프로젝트는 Edge Functions 미사용)
+deno.lock
