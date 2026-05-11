@@ -234,6 +234,27 @@ module.exports = {
         }
     },
 
+    getSongsByIds: async (ids) => {
+        try {
+            const songs = await db.Song.find({ _id: { $in: ids } })
+                .select('_id title artist coverUrl')
+            return songs
+        } catch (err) {
+            console.error(err)
+            return []
+        }
+    },
+
+    getLyrics: async (id) => {
+        try {
+            const song = await db.Song.findById(id).select('lyrics')
+            return song ? song.lyrics || '' : ''
+        } catch (err) {
+            console.error(err)
+            return ''
+        }
+    },
+
     searchSong: async (query, type, page = 1, limit = 20) => {
         const skip = (page - 1) * limit;
         const flexibleRegex = createFlexibleRegex(query);

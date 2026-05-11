@@ -246,14 +246,22 @@ export default {
                 })
             }
         },
-        currentTrack() {
-            this.$nextTick(() => {
-                this.scrollToCurrentTrack()
-            })
+        currentTrack: {
+            immediate: true,
+            handler(newTrack, oldTrack) {
+                this.$nextTick(() => {
+                    this.scrollToCurrentTrack()
+                })
+                // 곡이 바뀌면 가사 fresh fetch (캐시에는 lyrics 없음).
+                // immediate로 마운트 시 한 번 실행되어 v-if로 열릴 때마다 최신 가사 확보.
+                if (newTrack && newTrack._id !== oldTrack?._id) {
+                    this.fetchCurrentTrackLyrics()
+                }
+            }
         }
     },
     methods: {
-        ...mapActions('player', ['setCurrentTrack', 'play', 'removeFromQueue']),
+        ...mapActions('player', ['setCurrentTrack', 'play', 'removeFromQueue', 'fetchCurrentTrackLyrics']),
         ...mapMutations('player', ['SET_QUEUE']),
         close() {
             this.$emit('close')

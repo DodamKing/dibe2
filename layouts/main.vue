@@ -167,12 +167,37 @@ export default {
             this.showQueue = !this.showQueue;
         },
         async fetchPopularChart() {
+            const CACHE_KEY = 'dibe2_chart_cache'
+
+            // 1) 캐시 즉시 표시
+            try {
+                const cached = localStorage.getItem(CACHE_KEY)
+                if (cached) {
+                    const { items, lastUpdated } = JSON.parse(cached)
+                    if (items && Array.isArray(items)) {
+                        this.popularChart = items
+                        this.lastChartUpdated = dayjs(lastUpdated).locale('ko').format('M월 D일 A h시')
+                    }
+                }
+            } catch (err) {
+                // 캐시 파싱 실패는 무시
+            }
+
+            // 2) 백그라운드 fresh 갱신
             try {
                 const { chart } = await this.$axios.$get('/api/songs/chart')
                 this.popularChart = chart.items
                 this.lastChartUpdated = dayjs(chart.lastUpdated).locale('ko').format('M월 D일 A h시')
+                try {
+                    localStorage.setItem(CACHE_KEY, JSON.stringify({
+                        items: chart.items,
+                        lastUpdated: chart.lastUpdated,
+                    }))
+                } catch (err) {
+                    // localStorage 용량 초과 등 무시
+                }
             } catch (err) {
-
+                // 네트워크 에러 시 캐시 데이터 유지
             }
         },
         handleKeyDown(e) {

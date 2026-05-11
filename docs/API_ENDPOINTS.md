@@ -1,16 +1,17 @@
 # API 엔드포인트
 
-모든 API는 `/api` 하위. 세션 인증 필요 (publicPaths 제외).
+모든 API는 `/api` 하위. JWT 인증 필요 (Authorization: Bearer 헤더, publicPaths 제외 — 자세한 건 docs/AUTH_FLOW.md).
 
 ## Songs (`/api/songs`) - server/api/song.js
 | Method | Path | 설명 |
 |--------|------|------|
 | GET | `/chart` | Bugs Top100 차트 데이터 |
-| GET | `/stream/:songId` | 오디오 스트리밍 (Invidious) |
 | GET | `/songdata?title=&artist=` | 제목+아티스트로 곡 조회 |
 | POST | `/songsdata` | body: {songs[]} → 복수 곡 조회 |
 | GET | `/search?query=&type=&page=&limit=` | 곡 검색 (type: all/title/artist/lyrics) |
 | GET | `/youtubeId/:songId` | songId → YouTube 비디오 ID |
+| POST | `/by-ids` | body: {ids[]} → ID 배열로 일괄 조회 (lyrics 제외, 캐시 갱신용) |
+| GET | `/lyrics/:songId` | songId → 가사 단일 조회 (lazy fetch용) |
 | POST | `/` | 곡 추가 |
 | PUT | `/:id` | 곡 수정 (관리자만) |
 | DELETE | `/delete/:id` | 곡 삭제 |

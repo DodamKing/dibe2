@@ -7,6 +7,13 @@ const getStorageKey = (rootState, key) => {
     return `user_${userId}_${key}`
 }
 
+// localStorage 캐시는 표시에 필요한 최소 필드만. lyrics 등은 lazy fetch.
+const stripForCache = (song) => {
+    if (!song) return song
+    const { _id, title, artist, coverUrl } = song
+    return { _id, title, artist, coverUrl }
+}
+
 export const state = () => ({
     currentTrack: null,
     queue: [],
@@ -106,6 +113,11 @@ export const mutations = {
     SET_QUEUE_ENDED(state, isEnded) {
         state.isQueueEnded = isEnded
     },
+    SET_CURRENT_TRACK_LYRICS(state, lyrics) {
+        if (state.currentTrack) {
+            state.currentTrack = { ...state.currentTrack, lyrics }
+        }
+    },
 }
 
 export const actions = {
@@ -114,6 +126,8 @@ export const actions = {
             await dispatch('initYoutubePlayer')
             await dispatch('initializeQueue')
             commit('SET_IS_INITIALIZED', true)
+            // 캐시 큐를 즉시 표시 후, 백그라운드에서 fresh 데이터로 갱신
+            dispatch('refreshQueueData')
         }
     },
 
@@ -217,14 +231,57 @@ export const actions = {
 
     saveQueue({ state, rootState }) {
         const key = getStorageKey(rootState, 'queue')
-        if (key) localStorage.setItem(key, JSON.stringify(state.queue))
+        if (key) localStorage.setItem(key, JSON.stringify(state.queue.map(stripForCache)))
     },
 
     setCurrentTrack({ commit, rootState }, track) {
         commit('SET_CURRENT_TRACK', track)
 
         const key = getStorageKey(rootState, 'current_track')
-        if (key) localStorage.setItem(key, JSON.stringify(track))
+        if (key) localStorage.setItem(key, JSON.stringify(stripForCache(track)))
+    },
+
+    async refreshQueueData({ state, commit, dispatch, rootState }) {
+        const ids = state.queue.map(s => s && s._id).filter(Boolean)
+        if (ids.length === 0) return
+
+        try {
+            const { songs } = await this.$axios.$post('/api/songs/by-ids', { ids })
+            if (!songs || songs.length === 0) return
+
+            const freshMap = new Map(songs.map(s => [s._id, s]))
+
+            // 큐 순서 유지하면서 fresh 데이터로 교체 (DB에서 사라진 곡은 기존 항목 유지)
+            const updatedQueue = state.queue.map(item => freshMap.get(item._id) || item)
+            commit('SET_QUEUE', updatedQueue)
+            await dispatch('saveQueue')
+
+            // originalQueue도 갱신 (셔플 해제 시 사용)
+            if (state.originalQueue.length > 0) {
+                const updatedOriginal = state.originalQueue.map(item => freshMap.get(item._id) || item)
+                commit('SET_ORIGINAL_QUEUE', updatedOriginal)
+                const originalQueueKey = getStorageKey(rootState, 'original_queue')
+                if (originalQueueKey) localStorage.setItem(originalQueueKey, JSON.stringify(updatedOriginal.map(stripForCache)))
+            }
+
+            // currentTrack도 fresh로
+            if (state.currentTrack && freshMap.has(state.currentTrack._id)) {
+                await dispatch('setCurrentTrack', freshMap.get(state.currentTrack._id))
+            }
+        } catch (err) {
+            // 네트워크 에러 등 — 캐시 유지
+            console.error('큐 fresh 갱신 실패:', err)
+        }
+    },
+
+    async fetchCurrentTrackLyrics({ state, commit }) {
+        if (!state.currentTrack) return
+        try {
+            const { lyrics } = await this.$axios.$get(`/api/songs/lyrics/${state.currentTrack._id}`)
+            commit('SET_CURRENT_TRACK_LYRICS', lyrics || '')
+        } catch (err) {
+            console.error('가사 fetch 실패:', err)
+        }
     },
 
     async play({ commit, state, dispatch }) {
@@ -360,7 +417,7 @@ export const actions = {
             commit('SHUFFLE_QUEUE')
 
             const originalQueueKey = getStorageKey(rootState, 'original_queue')
-            if (originalQueueKey) localStorage.setItem(originalQueueKey, JSON.stringify(state.originalQueue))
+            if (originalQueueKey) localStorage.setItem(originalQueueKey, JSON.stringify(state.originalQueue.map(stripForCache)))
         } else {
             commit('RESTORE_ORIGINAL_QUEUE')
         }

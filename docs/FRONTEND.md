@@ -27,6 +27,10 @@
 
 ### player 스토어 주요 동작
 - `localStorage`에 유저별 큐/현재곡/볼륨/셔플/반복 저장 (`user_{id}_key`)
+  - 곡 데이터는 표시 최소 필드만 저장 (`_id, title, artist, coverUrl`) — `stripForCache` 헬퍼
+  - lyrics는 캐시 안 함 (가사 표시 시점에 `/api/songs/lyrics/:id`로 lazy fetch)
+- `initializeAudioSystem` 시작 시 캐시 큐 즉시 표시 후, `refreshQueueData` 백그라운드 디스패치 → `/api/songs/by-ids`로 fresh 데이터 받아 큐/currentTrack/originalQueue 갱신
+- 차트는 `layouts/main.vue` `fetchPopularChart`에서 `dibe2_chart_cache` 키로 동일한 캐시-즉시-표시 + 백그라운드-refresh 패턴 사용
 - YouTube IFrame API로 재생 (`utils/youtubePlayer.js`)
 - 큐 제한: 1000곡
 - 반복 모드: off → all → one

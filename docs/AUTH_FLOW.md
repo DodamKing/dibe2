@@ -18,13 +18,13 @@ Payload: {
   expiryDate: Date
 }
 Secret: process.env.JWT_SECRET
-만료: 24시간
+만료: 30일
 ```
 
 ## 서버 인증 미들웨어 (server/middleware/auth.js)
 
 ### 주요 exports
-- `generateToken(payload, expiresIn)` — JWT 발급 (기본 24시간)
+- `generateToken(payload, expiresIn)` — JWT 발급 (기본 30일)
 - `generateStateToken()` — OAuth CSRF용 단기 JWT (5분)
 - `verifyStateToken(token)` — OAuth state 검증
 - `jwtCheckMiddleware` — 전역 인증 미들웨어

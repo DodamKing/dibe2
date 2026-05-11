@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken')
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dibe2_jwt_secret'
 
-function generateToken(payload, expiresIn = '24h') {
+function generateToken(payload, expiresIn = '30d') {
     return jwt.sign(payload, JWT_SECRET, { expiresIn })
 }
 

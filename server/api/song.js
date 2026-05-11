@@ -64,6 +64,23 @@ router.get('/youtubeId/:songId', async (req, res, next) => {
     }
 })
 
+router.post('/by-ids', async (req, res) => {
+    const { ids } = req.body
+    if (!Array.isArray(ids) || ids.length === 0) return res.json({ songs: [] })
+
+    const songs = await services.songService.getSongsByIds(ids)
+    res.json({ songs })
+})
+
+router.get('/lyrics/:songId', async (req, res, next) => {
+    try {
+        const lyrics = await services.songService.getLyrics(req.params.songId)
+        res.json({ lyrics })
+    } catch (err) {
+        next(err)
+    }
+})
+
 router.post('/', async (req, res) => {
     const song = req.body
 
