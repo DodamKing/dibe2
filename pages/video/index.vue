@@ -92,6 +92,12 @@
 // 차단 감지 시 깔끔하게 "YouTube에서 보기" 안내로 종결.
 export default {
     layout: 'video',
+    head() {
+        const base = 'DIBE2 비디오'
+        return {
+            title: this.selectedVideo ? `${this.selectedVideo.title} - ${base}` : base,
+        }
+    },
     data() {
         return {
             query: '',

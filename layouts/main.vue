@@ -130,6 +130,14 @@ export default {
         Playlist,
         CreatePlaylistModal,
     },
+    head() {
+        // currentTrack 있으면 곡 정보로, 없으면 기본 'DIBE2'. 일시정지 중에도 곡 유지 (Spotify/Bugs 컨벤션).
+        // 페이지에서 head() 정의하면 그쪽이 우선이므로 페이지별 커스텀 가능.
+        const t = this.currentTrack
+        return {
+            title: t ? `${t.title} - ${t.artist} | DIBE2` : 'DIBE2',
+        }
+    },
     computed: {
         ...mapState('player', ['queue', 'currentTrack']),
         ...mapState('playlist', ['playlists']),

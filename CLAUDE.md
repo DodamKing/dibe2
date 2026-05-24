@@ -26,8 +26,8 @@
 - **배포**: Netlify (Functions + Static)
 
 ## 개발 모드 실행
-- **`netlify dev`** (포트 3000) — Functions 라우팅(`/api/*` → `/.netlify/functions/api/*`)까지 같이 잡아줌. 내부적으로 3333번 nuxt dev 프록시
-- `npm run dev`는 nodemon+nuxt만 띄우는 레거시 (Express serverMiddleware 시절 잔재) — API 라우팅 안 먹으니 쓰지 말 것
+- **`npm run dev`** = `netlify dev` (포트 3000) — Functions 라우팅(`/api/*` → `/.netlify/functions/api/*`)까지 같이 잡아줌. 내부적으로 3333번 nuxt dev 프록시
+- nuxt만 단독으로 띄우면 `/api/*` 라우팅이 안 먹음. 항상 `npm run dev` 사용
 
 ## 작업 규칙
 - **토큰 절약**: 전체 코드를 읽지 말 것. CLAUDE.md → 필요한 docs/ 문서 → 수정 대상 파일만 읽기

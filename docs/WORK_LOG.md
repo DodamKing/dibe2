@@ -7,6 +7,18 @@
 
 ## 완료된 작업
 
+### 2026-05-24 - `npm run dev`를 `netlify dev`로 통일
+- `package.json` scripts.dev를 `nuxt` → `netlify dev`로 변경
+- 기존 `npm run dev`는 nuxt 단독 실행이라 `/api/*` 라우팅 안 먹는 함정 (Express serverMiddleware 시절 잔재). 이제 진입점 하나로 통일
+- **함정**: `netlify dev`는 framework auto-detect로 dev 명령을 정함. `package.json` `dev` script가 `netlify dev`로 바뀌어 무한루프 회피하면서 `npm start`(`nuxt start`, prod) 폴백해 dist 없다고 터짐. 해결: `netlify.toml [dev]`에 `command = "nuxt"` 명시
+- CLAUDE.md 개발 모드 섹션 문구도 갱신
+
+### 2026-05-24 - 페이지별 브라우저 타이틀 동적 적용
+- **비디오 페이지** (`pages/video/index.vue`): `head()` 추가 — 기본 'DIBE2 비디오', `selectedVideo` 있을 때 `{영상제목} - DIBE2 비디오`
+- **메인 레이아웃** (`layouts/main.vue`): `head()` 추가 — `currentTrack` 있으면 `{곡제목} - {아티스트} | DIBE2`, 없으면 'DIBE2'. 일시정지 중에도 곡 정보 유지 (Spotify/Bugs 컨벤션)
+- 기존엔 `nuxt.config.js` head.title `'DIBE2'`만 적용돼서 어디 가나 'DIBE2'로 표시됐음
+- Nuxt head 머지 규칙: 페이지 head() > 레이아웃 head() > nuxt.config.js. 그래서 비디오 페이지는 페이지 head()가 그대로 적용되고, 메인 레이아웃 페이지(/, /playlist/:id, /admin)는 레이아웃 head()로 곡 정보 표시
+
 ### 2026-05-24 - 비디오 페이지를 YT.Player 기반으로 + 차단 감지 안내 UI (invidious 우회 시도 → 포기)
 - **시도**: 비디오 페이지의 단순 iframe → YT.Player로 전환하여 `onError(101/150)`로 임베드 차단 감지, `isBlocked=true` 시 invidious(yewtu.be) iframe으로 자동 fallback
 - **검증 결과**: invidious 우회 실패. 두 가지 본질적 장벽
