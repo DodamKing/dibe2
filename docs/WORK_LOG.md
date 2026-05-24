@@ -2,7 +2,64 @@
 
 > 완료된 작업은 **최신순(위에서부터 최근)**으로 정렬. 새 항목은 맨 위에 추가.
 
+## 예정 작업
+- **비디오 검색 결과 무한 스크롤**: 현재 `/api/youtube/search`가 `limit=20` 고정. `youtube-search-api`의 `NextPage(token)` 메서드로 서버 pagination 지원 + 클라이언트는 IntersectionObserver로 그리드 끝 감지 시 다음 페이지 append. 작업량 ~1-2시간
+
 ## 완료된 작업
+
+### 2026-05-24 - 비디오 페이지를 YT.Player 기반으로 + 차단 감지 안내 UI (invidious 우회 시도 → 포기)
+- **시도**: 비디오 페이지의 단순 iframe → YT.Player로 전환하여 `onError(101/150)`로 임베드 차단 감지, `isBlocked=true` 시 invidious(yewtu.be) iframe으로 자동 fallback
+- **검증 결과**: invidious 우회 실패. 두 가지 본질적 장벽
+  - yewtu.be (그리고 대부분 invidious 인스턴스)가 anti-bot 페이지 + `X-Frame-Options: SAMEORIGIN` 적용 → 우리 도메인 iframe에서 띄울 수 없음
+  - TJ/한국 라이선스 영상은 invidious 인스턴스(유럽/북미 IP)가 stream 추출 자체 불가
+  - 다른 인스턴스/Piped도 같은 anti-bot 추세 + IP 제한 동일
+- **결정**: invidious 우회 코드 제거. 차단 감지 시 영상 자리에 큰 안내 카드 + "YouTube에서 보기" 버튼만 표시
+- **유지**: YT.Player 기반 임베드 + onError 차단 감지 흐름은 유지 (단순 iframe 대비 명확한 안내 가능)
+- **검토했으나 안 한 대안**: 자체 서버에서 yt-dlp stream 추출 = 한국 IP 호스팅 + 별도 서버 + YouTube 봇 차단 위험으로 trade-off 안 맞음
+- 비디오 페이지 player id는 `video-page-player` (음원 `youtube-player`, 어드민 `admin-preview-player`와 격리)
+
+### 2026-05-24 - youtube-nocookie 도메인 적용 (사용자 계정 컨텍스트 분리)
+- 음원/어드민 미리듣기/비디오 페이지 모두 `youtube-nocookie.com`으로 변경
+  - `utils/youtubePlayer.js`, `components/admin/MusicManagement.vue`: `new YT.Player(...)` 옵션에 `host: 'https://www.youtube-nocookie.com'` 추가 (YT IFrame API 공식 옵션)
+  - `pages/video/index.vue`: iframe src를 `youtube.com/embed/` → `youtube-nocookie.com/embed/`
+- 효과: 사용자의 youtube 계정 쿠키 안 보냄 → 시청기록/추천 알고리즘 영향 없음, 광고도 비개인화. 재생/컨트롤/이벤트 동작은 동일
+- 차단 영상 정책은 동일 (우회는 아님)
+
+### 2026-05-24 - 어드민 미리듣기와 메인 player 인스턴스 격리 (좀비 진짜 원인) + 비디오 영상 크기 fix
+- **증상**: 메인에서 음원 재생 → /admin → 음원 추가에서 유튜브 검색/미리듣기 → 메인 복귀 후 음원 재생 안 됨
+- **원인**: `components/admin/MusicManagement.vue`가 `utils/youtubePlayer.js` 싱글톤을 import하고 자체 `<div id="youtube-player">`(id 중복)에 mount 시 `YouTubePlayer.init` 호출 → 모듈 스코프의 player 인스턴스/콜백을 어드민 것으로 덮어씀 → 메인 player 잃어버림. 좀비 fix(body div + health check)는 DOM 관점에선 정상이라 잡지 못함
+- **해결**: 어드민 미리듣기를 별도 YT.Player 인스턴스로 격리
+  - div id: `youtube-player` → `admin-preview-player`
+  - utils 모듈 import 제거, 자체 `new YT.Player(...)` 생성 (`initAdminPlayer` 메서드)
+  - `beforeDestroy`에서 player.destroy() + setInterval cleanup 추가 (기존엔 setInterval clear도 누락된 상태)
+  - 모든 `YouTubePlayer.xxx` 호출 → `this.player?.xxx`로 일괄 변경
+- **비디오 페이지 영상 크기 fix**: 데스크탑에서 16:9 영상이 화면 높이 넘치던 문제
+  - `aspect-ratio: 16/9` + `max-height: calc(100vh - 16rem)` + sm 이상에선 width를 max-height에 비례 cap하는 CSS로 뷰포트 안에 들어오게. 비율 유지
+
+### 2026-05-24 - 비디오 모드 UX 개선 + 좀비 fix 보강
+- **좀비 fix 보강**: `store/player.js` `initializeAudioSystem`에 `#youtube-player` DOM health check 추가
+  - 1차 fix(div를 body에 두기)는 "div가 사라지지 않는다"는 낙관 전제였는데, 어떤 이유(hot-reload 잔재 등)로 사라지면 여전히 좀비
+  - 매번 mount 사이클에서 `document.body.contains(playerEl)` 확인 → 죽었으면 div 복구 + YT.Player 재init. 큐는 기존 상태 보존
+- **비디오 모드 별도 헤더**: `components/VideoHeader.vue` 신설 (← 뒤로가기 + DIBE2 비디오 + UserMenu)
+  - 기존엔 `layouts/video.vue`가 `AppHeader`를 그대로 써서 비디오 페이지에 음원 검색 input이 노출되던 어색함 해소
+  - 모드 분리 명확 + 복귀 경로(← 또는 로고 클릭) 명시
+- **`components/UserMenu.vue` 추출**: 유저 아바타 + 드롭다운 메뉴를 AppHeader/VideoHeader 양쪽에서 재사용
+- **`components/AppHeader.vue` 슬림화**: 유저 메뉴 관련 data/computed/methods 제거하여 UserMenu에 위임
+
+### 2026-05-24 - 비디오 검색 페이지 추가 + youtube-player 좀비 이슈 해결 + dev 환경 정비
+- **비디오 페이지** (`/video`): 유튜브 검색 → 결과 그리드 → 클릭 시 페이지 내 `<iframe>` 임베드 재생. 음원과 인스턴스 분리, 음원 페이지로 돌아오기 전까지는 둘이 충돌 없음
+  - `server/api/youtube.js` 신설 + `GET /api/youtube/search` (services.songService.searchYoutubeForVideo, 길이 필터 없음)
+  - `layouts/video.vue` 신설 (AppHeader만, 하단 MusicPlayer 없음). mounted에서 `player/pause` 디스패치하여 음원 일시정지 (큐 상태는 그대로 보존)
+  - `pages/video/index.vue`: 모바일 1열 → sm 2열 → lg 3열 그리드, aspect-video iframe
+  - `components/AppHeader.vue`: 검색 input과 유저 아바타 사이에 비디오 아이콘 추가 (모바일 포함 항상 표시)
+- **youtube-player 좀비 이슈 근본 해결**: `#youtube-player` div를 `layouts/main.vue`가 아닌 `document.body`에 마운트
+  - 기존: 메인 → /admin 같은 다른 레이아웃 전환 시 main.vue unmount → DOM 사라짐 → `YT.Player` 인스턴스 좀비화 → 새로고침 필요
+  - 해결: `plugins/youtube-init.client.js` 신설, body에 한 번만 마운트 → 어떤 레이아웃 전환에도 DOM 유지
+  - `layouts/main.vue`에서 `<div id="youtube-player">` 제거
+- **dev 환경 정비** (Netlify 이관 후 잔재 정리)
+  - `package.json` dev: `nodemon --watch server --exec "nuxt"` → `"nuxt"`. Express serverMiddleware 시절 잔재로, Netlify Functions 이관 후엔 netlify dev가 functions 핫리로드를 자체 처리하므로 nodemon 불필요. 또한 nodemon이 nuxt 시작을 한 단계 더 감싸 첫 빌드 시간이 netlify-cli targetPort wait timeout(~30초)을 초과하던 문제 동시 해결
+  - `netlify.toml`에 `targetPortReadyTimeout = 60` 추가 (안전판)
+- **모바일 대응 원칙 문서화**: `CLAUDE.md` 작업 규칙 + `docs/FRONTEND.md`에 가이드 추가
 
 ### 2026-05-11 - localStorage 캐시 stale 해소 (큐/차트 동기화)
 - **문제**: 큐의 곡 데이터(특히 가사)가 localStorage에 통째로 캐시되어, DB가 cron으로 갱신되어도 옛 데이터가 계속 표시됨

@@ -122,13 +122,31 @@ export const mutations = {
 
 export const actions = {
     async initializeAudioSystem({ commit, dispatch, state }) {
-        if (!state.isInitialized) {
-            await dispatch('initYoutubePlayer')
+        // 좀비 방어: #youtube-player가 DOM에 살아있는지 매번 확인
+        const playerEl = typeof document !== 'undefined' ? document.getElementById('youtube-player') : null
+        const isPlayerAlive = playerEl && document.body.contains(playerEl)
+        const wasInitialized = state.isInitialized
+
+        if (wasInitialized && isPlayerAlive) return
+
+        // 좀비 상태(이미 init됐는데 DOM이 사라짐)거나 첫 진입인데 div가 없는 경우 → div 복구
+        if (!isPlayerAlive) {
+            const div = document.createElement('div')
+            div.id = 'youtube-player'
+            div.className = 'hidden'
+            document.body.appendChild(div)
+            commit('SET_YOUTUBE_READY', false)
+        }
+
+        await dispatch('initYoutubePlayer')
+
+        // 큐는 첫 진입에만 초기화 (좀비 복구 시엔 기존 큐 유지)
+        if (!wasInitialized) {
             await dispatch('initializeQueue')
-            commit('SET_IS_INITIALIZED', true)
-            // 캐시 큐를 즉시 표시 후, 백그라운드에서 fresh 데이터로 갱신
             dispatch('refreshQueueData')
         }
+
+        commit('SET_IS_INITIALIZED', true)
     },
 
     initializeQueue({ commit, rootState }) {

@@ -17,6 +17,7 @@ function initPlayer() {
     if (!isAPIReady) return;
 
     player = new YT.Player('youtube-player', {
+        host: 'https://www.youtube-nocookie.com',
         height: '0',
         width: '0',
         playerVars: {

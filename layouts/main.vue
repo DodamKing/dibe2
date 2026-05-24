@@ -3,7 +3,6 @@
         <AppHeader />
         <Nuxt />
 
-        <div id="youtube-player" class="hidden"></div>
         <Playlist :show="showQueue" @close="toggleQueue" class="z-40" />
         <MusicPlayer :current-track="currentTrack" @toggle-queue="toggleQueue" class="z-50" />
 

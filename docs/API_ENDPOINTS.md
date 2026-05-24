@@ -37,6 +37,11 @@
 | GET | `/system-stats` | 시스템 상태 (CPU/메모리/디스크/uptime) |
 | PUT | `/users/:userId/access` | 사용자 접근 기간 설정 {days} |
 
+## YouTube (`/api/youtube`) - server/api/youtube.js
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | `/search?query=&limit=` | 유튜브 영상 검색 (비디오 페이지 전용, 길이 필터 없음). 응답: `{ items: [{id, title, duration, thumbnail, channelTitle}] }` |
+
 ## Users (`/api/users`) - server/api/user.js
 | Method | Path | 설명 |
 |--------|------|------|

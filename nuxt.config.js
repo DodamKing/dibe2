@@ -37,6 +37,7 @@ export default {
     '~/plugins/error-handler',
     { src: '~/plugins/axios-interceptor', mode: 'client' },
     { src: '~/plugins/auth-init', mode: 'client' },
+    { src: '~/plugins/youtube-init.client', mode: 'client' },
   ],
 
   // Auto import components: https://go.nuxtjs.dev/config-components

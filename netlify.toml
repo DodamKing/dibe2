@@ -1,6 +1,7 @@
 [dev]
   port = 3000
   targetPort = 3333
+  targetPortReadyTimeout = 60
 
 [build]
   command = "nuxt generate"

@@ -215,6 +215,21 @@ module.exports = {
         }
     },
 
+    // 비디오 페이지 전용 검색 — getYoutubeUrlsByYouTubeSearch와 달리 길이 필터 없이 영상만 골라 반환
+    searchYoutubeForVideo: async (query, limit = 20) => {
+        const results = await YouTubeSearch.GetListByKeyword(query, false, limit)
+        const items = (results?.items || [])
+            .filter(item => item.type === 'video')
+            .map(item => ({
+                id: item.id,
+                title: item.title,
+                duration: item.length?.simpleText || '',
+                thumbnail: item.thumbnail?.thumbnails?.slice(-1)[0]?.url || '',
+                channelTitle: item.channelTitle || ''
+            }))
+        return { items }
+    },
+
     getYoutubeUrlbySongId: async (_id) => {
         try {
             const song = await db.Song.findById(_id)

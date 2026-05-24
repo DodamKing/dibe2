@@ -31,18 +31,22 @@ dibe2/
 │   ├── subscription-notice.vue  # 구독 만료 안내
 │   ├── test-error.vue
 │   ├── admin/index.vue  # 관리자 대시보드
-│   └── playlist/_id.vue # 플레이리스트 상세
+│   ├── playlist/_id.vue # 플레이리스트 상세
+│   └── video/index.vue  # 유튜브 검색 + 영상 재생 (음원과 독립)
 │
 ├── plugins/
-│   └── error-handler.js
+│   ├── error-handler.js
+│   ├── axios-interceptor.js
+│   ├── auth-init.js
+│   └── youtube-init.client.js  # body에 #youtube-player div 마운트 (좀비 방지)
 │
-├── server/              # Express 백엔드 (Nuxt serverMiddleware)
+├── server/              # Express 라우터/서비스 (Netlify Functions에서 require로 재사용)
 │   ├── api/
-│   │   ├── index.js     # Express app 생성, 라우터 마운트
 │   │   ├── song.js      # /api/songs/*
 │   │   ├── playlist.js  # /api/playlists/*
 │   │   ├── admin.js     # /api/admin/*
-│   │   └── user.js      # /api/users/* (로그인/OAuth/JWT 발급)
+│   │   ├── user.js      # /api/users/* (로그인/OAuth/JWT 발급)
+│   │   └── youtube.js   # /api/youtube/* (비디오 페이지 전용 검색)
 │   ├── middleware/
 │   │   ├── auth.js      # JWT 인증 (jwtCheckMiddleware, adminMiddleware, generateToken)
 │   │   ├── cors.js
@@ -102,4 +106,10 @@ dibe2/
 ## 데이터 흐름
 - Bugs Music → 크롤링 → Chart/Song 모델에 저장
 - YouTube Search API → Song.youtubeUrl에 저장
-- 클라이언트 재생: Song._id → youtubeId 추출 → YouTube IFrame API
+- 클라이언트 음원 재생: Song._id → youtubeId 추출 → YouTube IFrame API (`utils/youtubePlayer.js`, host: youtube-nocookie.com)
+- 비디오 페이지: `/api/youtube/search` → 페이지 내 자체 YT.Player 인스턴스로 임베드. `onError(101/150)` 잡으면 차단 영상으로 판별 → 영상 자리에 "YouTube에서 보기" 안내 카드 표시 (invidious 우회는 anti-bot/X-Frame-Options/지역 IP 제한으로 작동 안 함이 확인됨)
+
+## YouTube IFrame 인스턴스 관리
+- `#youtube-player` div는 `plugins/youtube-init.client.js`에서 `document.body`에 한 번만 마운트
+- 레이아웃 전환(main↔video↔admin 등) 시에도 DOM이 살아있어야 `YT.Player` 모듈 스코프 싱글톤(`utils/youtubePlayer.js`)의 바인딩이 좀비화되지 않음
+- 비디오 페이지는 위 인스턴스를 안 쓰고 페이지 내 별도 `<iframe>` 임베드 — 충돌 없음

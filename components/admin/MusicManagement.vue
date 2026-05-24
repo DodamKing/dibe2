@@ -1,6 +1,6 @@
 <template>
     <div>
-        <div id="youtube-player"></div>
+        <div id="admin-preview-player" class="hidden"></div>
 
         <h2 class="text-3xl font-bold text-gray-900 mb-8">음원 관리</h2>
         <div class="bg-white shadow-md rounded-lg overflow-hidden">
@@ -317,7 +317,9 @@
 </template>
 
 <script>
-import YouTubePlayer from '@/utils/youtubePlayer';
+// 메인 음원 시스템의 utils/youtubePlayer 싱글톤은 절대 import하지 말 것.
+// 그것의 player 객체를 덮어쓰면 어드민 진입 후 메인 음원 player가 좀비됨.
+// 어드민 미리듣기는 자체 YT.Player 인스턴스로 격리.
 
 export default {
     name: 'MusicManagement',
@@ -351,15 +353,20 @@ export default {
             showSearchResults: true,
             showYoutubeResults: false,
             youtubeSearchResults: [],
+            player: null,
+            updateInterval: null,
         }
     },
     mounted() {
-        YouTubePlayer.init(
-            this.onPlayerReady,
-            this.onPlayerStateChange,
-            this.onPlayerError
-        );
-        setInterval(this.updateCurrentTime, 1000);
+        this.initAdminPlayer()
+        this.updateInterval = setInterval(this.updateCurrentTime, 1000)
+    },
+    beforeDestroy() {
+        if (this.updateInterval) clearInterval(this.updateInterval)
+        if (this.player && this.player.destroy) {
+            try { this.player.destroy() } catch (e) { /* ignore */ }
+            this.player = null
+        }
     },
     methods: {
         async searchSongs() {
@@ -480,7 +487,7 @@ export default {
         playSong(song) {
             const videoId = this.extractVideoId(song.youtubeUrl);
             if (videoId) {
-                YouTubePlayer.loadVideo(videoId);
+                this.player?.loadVideoById(videoId);
                 this.isPlaying = true;
                 this.isPaused = false;
                 this.currentSong = {
@@ -492,7 +499,7 @@ export default {
             }
         },
         stopPlay() {
-            YouTubePlayer.stop();
+            this.player?.stopVideo();
             this.isPlaying = false;
             this.isPaused = false;
             this.currentTime = 0;
@@ -502,31 +509,67 @@ export default {
             const match = url.match(regExp);
             return (match && match[2].length === 11) ? match[2] : null;
         },
+        initAdminPlayer() {
+            const create = () => {
+                this.player = new YT.Player('admin-preview-player', {
+                    host: 'https://www.youtube-nocookie.com',
+                    height: '0', width: '0',
+                    playerVars: {
+                        autoplay: 0,
+                        controls: 0,
+                        enablejsapi: 1,
+                        origin: window.location.origin,
+                        playsinline: 1,
+                    },
+                    events: {
+                        onReady: this.onPlayerReady,
+                        onStateChange: this.onPlayerStateChange,
+                        onError: this.onPlayerError,
+                    },
+                })
+            }
+
+            if (typeof YT !== 'undefined' && YT.Player) {
+                create()
+            } else {
+                // 메인 음원 시스템이 보통 먼저 YT API를 로드하지만, 직접 /admin 진입 등을 대비
+                if (!document.querySelector('script[src*="iframe_api"]')) {
+                    const tag = document.createElement('script')
+                    tag.src = 'https://www.youtube.com/iframe_api'
+                    document.head.appendChild(tag)
+                }
+                const original = window.onYouTubeIframeAPIReady
+                window.onYouTubeIframeAPIReady = () => {
+                    if (original) original()
+                    if (typeof YT !== 'undefined' && YT.Player) create()
+                }
+            }
+        },
         onPlayerReady(event) {
-            console.log('YouTube player is ready');
+            console.log('Admin preview player is ready');
         },
         /* global YT */
         onPlayerStateChange(event) {
             if (event.data === YT.PlayerState.PLAYING) {
-                this.duration = YouTubePlayer.getDuration();
+                this.duration = this.player?.getDuration();
             }
         },
         updateCurrentTime() {
             if (this.isPlaying && !this.isPaused) {
-                this.currentTime = YouTubePlayer.getCurrentTime();
+                this.currentTime = this.player?.getCurrentTime();
             }
         },
         togglePlay() {
             if (this.isPaused) {
-                YouTubePlayer.play();
+                this.player?.playVideo();
                 this.isPaused = false;
             } else {
-                YouTubePlayer.pause();
+                this.player?.pauseVideo();
                 this.isPaused = true;
             }
         },
         seekTo() {
-            YouTubePlayer.seek(this.currentTime);
+            this.player?.seekTo(this.currentTime, true);
         },
         formatTime(seconds) {
             const minutes = Math.floor(seconds / 60);
@@ -606,25 +649,25 @@ export default {
             if (this.previewVideoId === result.id) {
                 if (this.isPlaying) {
                     if (this.isPaused) {
-                        YouTubePlayer.play();
+                        this.player?.playVideo();
                         this.isPaused = false;
                     } else {
-                        YouTubePlayer.pause();
+                        this.player?.pauseVideo();
                         this.isPaused = true;
                     }
                 } else {
                     // 정지된 상태면 다시 재생
-                    YouTubePlayer.loadVideo(result.id);
+                    this.player?.loadVideoById(result.id);
                     this.isPlaying = true;
                     this.isPaused = false;
                 }
             } else {
                 // 다른 영상이면 새로 재생
                 if (this.isPlaying) {
-                    YouTubePlayer.stop();
+                    this.player?.stopVideo();
                 }
                 this.previewVideoId = result.id;
-                YouTubePlayer.loadVideo(result.id);
+                this.player?.loadVideoById(result.id);
                 this.isPlaying = true;
                 this.isPaused = false;
                 this.currentSong = {
@@ -642,9 +685,9 @@ export default {
             }
 
             if (this.isPaused) {
-                YouTubePlayer.play();
+                this.player?.playVideo();
             } else {
-                YouTubePlayer.pause();
+                this.player?.pauseVideo();
             }
             this.isPaused = !this.isPaused;
         },
@@ -655,7 +698,7 @@ export default {
                 event.stopPropagation();
             }
 
-            YouTubePlayer.stop();
+            this.player?.stopVideo();
             this.isPlaying = false;
             this.isPaused = false;
             this.previewVideoId = null;
@@ -664,7 +707,7 @@ export default {
 
         handleSeek(event) {
             const time = parseFloat(event.target.value);
-            YouTubePlayer.seek(time);
+            this.player?.seekTo(time, true);
             this.currentTime = time;
         }
     }

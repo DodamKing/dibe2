@@ -6,7 +6,7 @@
                     <div class="flex justify-between items-center">
                         <h1 class="text-2xl font-bold text-white">DIBE2</h1>
                         <div class="flex items-center space-x-4">
-                            <button @click="toggleSearch" class="text-white sm:hidden">
+                            <button @click="toggleSearch" class="text-white sm:hidden" aria-label="검색">
                                 <i class="fas fa-search"></i>
                             </button>
                             <div class="hidden sm:block relative w-64">
@@ -16,26 +16,15 @@
                                 <i @click="executeSearch"
                                     class="fas fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-300 cursor-pointer"></i>
                             </div>
-                            <div class="relative" ref="userMenuContainer">
-                                <button @click="toggleUserMenu"
-                                    class="flex items-center space-x-2 text-white hover:text-gray-200">
-                                    <img :src="avatarUrl" alt="User Avatar"
-                                        class="w-8 h-8 rounded-full">
-                                    <span class="hidden sm:inline">{{ userName }}</span>
-                                    <i class="fas fa-chevron-down"></i>
-                                </button>
-                            </div>
+                            <NuxtLink to="/video" aria-label="유튜브 영상 검색" title="유튜브 영상 검색"
+                                class="text-white hover:text-gray-200 flex items-center">
+                                <i class="fas fa-video text-lg"></i>
+                            </NuxtLink>
+                            <UserMenu />
                         </div>
                     </div>
                 </div>
             </header>
-            <div v-if="showUserMenu"
-                class="user-menu absolute right-4 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                <a @click.stop.prevent href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">프로필</a>
-                <a @click.stop.prevent href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">설정</a>
-                <a v-if="isAdmin" @click.stop.prevent="goAdmin" href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">관리자</a>
-                <a @click.stop.prevent="logout" href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">로그아웃</a>
-            </div>
         </div>
         <transition name="fade">
             <div v-if="showSearch"
@@ -64,48 +53,23 @@
 <script>
 import { mapState, mapActions } from 'vuex'
 import SearchResultsModal from './SearchResultsModal.vue';
+import UserMenu from './UserMenu.vue';
 
 export default {
     components: {
-        SearchResultsModal
+        SearchResultsModal,
+        UserMenu
     },
     data() {
         return {
-            showUserMenu: false,
             localSearchQuery: '',
         }
     },
     computed: {
         ...mapState('search', ['searchQuery', 'searchResults', 'showSearch', 'showSearchResults']),
-        userName() {
-            return this.$store.state.auth.user?.username || this.$store.state.auth.user?.name
-        },
-        avatarUrl() {
-            const picture = this.$store.state.auth.user?.picture
-            return picture ? `${picture}?timestamp=${new Date().getTime()}` : 'https://via.placeholder.com/32'
-        },
-        isAdmin() {
-            return this.$store.state.auth.user.isAdmin
-        }
     },
     methods: {
         ...mapActions('search', ['performSearch', 'closeSearchResults', 'toggleSearch', 'updateSearchQuery']),
-        toggleUserMenu() {
-            this.showUserMenu = !this.showUserMenu
-        },
-        closeUserMenu(event) {
-            if (!this.$refs.userMenuContainer.contains(event.target)) {
-                this.showUserMenu = false
-            }
-        },
-        async logout() {
-            try {
-                await this.$store.dispatch('auth/logout')
-                window.location.reload()
-            } catch (error) {
-                console.error('로그아웃 중 오류 발생:', error)
-            }
-        },
         executeSearch() {
             if (this.localSearchQuery.trim() !== '') {
                 this.updateSearchQuery(this.localSearchQuery)
@@ -124,9 +88,6 @@ export default {
                     this.$refs.mobileSearchInput.focus()
                 }
             })
-        },
-        goAdmin() {
-            this.$router.push('/admin')
         }
     },
     watch: {
@@ -135,14 +96,7 @@ export default {
                 this.focusSearchInput()
             }
         }
-    },
-    mounted() {
-        document.addEventListener('click', this.closeUserMenu)
-    },
-    beforeDestroy() {
-        document.removeEventListener('click', this.closeUserMenu)
-    },
-
+    }
 }
 </script>
 
@@ -151,21 +105,18 @@ export default {
     position: relative;
 }
 
-.user-menu {
-    position: absolute;
-    top: 100%;
-    right: 1rem;
-    z-index: 50;
+/* layouts/main.vue 의 전역 .container { overflow-x: hidden } 이
+   CSS spec상 overflow-y를 auto로 승격시켜 헤더 안 UserMenu 드롭다운을 잘랐음.
+   헤더 자체는 horizontal 넘칠 일이 없으니 visible 로 덮어씀. */
+header > .container {
+    overflow-x: visible;
+    overflow-y: visible;
 }
 
 @media (max-width: 640px) {
     .container {
         padding-left: 1rem;
         padding-right: 1rem;
-    }
-
-    .user-menu {
-        right: 1rem;
     }
 }
 

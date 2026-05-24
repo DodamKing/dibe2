@@ -12,6 +12,7 @@ const userRoutes = require('../../server/api/user')
 const songRoutes = require('../../server/api/song')
 const playlistRoutes = require('../../server/api/playlist')
 const adminRoutes = require('../../server/api/admin')
+const youtubeRoutes = require('../../server/api/youtube')
 
 const app = express()
 
@@ -51,6 +52,7 @@ app.use('/users', userRoutes)
 app.use('/songs', songRoutes)
 app.use('/playlists', playlistRoutes)
 app.use('/admin', adminMiddleware, adminRoutes)
+app.use('/youtube', youtubeRoutes)
 
 // Slack 메시지
 const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL
