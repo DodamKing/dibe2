@@ -29,6 +29,18 @@
 | DELETE | `/:id/songs` | 플레이리스트에서 곡 제거 |
 | PUT | `/:id/name` | 플레이리스트 이름 변경 |
 
+## Video Playlists (`/api/video-playlists`) - server/api/videoPlaylist.js
+음원 `Playlist`와 동일 패턴이나 DB에 저장된 문서가 없는 YouTube 검색 결과(영상)를 다룸 — `songId` ref 대신 `videoId`(YouTube 비디오 ID)로 중복 판별.
+| Method | Path | 설명 |
+|--------|------|------|
+| POST | `/` | 비디오 플레이리스트 생성 |
+| GET | `/` | 내 비디오 플레이리스트 목록 |
+| GET | `/:id` | 비디오 플레이리스트 상세 |
+| DELETE | `/:playlistId` | 비디오 플레이리스트 삭제 |
+| POST | `/:id/videos` | 플레이리스트에 영상 추가 |
+| DELETE | `/:id/videos` | 플레이리스트에서 영상 제거 |
+| PUT | `/:id/name` | 플레이리스트 이름 변경 |
+
 ## Admin (`/api/admin`) - server/api/admin.js (adminMiddleware 필수)
 | Method | Path | 설명 |
 |--------|------|------|

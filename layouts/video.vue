@@ -20,3 +20,14 @@ export default {
     }
 }
 </script>
+
+<style>
+/* layouts/main.vue와 동일한 모바일 터치 영역 보정 (이 레이아웃은 main.vue와 별도라 거기 정의된 규칙이 적용 안 됨) */
+@media (max-width: 640px) {
+    button,
+    a {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+</style>

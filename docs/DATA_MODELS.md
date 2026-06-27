@@ -46,6 +46,24 @@
 ```
 - songs 배열에 곡 정보 비정규화 저장 (빠른 조회용)
 
+## VideoPlaylist - server/models/VideoPlaylist.js
+```
+{
+  name: String,
+  user: ObjectId (ref: User),
+  videos: [{
+    videoId: String,   // YouTube 비디오 ID (참조할 DB 문서 없음 — 전부 비정규화)
+    title: String,
+    thumbnail: String,
+    channelTitle: String,
+    duration: String
+  }],
+  createdAt, updatedAt (timestamps)
+}
+```
+- `Playlist`와 동일 패턴이지만 `songId(ref Song)` 같은 DB 참조가 없음 — 비디오는 YouTube 검색 결과(`/api/youtube/search`)일 뿐 DB 저장 문서가 아니라서 전부 비정규화 필드만 저장
+- 중복 판별/제거는 `videoId` 기준
+
 ## Chart - server/models/Chart.js
 ```
 {

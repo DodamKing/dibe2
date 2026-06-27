@@ -7,6 +7,41 @@
 
 ## 완료된 작업
 
+### 2026-06-28 - 비디오 탭을 유튜브 뮤직 미니플레이어 패턴으로 재구성 + 자동재생 방지
+- 피드백: 검색 탭에 (v-show로 숨겨놨다 해도) 기존 재생 영상 영역이 구조적으로 끼어있는 게 싫음 — 검색 탭은 검색+재생+추가만 있으면 됨. 영상 재생 자체는 유튜브 뮤직처럼 하고 싶다(미니플레이어 + 확장형 Now Playing)
+- **탭 3개→2개**: 검색/재생목록/보관함 → 검색/보관함. 재생목록(큐)은 최상위 탭에서 빠지고 "지금 재생 중" 오버레이 안으로 들어감
+- **"지금 재생 중"을 탭 콘텐츠에서 완전히 분리**: `pages/video/index.vue`에 ① sticky 미니플레이어(검색/보관함 탭과 무관하게 항상 떠 있음, 썸네일 탭하면 확장) ② `showNowPlaying`으로 토글되는 풀스크린 오버레이(큰 영상 프레임 + 컨트롤 + `VideoQueueList`) 두 레이어로 재구성. 둘 다 `v-show`라 탭을 전환하거나 오버레이를 닫아도 `#video-page-player`가 DOM에서 사라지지 않아 재생이 끊기지 않음
+- **자동재생 방지**: 새로고침/재방문 시 `localStorage`에서 큐·현재영상이 복원되면 `autoplay:0`으로 cue만 하고 재생은 안 함. 검색 결과 클릭/재생목록 클릭/"전체재생" 등 명시적 액션만 재생 시작 — `initVideoPlayer(videoId, autoplay)`에 `justRestored` 플래그(mount 시 true, `initializeQueue`의 동기 커밋이 트리거하는 `currentVideo` watcher가 이 시점 값을 읽고 다음 tick에 false로 리셋)로 구분. 영상 종료 후 큐의 다음 영상 자동 진행은 재생목록의 정상 동작이라 그대로 둠(자동재생 방지 대상이 아님)
+- 같이 발견한 버그: `mounted()`에서 watcher와 별개로 `initVideoPlayer`를 또 호출하던 중복 호출 경로 제거, `initVideoPlayer`에 `if (this.player) return` 가드 추가해 멱등성 확보
+- 추가(이어서): 미니플레이어/오버레이에 재생/일시정지 토글 버튼 추가(음원 `MusicPlayer.vue`와 동일한 동그란 버튼 스타일), `layouts/video.vue`에 빠져있던 모바일 44px 터치영역 규칙 보강, 오버레이 컨트롤 줄이 좁은 화면에서 넘치지 않게 `flex-wrap` 처리. `VideoAddModal.vue`는 대상 영상이 이미 재생목록(큐)에 있으면 "재생목록에 추가" 항목을 안내문구로 대체(중복 추가 유도 방지) — `videoQueue.queue`를 참조해 매번 동적으로 판단
+- 추가(이어서 2): 같은 로직을 "플레이리스트에 추가" 목록에도 적용 — 이미 들어있는 플레이리스트는 "추가됨" 표시로 비활성화(`playlist.videos`를 직접 대조). 서버가 중복을 조용히 걸러내고도 `success:true`만 보고 "추가되었습니다" 토스트를 띄우던 부정확한 케이스도 `addedVideos` 개수로 분기해서 수정
+- 미니플레이어를 sticky 상단(탭 블록 안)에서 **하단 고정**으로 이동 — 유튜브 뮤직, 그리고 우리 음원 쪽 `MusicPlayer.vue`도 전부 하단 고정이라 통일. 탭 콘텐츠 영역엔 `currentVideo` 있을 때만 하단 패딩(`pb-24 sm:pb-28`) 추가해 가려지지 않게 처리
+- **재생 위치 기억** 추가 — 마지막으로 보던 영상 1개의 `getCurrentTime()`만 5초 간격(재생 중일 때) + 일시정지 시 + 페이지 이탈 시 `localStorage`(`user_{userId}_video_position`)에 저장. 같은 영상으로 돌아오면(`onReady` 또는 `loadVideoById` 직후) `seekTo`로 복원. 여러 영상 기록을 누적하지 않는 단순한 버전으로 의도적으로 제한
+
+### 2026-06-28 - 비디오 탭 재생목록 UX 3차 개선 (선택모드 제거 + 추가 모달 통합 + 음량 저장)
+- 2차 결과물 피드백: 카드 클릭이 즉시재생/선택토글로 모드에 따라 의미가 달라져 혼란, "+"가 큐(재생목록)에만 가고 플레이리스트(보관함) 추가는 선택모드를 거쳐야 해서 음원 쪽 방식(체크 → "추가" → 재생목록/플레이리스트 선택 모달)과 다르게 느껴짐, 지금 재생 중인 영상 자체를 추가하는 경로도 큐/플레이리스트로 따로 나뉘어 있었음
+- **선택모드 완전 제거**: `pages/video/index.vue`에서 `selectionMode`/`selectedItems`/플로팅 액션바/체크오버레이 삭제. 카드는 항상 "썸네일 클릭=재생" + "추가 버튼=모달" 2가지 동작만
+- **`VideoAddModal.vue` 신규**: 영상 1개를 대상으로 "재생목록에 추가" / "플레이리스트에 추가(펼치면 보유 목록)" 중 고르는 단일 모달 — 음원 `layouts/main.vue`의 Add-to-Playlist 모달과 동일 패턴. 검색 카드의 "추가" 버튼과 "지금 재생 중" 슬림바의 "추가" 버튼이 이 모달을 공유(대상만 교체). 기존 `VideoPlaylistPickerModal.vue`(다건 선택용 별도 모달)는 삭제
+- **음량 `localStorage` 저장** 추가 (`user_{userId}_video_volume`) — 새로고침해도 유지. `getVolumeStorageKey()`로 `store/player.js`의 `getStorageKey` 패턴과 동일하게 키 생성
+- 재생목록(큐) 탭 안에서의 클릭-재생/다중선택삭제는 기존 `VideoQueueList.vue` 그대로 — 검색 카드 쪽 선택모드 제거와는 무관한 별개 기능이라 유지
+
+### 2026-06-28 - 비디오 탭 재생목록 UX 2차 개선 (탭 분리 + 슬림 컨트롤바 + 빠른추가)
+- 1차(큐 모달 + 선택모드)를 써보고 나온 피드백 반영: 큐가 모달에 숨어 있어 불편, 비디오엔 음원 `MusicPlayer.vue` 같은 하단 고정 플레이어가 없어 스크롤하면 음량 조절 불가, 검색 결과 하나만 빠르게 추가하거나 재생 중인 영상 자체를 추가할 방법이 없었음
+- **탭 2개→3개**: 검색/보관함 → 검색/재생목록/보관함. `VideoQueueModal.vue`(모달) 삭제, `components/VideoQueueList.vue`(인라인) 신규 — 재생목록이 검색/보관함과 동급인 1급 탭이 됨. 탭 라벨에 큐 개수 배지
+- **"지금 재생 중" 슬림 컨트롤 바** 추가 (`pages/video/index.vue`): 탭/검색바와 같은 `sticky top-16` 블록 맨 아래에 포함시켜 별도 top 오프셋 계산 없이 스크롤해도 항상 고정 노출. 썸네일+제목, ◀▶, 음량(데스크탑만 `hidden sm:flex` — 음원 `MusicPlayer.vue` 67-78줄 마크업 재사용, 단 Vuex `setVolume` 액션 대신 페이지 로컬 YT.Player 인스턴스에 직접 `setVolume`/`mute`/`unMute` 호출), 큐/플레이리스트 추가 버튼
+- **검색 카드에 항상-보이는 "+" 버튼**: 선택모드 토글 없이도 단일 영상을 즉시 큐에 추가 (`videoQueue/addToQueue`). 선택모드는 다건 처리 + 플레이리스트 추가용으로만 유지(선택모드 켜지면 +버튼은 체크 오버레이로 교체)
+- **헤더 큐 아이콘 제거**: `VideoHeader.vue`/`layouts/video.vue`를 원래 단순한 형태로 복원 — 재생목록 탭이 그 역할을 대신해 헤더에 별도 진입점 불필요
+- **버그 수정**: `addSelectedToQueue`/`quickAddToQueue`에서 Vuex 액션 디스패치 결과를 `await` 없이 읽던 버그 발견·수정 (Vuex `dispatch`는 액션이 `async`가 아니어도 항상 Promise를 반환하므로 `await` 없으면 `result.message`가 `undefined` — 큐 추가 자체는 되지만 성공/중복 토스트가 조용히 안 뜨던 문제)
+
+### 2026-06-27 - 비디오 탭에 재생 큐 + 저장 플레이리스트 추가
+- 음원의 "휘발성 큐(player.js)" / "DB 저장 플레이리스트(playlist.js+Playlist 모델)" 분리 패턴을 비디오에도 동일하게 적용 (YouTube Music/Spotify/멜론 등 보편적 트렌드와도 일치)
+- 데이터 모델은 `Playlist`를 확장하지 않고 `VideoPlaylist` 신규 모델로 분리 — 비디오는 DB에 저장된 문서가 없는 YouTube 검색 결과(`videoId,title,thumbnail,channelTitle,duration`)라서 `songId(ref Song)` 같은 참조가 성립 안 함
+- **백엔드**: `server/models/VideoPlaylist.js`, `server/services/videoPlaylistService.js`, `server/api/videoPlaylist.js` (`/api/video-playlists/*`) — `server/{models,services,api}/playlist*` 패턴 그대로 미러링, 중복판별 키만 `songId`→`videoId`
+- **스토어**: `store/videoQueue.js`(신규, player.js 축소판 — 셔플/반복/볼륨 제외, localStorage 캐싱은 동일), `store/videoPlaylist.js`(신규, playlist.js 미러링)
+- **UI**: `pages/video/index.vue`에 "검색"/"보관함" 탭 추가(라우트 이동 없이 전환), 검색 결과 선택모드(체크 오버레이 + 플로팅 액션바), `VideoQueueModal`(큐, Playlist.vue 축소판), `MyVideoPlaylistSection`/`VideoPlaylistDetailPanel`(보관함), `CreateVideoPlaylistModal`, `VideoPlaylistPickerModal`. `VideoHeader`에 큐 아이콘(개수 배지) 추가
+- 검색 결과 클릭 동작은 그대로 즉시 단일 재생 유지 (큐 미사용) — 음원의 `playSong(song){ setCurrentTrack(song) }` 선례를 따름. 영상 종료 시 큐 자동 다음곡 재생(`onStateChange` ENDED → `playNext`)
+- 1차 스코프는 순서재생 + 자동다음만, 셔플/반복은 제외 (필요 시 player.js 패턴 따라 확장 가능)
+
 ### 2026-05-24 - `npm run dev`를 `netlify dev`로 통일
 - `package.json` scripts.dev를 `nuxt` → `netlify dev`로 변경
 - 기존 `npm run dev`는 nuxt 단독 실행이라 `/api/*` 라우팅 안 먹는 함정 (Express serverMiddleware 시절 잔재). 이제 진입점 하나로 통일
