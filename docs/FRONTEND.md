@@ -52,7 +52,8 @@
 - `VideoQueueList.vue`: "지금 재생 중" 오버레이 안에 들어가는 재생목록(큐) 콘텐츠 (`Playlist.vue` 축소판 — 모달도 탭도 아닌 인라인, 가사/셔플/반복 없음, 드래그 정렬 + 다중삭제 + 클릭 점프재생)
 - `MyVideoPlaylistSection.vue`: `/video` 보관함 탭 - 저장된 비디오 플레이리스트 그리드 (카드 썸네일은 첫 영상 1장)
 - `VideoPlaylistDetailPanel.vue`: 보관함 탭에서 플레이리스트 클릭 시 인라인 표시(라우트 아님). "전체재생"은 `videoQueue/setQueueAndPlay` 디스패치
-- `VideoAddModal.vue`: 영상 1개를 대상으로 "재생목록에 추가" / "플레이리스트에 추가"(펼치면 보유 플레이리스트 목록) 중 선택하는 단일 모달. 검색 카드의 "추가" 버튼과 "지금 재생 중" 슬림바의 "추가" 버튼이 모두 이 모달을 공유(대상 영상만 `addModalVideo`로 교체) — 음원 `layouts/main.vue`의 "Add to Playlist Modal"(현재 재생목록에 추가 / 내 플레이리스트에 추가 펼침 목록)과 동일 패턴
+- `VideoAddModal.vue`: 영상 1개를 대상으로 "재생목록에 추가" / "플레이리스트에 추가"(펼치면 보유 플레이리스트 목록) 중 선택하는 단일 모달. 검색 카드의 "추가" 버튼과 "지금 재생 중" 패널의 "추가" 버튼이 모두 이 모달을 공유(대상 영상만 `addModalVideo`로 교체) — 음원 `layouts/main.vue`의 "Add to Playlist Modal"(현재 재생목록에 추가 / 내 플레이리스트에 추가 펼침 목록)과 동일 패턴
+  - **로딩 표시**: "재생목록에 추가"(`videoQueue/addToQueue`)는 순수 로컬(Vuex+localStorage)이라 네트워크 호출 없음 — 스피너 불필요. "플레이리스트에 추가"는 실제 네트워크 POST(`/api/video-playlists/:id/videos`)라 배포 환경에서 dev보다 체감 딜레이가 있을 수 있어서, `addingPlaylistId`로 처리 중인 버튼을 추적해 스피너 표시 + 모든 추가 버튼 비활성화(중복클릭 방지). 음원 `layouts/main.vue`의 `isAdding` 풀스크린 로딩 오버레이(스피너+가짜 진행바)와 같은 문제를 다루지만, 비디오는 한 번에 1개 영상만 추가하는 가벼운 동작이라 버튼 인라인 스피너로 단순화
 - `CreateVideoPlaylistModal.vue`: 새 비디오 플레이리스트 생성 모달
 
 ### 비디오 탭 구조 (유튜브 뮤직 미니플레이어 패턴)
@@ -68,6 +69,7 @@
 - 검색 결과 카드: 썸네일 클릭 = 명시적 재생(클릭 즉시 "지금 재생 중" 패널도 열림). 카드마다 별도로 항상 보이는 "추가" 버튼 → `VideoAddModal` 오픈. 선택모드/다건선택 없음 — 카드 단위로만 추가(음원의 체크박스+모달 패턴과 달리, 영상 카드는 이미 시각적으로 분리돼 있어 단건 추가만으로 충분하다고 판단)
 - **자동재생 방지**: `localStorage`에서 큐/현재영상이 복원될 때는 `autoplay:0`(cue만, 재생 안 함). 검색 결과 클릭/재생목록 항목 클릭/"전체재생" 등 명시적 액션만 autoplay — `pages/video/index.vue`의 `justRestored` 플래그(mount 시 true → `initializeQueue`가 동기적으로 currentVideo를 복원하면서 트리거되는 `currentVideo` watcher가 이 값을 읽어 autoplay 여부 결정 → 다음 tick에 false로 리셋)로 구분. 영상 종료(`onStateChange` ENDED) 시 큐의 다음 영상으로 자동 진행하는 건 재생목록의 정상 동작이라 별개(자동재생 방지 대상 아님)
 - 음량/재생·일시정지는 Vuex 경유 없이 페이지 로컬 YT.Player 인스턴스에 `setVolume`/`mute`/`unMute`/`playVideo`/`pauseVideo` 직접 호출(비디오는 음원처럼 공유 싱글톤이 아니라 페이지 로컬 인스턴스라서). `isPlaying`은 `onStateChange`의 PLAYING/PAUSED로 추적
+- **Media Session API** (`setupMediaSession`/`updateMediaSession`/`clearMediaSession`): 모바일(주로 Android Chrome)에서 잠금화면/알림에 제목·썸네일·재생/이전/다음/탐색 컨트롤 노출. `mounted`에서 액션 핸들러 1회 등록, `currentVideo` watcher에서 메타데이터 갱신, `onStateChange`에서 `playbackState` 갱신, `beforeDestroy`에서 정리. **주의**: 유튜브 iframe이 크로스오리진이라 우리 JS로 PiP를 강제하거나 백그라운드 재생 자체를 보장할 수 없음 — 브라우저/OS 정책 영역. iOS Safari는 화면이 꺼지면 거의 항상 일시정지됨(유튜브 ToS 위반 소지가 있는 오디오 스트림 추출 방식은 의도적으로 시도 안 함, invidious 우회 안 한 것과 같은 이유)
 - 큐/현재영상은 `localStorage`에 캐싱 (`user_{userId}_video_queue`, `user_{userId}_video_current`). 셔플/반복/원본큐도 동일 패턴으로 저장(`user_{userId}_video_shuffle`, `user_{userId}_video_repeat_mode`, `user_{userId}_video_original_queue`). 음량은 `user_{userId}_video_volume` — 새로고침해도 모두 복구(단, 자동재생은 안 됨)
 - **재생 위치 기억**: 마지막으로 보던 영상 1개의 위치만 `user_{userId}_video_position`에 `{id, time}`로 저장(여러 영상 기록 누적 안 함, 단순한 버전). 재생 중 5초 간격 + 일시정지 시 + 페이지 이탈 시 저장, 같은 영상으로 돌아오면 `seekTo`로 복원(5초 이하면 복원 안 함)
   - **주의(YouTube IFrame API 특성)**: cue만 된(`autoplay:0`) 영상에 `seekTo()`를 호출하면 paused 상태와 달리 재생이 시작돼버림 — 자동재생 방지가 위치 복원 때문에 무력화될 수 있음. `initVideoPlayer`의 `onReady`에서 `!autoplay`일 때 `seekTo` 직후 `pauseVideo()`를 호출해 되돌림

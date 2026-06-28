@@ -288,6 +288,7 @@ export default {
             this.isBlocked = false
             this.currentTime = 0
             this.duration = 0
+            this.updateMediaSession()
             if (!this.player) {
                 const autoplay = !this.justRestored
                 this.$nextTick(() => this.initVideoPlayer(newVal.id, autoplay))
@@ -311,6 +312,37 @@ export default {
                 return
             }
             this.$store.dispatch('videoQueue/playNext')
+        },
+        // 모바일(주로 안드로이드 크롬)에서 잠금화면/알림에 재생 컨트롤·메타데이터를 노출 — 백그라운드 재생 자체를
+        // 보장하진 않지만(브라우저/OS 정책 영역), 끄지 않고 다른 앱 쓰는 동안 컨트롤할 수 있게 해줌
+        setupMediaSession() {
+            if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return
+            navigator.mediaSession.setActionHandler('play', () => this.togglePlay())
+            navigator.mediaSession.setActionHandler('pause', () => this.togglePlay())
+            navigator.mediaSession.setActionHandler('previoustrack', () => this.playPrevious())
+            navigator.mediaSession.setActionHandler('nexttrack', () => this.playNext())
+            navigator.mediaSession.setActionHandler('seekto', (details) => {
+                if (this.player && this.player.seekTo && details.seekTime !== undefined) {
+                    this.player.seekTo(details.seekTime, true)
+                }
+            })
+        },
+        updateMediaSession() {
+            if (typeof navigator === 'undefined' || !('mediaSession' in navigator) || !this.currentVideo) return
+            if (typeof MediaMetadata === 'undefined') return
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: this.currentVideo.title,
+                artist: this.currentVideo.channelTitle || '',
+                artwork: [{ src: this.currentVideo.thumbnail, sizes: '480x360', type: 'image/jpeg' }],
+            })
+        },
+        clearMediaSession() {
+            if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return
+            navigator.mediaSession.metadata = null
+            navigator.mediaSession.playbackState = 'none'
+            ;['play', 'pause', 'previoustrack', 'nexttrack', 'seekto'].forEach((action) => {
+                try { navigator.mediaSession.setActionHandler(action, null) } catch (e) { /* 미지원 액션 타입은 무시 */ }
+            })
         },
         toggleTrackInfo() {
             this.showTrackInfo = !this.showTrackInfo
@@ -512,9 +544,11 @@ export default {
                 this.playNext()
             } else if (event.data === YT.PlayerState.PLAYING) {
                 this.isPlaying = true
+                if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing'
             } else if (event.data === YT.PlayerState.PAUSED) {
                 this.isPlaying = false
                 this.savePosition()
+                if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused'
             }
         },
     },
@@ -534,6 +568,7 @@ export default {
                 try { this.lastPosition = JSON.parse(saved) } catch (e) { /* ignore */ }
             }
         }
+        this.setupMediaSession()
         // initializeQueue가 currentVideo를 동기적으로 복원하면 곧바로 watcher가 반응하는데,
         // 그 시점엔 justRestored가 아직 true라서 autoplay=false로 생성됨. 이후 실제 클릭은 모두
         // justRestored=false 상태에서 일어나므로 정상적으로 autoplay된다.
@@ -550,6 +585,7 @@ export default {
         if (this.positionInterval) clearInterval(this.positionInterval)
         this.stopTimeUpdate()
         this.savePosition()
+        this.clearMediaSession()
         if (this.player && this.player.destroy) {
             try { this.player.destroy() } catch (e) { /* ignore */ }
             this.player = null

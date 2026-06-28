@@ -7,6 +7,16 @@
 
 ## 완료된 작업
 
+### 2026-06-28 - VideoAddModal "플레이리스트에 추가"에 로딩 스피너 추가
+- 배경: "재생목록에 추가"는 로컬(Vuex+localStorage)이라 네트워크 호출이 없지만, "플레이리스트에 추가"는 실제 `/api/video-playlists/:id/videos` POST라 배포 환경(Netlify Functions 콜드스타트 + MongoDB Atlas 왕복)에서 dev보다 체감 딜레이가 있을 수 있다는 지적 → 처리 중 피드백 없음
+- `addingPlaylistId` data 추가 — 어느 플레이리스트 버튼이 처리 중인지 추적해 그 버튼에만 스피너(`fa-spinner fa-spin`) 표시, 두 "추가" 버튼 전부 비활성화로 중복클릭 방지. 모달 닫힐 때(`show` watcher)도 같이 리셋
+- 음원 `layouts/main.vue`의 `isAdding` 풀스크린 로딩 오버레이(스피너+가짜 진행바)와 같은 종류 문제지만, 비디오는 영상 1개만 추가하는 가벼운 동작이라 버튼 인라인 스피너로 단순화(가짜 진행바 없음)
+
+### 2026-06-28 - 비디오 탭에 Media Session API 연동 (모바일 잠금화면 컨트롤)
+- 요청: 영상 재생 중 다른 앱 쓰거나 화면 끄고도 감상하고 싶다는 요청 → 진짜 백그라운드 영상재생은 유튜브 iframe이 크로스오리진이라 우리 JS로 강제 불가(브라우저/OS 정책 영역, iOS는 화면 꺼지면 거의 항상 멈춤). 오디오 스트림 추출 같은 ToS 위반 우회는 시도 안 함(invidious 우회 안 한 것과 같은 기준) → 절충안으로 Media Session API만 연동(주 타겟: Android Chrome)
+- `pages/video/index.vue`에 `setupMediaSession`(재생/일시정지/이전/다음/탐색 액션 핸들러, `mounted`에서 1회 등록) / `updateMediaSession`(제목·채널명·썸네일 메타데이터, `currentVideo` watcher에서 갱신) / `clearMediaSession`(`beforeDestroy`에서 정리) 추가. `playbackState`는 `onStateChange`의 PLAYING/PAUSED에서 같이 갱신
+- 효과: 잠금화면/알림에 컨트롤 노출 + 일부 기기에서 백그라운드 유지에 도움. 완전한 백그라운드 재생 보장은 아님 — 기대치를 명확히 하고 진행
+
 ### 2026-06-28 - 음원 플레이어에도 재생 위치 기억 추가
 - 배경: 비디오 쪽 "재생 위치 기억" 작업하면서 음원도 이미 그 기능이 있는 줄 알았는데 확인해보니 없었음(`store/player.js`엔 곡/큐/볼륨/셔플/반복만 저장, 위치는 전혀 저장 안 함) → 같이 추가
 - **구조적 차이**: 비디오는 페이지 로컬 `YT.Player`가 새로고침 시에도 즉시 영상을 cue하기 때문에 `onReady`에서 바로 `seekTo`로 복원하고 진행바에도 바로 보였지만, 음원은 공유 싱글톤(`utils/youtubePlayer.js`)이 새로고침 직후엔 곡을 전혀 로드 안 하고 실제 `play()`를 호출해야 `loadVideoById`로 로드됨 — 그래서 음원은 "재생 버튼을 누르는 순간 기억해둔 위치로 점프"하는 형태로만 구현, 재생 전 진행바 미리보기는 없음

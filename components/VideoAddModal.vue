@@ -11,8 +11,8 @@
                         이미 재생목록에 있습니다
                     </li>
                     <li v-else>
-                        <button @click="addToQueueAndClose"
-                            class="w-full text-left p-2 rounded hover:bg-gray-700 transition-colors duration-200">
+                        <button @click="addToQueueAndClose" :disabled="!!addingPlaylistId"
+                            class="w-full text-left p-2 rounded hover:bg-gray-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                             재생목록에 추가
                         </button>
                     </li>
@@ -29,9 +29,10 @@
                                         <span>{{ playlist.name }}</span>
                                         <span class="text-xs">추가됨</span>
                                     </div>
-                                    <button v-else @click="addToPlaylistAndClose(playlist)"
-                                        class="w-full text-left p-2 rounded hover:bg-gray-700 transition-colors duration-200">
-                                        {{ playlist.name }}
+                                    <button v-else @click="addToPlaylistAndClose(playlist)" :disabled="!!addingPlaylistId"
+                                        class="w-full text-left p-2 rounded hover:bg-gray-700 transition-colors duration-200 flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <span>{{ playlist.name }}</span>
+                                        <i v-if="addingPlaylistId === playlist._id" class="fas fa-spinner fa-spin text-xs"></i>
                                     </button>
                                 </li>
                                 <li v-if="playlists.length === 0" class="text-gray-400 text-sm p-2">
@@ -61,6 +62,9 @@ export default {
     data() {
         return {
             showMyPlaylists: false,
+            // 플레이리스트 추가는 실제 네트워크 호출(POST /api/video-playlists/:id/videos)이라
+            // 배포 환경에서 dev보다 체감 딜레이가 있을 수 있음 — 어느 버튼이 처리 중인지 추적해 스피너 표시 + 중복클릭 방지
+            addingPlaylistId: null,
         }
     },
     computed: {
@@ -72,7 +76,10 @@ export default {
     },
     watch: {
         show(newVal) {
-            if (!newVal) this.showMyPlaylists = false
+            if (!newVal) {
+                this.showMyPlaylists = false
+                this.addingPlaylistId = null
+            }
         }
     },
     methods: {
@@ -95,7 +102,8 @@ export default {
             this.close()
         },
         async addToPlaylistAndClose(playlist) {
-            if (!this.video) return
+            if (!this.video || this.addingPlaylistId) return
+            this.addingPlaylistId = playlist._id
             try {
                 const result = await this.addVideosToPlaylist({ playlistId: playlist._id, videos: [this.video] })
                 if (result && result.success) {
@@ -107,6 +115,8 @@ export default {
                 }
             } catch (error) {
                 this.$toast.error('플레이리스트에 추가하는 데 실패했습니다.')
+            } finally {
+                this.addingPlaylistId = null
             }
             this.close()
         },
