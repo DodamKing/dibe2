@@ -29,6 +29,8 @@ export const state = () => ({
     isInitialized: false,
     isYouTubeReady: false,
     isQueueEnded: false,
+    // 새로고침 복원 시 기억해둔 위치 — 다음 play()에서 한 번만 seek하고 비움(currentTime과는 별개)
+    resumePosition: null,
 })
 
 export const mutations = {
@@ -77,6 +79,9 @@ export const mutations = {
     SET_REPEAT_MODE(state, mode) {
         state.repeatMode = mode
         state.repeatOn = mode !== 'off'
+    },
+    SET_RESUME_POSITION(state, position) {
+        state.resumePosition = position
     },
     SHUFFLE_QUEUE(state) {
         if (state.currentTrack) {
@@ -158,6 +163,7 @@ export const actions = {
         const repeatModeKey = getStorageKey(rootState, 'repeat_mode')
         const shuffleKey = getStorageKey(rootState, 'shuffle')
         const originalQueueKey = getStorageKey(rootState, 'original_queue')
+        const positionKey = getStorageKey(rootState, 'position')
 
         const savedQueue = localStorage.getItem(queueKey)
         if (savedQueue) {
@@ -172,12 +178,27 @@ export const actions = {
 
         const savedRepeatMode = localStorage.getItem(repeatModeKey)
         if (savedRepeatMode) commit('SET_REPEAT_MODE', savedRepeatMode)
-        
+
         const savedShuffle = localStorage.getItem(shuffleKey)
         if (savedShuffle) commit('SET_SHUFFLE', JSON.parse(savedShuffle))
 
         const savedOriginalQueue = localStorage.getItem(originalQueueKey)
         if (savedOriginalQueue) commit('SET_ORIGINAL_QUEUE', JSON.parse(savedOriginalQueue))
+
+        // 마지막으로 듣던 곡의 위치만 기억(비디오 user_{id}_video_position과 동일 패턴) — 다음 play()에서 한 번만 소비
+        const savedPosition = localStorage.getItem(positionKey)
+        if (savedPosition) {
+            try {
+                const parsed = JSON.parse(savedPosition)
+                if (parsed && parsed.time > 5) commit('SET_RESUME_POSITION', parsed)
+            } catch (e) { /* ignore */ }
+        }
+    },
+
+    savePosition({ state, rootState }) {
+        if (!state.currentTrack) return
+        const key = getStorageKey(rootState, 'position')
+        if (key) localStorage.setItem(key, JSON.stringify({ trackId: state.currentTrack._id, time: state.currentTime }))
     },
 
     resetIsInitialized({ commit }) {
@@ -315,6 +336,8 @@ export const actions = {
             try {
                 if (youtubeId !== youtubePlayer.getCurrentVideoId()) youtubePlayer.loadVideo(youtubeId)
                 youtubePlayer.play()
+                // 재생 위치 점프는 onStateChange의 PLAYING 시점(initYoutubePlayer)에서 처리 —
+                // loadVideoById 직후 곧바로 seekTo하면 아직 안 먹는 경우가 있어서 안전한 시점으로 미룸
                 commit('SET_IS_PLAYING', true)
                 commit('SET_QUEUE_ENDED', false) // 재생이 시작되면 큐 종료 상태 해제
             } catch (error) {
@@ -326,9 +349,10 @@ export const actions = {
         }
     },
 
-    pause({ commit }) {
+    pause({ commit, dispatch }) {
         youtubePlayer.pause()
         commit('SET_IS_PLAYING', false)
+        dispatch('savePosition')
     },
 
     playNext({ commit, state, dispatch }) {
@@ -400,6 +424,13 @@ export const actions = {
                     dispatch('playNext')
                 } else if (event.data === YT.PlayerState.PLAYING) {
                     commit('SET_IS_PLAYING', true)
+                    // 새로고침 복원 후 그 곡이 실제로 재생되기 시작하는 순간에만 기억해둔 위치로 점프(한 번 쓰고 비움).
+                    // loadVideoById 직후 곧바로 seekTo를 호출하면 아직 새 영상이 버퍼링 전이라 씹히는 경우가 있어서,
+                    // 실제로 PLAYING 상태가 된 이 시점(=안전하게 seek 가능한 시점)으로 미룸
+                    if (state.resumePosition && state.currentTrack && state.resumePosition.trackId === state.currentTrack._id) {
+                        youtubePlayer.seek(state.resumePosition.time)
+                        commit('SET_RESUME_POSITION', null)
+                    }
                 } else if (event.data === YT.PlayerState.PAUSED) {
                     commit('SET_IS_PLAYING', false)
                 }
@@ -417,13 +448,14 @@ export const actions = {
         }, 1000)
     },
 
-    updateTrackProgress({ commit, state }) {
+    updateTrackProgress({ commit, state, dispatch }) {
         if (state.isYouTubeReady && youtubePlayer) {
             const currentTime = youtubePlayer.getCurrentTime()
             const duration = youtubePlayer.getDuration()
             if (currentTime !== undefined && duration !== undefined) {
                 commit('SET_CURRENT_TIME', currentTime)
                 commit('SET_DURATION', duration)
+                if (state.isPlaying) dispatch('savePosition')
             }
         }
     },

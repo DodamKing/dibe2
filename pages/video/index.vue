@@ -79,15 +79,21 @@
         </div>
 
         <!-- 지금 재생 중 미니플레이어: 음원 MusicPlayer.vue와 동일하게 하단 고정. 탭과 무관하게 항상 떠 있음
-             (검색/보관함 탭 콘텐츠와는 완전히 분리되어 있고, 탭을 눌러도 사라지지 않음 — 영상은 계속 재생됨) -->
-        <div v-if="currentVideo" class="fixed bottom-0 left-0 right-0 z-30 bg-gradient-to-r from-purple-800 to-blue-700 shadow-lg">
+             (검색/보관함 탭 콘텐츠와는 완전히 분리되어 있고, 탭을 눌러도 사라지지 않음 — 영상은 계속 재생됨).
+             "지금 재생 중" 패널보다 z-index가 높아야 패널이 열려 있어도 재생목록 토글 버튼을 계속 누를 수 있음 -->
+        <div v-if="currentVideo" class="fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-r from-purple-800 to-blue-700 shadow-lg">
             <div class="max-w-7xl mx-auto px-4 py-2 flex items-center gap-2">
-                <button @click="showNowPlaying = true" class="flex items-center gap-2 flex-grow min-w-0 text-left">
+                <button @click="toggleTrackInfo" class="flex items-center gap-2 flex-grow min-w-0 text-left">
                     <img :src="currentVideo.thumbnail" :alt="currentVideo.title"
                         class="w-12 h-8 sm:w-14 sm:h-9 object-cover rounded flex-shrink-0">
-                    <p class="text-sm font-medium truncate">{{ currentVideo.title }}</p>
+                    <p class="text-sm font-medium truncate hidden sm:block">{{ currentVideo.title }}</p>
                 </button>
                 <div class="flex items-center flex-shrink-0">
+                    <button @click="toggleRepeat" aria-label="반복 재생" :title="repeatTitle"
+                        class="w-9 h-9 flex items-center justify-center text-gray-200 hover:text-white relative">
+                        <i class="fas fa-repeat text-sm" :class="{ 'text-green-300': repeatMode !== 'off' }"></i>
+                        <span v-if="repeatMode === 'one'" class="absolute bottom-1 right-1.5 text-[8px] font-bold leading-none text-green-300">1</span>
+                    </button>
                     <button @click="playPrevious" :disabled="!hasPreviousVideo" aria-label="이전 영상"
                         class="w-9 h-9 flex items-center justify-center text-gray-200 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed">
                         <i class="fas fa-step-backward text-sm"></i>
@@ -100,6 +106,10 @@
                         class="w-9 h-9 flex items-center justify-center text-gray-200 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed">
                         <i class="fas fa-step-forward text-sm"></i>
                     </button>
+                    <button @click="toggleShuffle" aria-label="셔플" :title="shuffleOn ? '셔플 끄기' : '셔플 켜기'"
+                        class="w-9 h-9 flex items-center justify-center text-gray-200 hover:text-white">
+                        <i class="fas fa-shuffle text-sm" :class="{ 'text-green-300': shuffleOn }"></i>
+                    </button>
                     <div class="hidden sm:flex items-center space-x-1 mx-1">
                         <button @click="toggleMute" aria-label="음소거" class="text-gray-200 hover:text-white focus:outline-none">
                             <i :class="['fas', (muted || volume === 0) ? 'fa-volume-mute' : volume < 50 ? 'fa-volume-down' : 'fa-volume-up']"></i>
@@ -111,26 +121,43 @@
                                 class="w-full appearance-none bg-transparent h-1 rounded-full focus:outline-none absolute inset-0 opacity-0">
                         </div>
                     </div>
-                    <button @click="openAddModal(currentVideo)" aria-label="추가" title="추가"
+                    <button @click="showNowPlaying = !showNowPlaying" aria-label="재생목록" title="재생목록"
                         class="w-9 h-9 flex items-center justify-center text-gray-200 hover:text-white">
-                        <i class="fas fa-plus text-sm"></i>
+                        <i class="fas fa-list text-sm"></i>
                     </button>
                 </div>
             </div>
-        </div>
 
-        <!-- 지금 재생 중 전체화면: 탭과 완전히 분리된 별도 레이어. v-show라 #video-page-player는 닫혀 있어도
-             DOM에 남아 재생이 끊기지 않음(검색/보관함 탭을 보는 동안에도 백그라운드 재생 유지) -->
-        <div v-show="currentVideo && showNowPlaying" class="fixed inset-0 z-40 bg-gray-900 overflow-y-auto">
-            <div class="sticky top-0 z-10 bg-gray-900/95 backdrop-blur-sm flex items-center justify-between px-4 py-3 border-b border-white border-opacity-10">
-                <h2 class="text-base font-semibold">지금 재생 중</h2>
-                <button @click="showNowPlaying = false" aria-label="닫기"
-                    class="w-10 h-10 flex items-center justify-center text-gray-300 hover:text-white">
-                    <i class="fas fa-chevron-down"></i>
-                </button>
+            <!-- 진행바(음원 MusicPlayer.vue와 동일 패턴): 시간표시 + 드래그 탐색 -->
+            <div class="max-w-7xl mx-auto px-4 pb-2 flex items-center space-x-2 text-xs text-gray-200">
+                <span class="w-8 text-right">{{ formatTime(currentTime) }}</span>
+                <div class="flex-1 relative group" @mousedown="startSeek" @mousemove="updateSeek" @mouseup="endSeek"
+                    @mouseleave="endSeek" @touchstart="startSeek" @touchmove="updateSeek" @touchend="endSeek">
+                    <div class="absolute inset-y-0 left-0 bg-gray-600 bg-opacity-50 rounded-full w-full h-1 group-hover:h-2 transition-all duration-200"></div>
+                    <div class="absolute inset-y-0 left-0 bg-white rounded-full transition-all duration-100 ease-out h-1 group-hover:h-2"
+                        :style="{ width: `${progress}%` }"></div>
+                    <div v-if="isDragging" class="absolute top-0 transform -translate-y-full bg-white text-purple-800 px-1 py-0.5 rounded text-xs"
+                        :style="{ left: `${dragProgress}%` }">
+                        {{ formatTime(dragTime) }}
+                    </div>
+                    <input type="range" min="0" :max="duration" :value="currentTime" @input="onSeekChange"
+                        class="appearance-none w-full h-1 group-hover:h-2 bg-transparent rounded-full outline-none focus:outline-none active:outline-none absolute inset-0 z-10 opacity-0 cursor-pointer">
+                </div>
+                <span class="w-8">{{ formatTime(duration) }}</span>
             </div>
 
-            <div class="max-w-3xl mx-auto px-4 py-4">
+            <!-- 모바일 제목 툴팁(음원 MusicPlayer.vue와 동일 패턴): 썸네일 탭 시 잠깐 떴다 5초 후 자동 닫힘 -->
+            <div v-if="showTrackInfo" class="absolute bottom-full left-2 mb-2 bg-gray-800 text-white p-2 rounded-lg shadow-lg"
+                style="max-width: 240px;">
+                <p class="text-sm font-medium" :title="currentVideo.title">{{ currentVideo.title }}</p>
+            </div>
+        </div>
+
+        <!-- 지금 재생 중 패널: 영상 프레임 + 재생목록만 담당 — 재생 컨트롤(이전/재생/다음/셔플/반복/음량)은 위 고정 바에만
+             있고 여기엔 중복으로 두지 않음. 닫기는 우측 상단 화살표가 아니라 고정 바의 "재생목록" 버튼을 다시 누르는 토글 방식.
+             v-show라 #video-page-player는 패널이 닫혀 있어도 DOM에 남아있어 재생이 끊기지 않음 -->
+        <div v-show="currentVideo && showNowPlaying" class="fixed inset-0 z-30 bg-gray-900 overflow-y-auto">
+            <div class="max-w-3xl mx-auto px-4 py-4 pb-24 sm:pb-28">
                 <div class="video-frame bg-black rounded-lg overflow-hidden shadow-lg relative">
                     <!-- YouTube IFrame Player (차단 감지 위해 단순 iframe 대신 YT.Player 사용) -->
                     <div v-show="!isBlocked" id="video-page-player" class="w-full h-full"></div>
@@ -151,43 +178,16 @@
                 <div v-if="currentVideo" class="mt-3 px-1">
                     <h2 class="text-base sm:text-lg font-semibold leading-snug">{{ currentVideo.title }}</h2>
                     <p class="text-sm text-gray-400 truncate mt-1">{{ currentVideo.channelTitle }}</p>
-                    <div class="flex items-center flex-wrap gap-1 mt-2">
-                        <button @click="playPrevious" :disabled="!hasPreviousVideo" aria-label="이전 영상"
-                            class="w-10 h-10 flex items-center justify-center text-gray-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed">
-                            <i class="fas fa-step-backward"></i>
-                        </button>
-                        <button @click="togglePlay" aria-label="재생/일시정지"
-                            class="bg-white text-gray-900 rounded-full w-9 h-9 flex items-center justify-center hover:bg-gray-100 focus:outline-none mx-1">
-                            <i :class="['fas', isPlaying ? 'fa-pause' : 'fa-play', isPlaying ? '' : 'ml-0.5']"></i>
-                        </button>
-                        <button @click="playNext" :disabled="!hasNextVideo" aria-label="다음 영상"
-                            class="w-10 h-10 flex items-center justify-center text-gray-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed">
-                            <i class="fas fa-step-forward"></i>
-                        </button>
-                        <div class="flex items-center space-x-1 mx-1">
-                            <button @click="toggleMute" aria-label="음소거" class="text-gray-300 hover:text-white focus:outline-none">
-                                <i :class="['fas', (muted || volume === 0) ? 'fa-volume-mute' : volume < 50 ? 'fa-volume-down' : 'fa-volume-up']"></i>
-                            </button>
-                            <div class="relative w-16 h-1">
-                                <div class="absolute inset-y-0 left-0 bg-gray-600 bg-opacity-50 rounded-full w-full h-1"></div>
-                                <div class="absolute inset-y-0 left-0 bg-white rounded-full h-1" :style="{ width: (muted ? 0 : volume) + '%' }"></div>
-                                <input type="range" min="0" max="100" step="1" :value="muted ? 0 : volume" @input="onVolumeChange"
-                                    class="w-full appearance-none bg-transparent h-1 rounded-full focus:outline-none absolute inset-0 opacity-0">
-                            </div>
-                        </div>
-                        <button @click="openAddModal(currentVideo)" aria-label="추가" title="추가"
-                            class="w-10 h-10 flex items-center justify-center text-gray-300 hover:text-white">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                        <a :href="youtubeWatchUrl" target="_blank" rel="noopener"
-                            class="text-xs text-gray-400 hover:text-white whitespace-nowrap flex items-center px-2">
-                            <i class="fab fa-youtube text-red-500 mr-1"></i>YouTube
-                        </a>
-                    </div>
                 </div>
 
                 <div class="mt-6">
-                    <h3 class="text-sm font-semibold text-gray-400 mb-2">재생목록 ({{ queue.length }})</h3>
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-sm font-semibold text-gray-400">재생목록 ({{ queue.length }})</h3>
+                        <button @click="openAddModal(currentVideo)" aria-label="현재 영상 추가" title="현재 영상 추가"
+                            class="w-9 h-9 flex items-center justify-center text-gray-300 hover:text-white">
+                            <i class="fas fa-plus text-sm"></i>
+                        </button>
+                    </div>
                     <VideoQueueList />
                 </div>
             </div>
@@ -248,21 +248,46 @@ export default {
             // 마지막으로 보던 영상 1개의 재생 위치만 기억 (여러 영상 기록 누적은 안 함)
             lastPosition: null,
             positionInterval: null,
+            // 모바일 제목 툴팁(음원 MusicPlayer.vue toggleTrackInfo와 동일 패턴) 표시 여부
+            showTrackInfo: false,
+            // 진행바(음원 MusicPlayer.vue와 동일 패턴)
+            currentTime: 0,
+            duration: 0,
+            isDragging: false,
+            dragProgress: 0,
+            dragTime: 0,
+            timeUpdateInterval: null,
         }
     },
     computed: {
-        ...mapState('videoQueue', ['currentVideo', 'queue']),
+        ...mapState('videoQueue', ['currentVideo', 'queue', 'shuffleOn', 'repeatMode']),
         ...mapGetters('videoQueue', ['hasPreviousVideo', 'hasNextVideo']),
         ...mapState('videoPlaylist', ['playlists']),
         youtubeWatchUrl() {
             if (!this.currentVideo) return ''
             return `https://www.youtube.com/watch?v=${this.currentVideo.id}`
         },
+        repeatTitle() {
+            switch (this.repeatMode) {
+                case 'all': return '전체 반복'
+                case 'one': return '한 영상 반복'
+                default: return '반복 없음'
+            }
+        },
+        progress() {
+            return this.duration > 0 ? (this.currentTime / this.duration) * 100 : 0
+        },
     },
     watch: {
+        isPlaying(newVal) {
+            if (newVal) this.startTimeUpdate()
+            else this.stopTimeUpdate()
+        },
         currentVideo(newVal, oldVal) {
             if (!newVal) return
             this.isBlocked = false
+            this.currentTime = 0
+            this.duration = 0
             if (!this.player) {
                 const autoplay = !this.justRestored
                 this.$nextTick(() => this.initVideoPlayer(newVal.id, autoplay))
@@ -275,8 +300,71 @@ export default {
         },
     },
     methods: {
-        ...mapActions('videoQueue', ['setCurrentVideo', 'initializeQueue', 'playNext', 'playPrevious']),
+        ...mapActions('videoQueue', ['setCurrentVideo', 'initializeQueue', 'playPrevious', 'toggleShuffle', 'toggleRepeat']),
         ...mapActions('videoPlaylist', ['fetchPlaylists', 'createPlaylist', 'deletePlaylist']),
+        playNext() {
+            // repeat 'one'은 다음 영상으로 넘기지 않고 현재 영상을 처음부터 재시작 (음원 player.js와 동일 동작).
+            // 비디오는 공유 싱글톤이 아니라 페이지 로컬 YT.Player라 store가 아니라 여기서 직접 seekTo 처리.
+            if (this.repeatMode === 'one' && this.player) {
+                this.player.seekTo(0, true)
+                this.player.playVideo()
+                return
+            }
+            this.$store.dispatch('videoQueue/playNext')
+        },
+        toggleTrackInfo() {
+            this.showTrackInfo = !this.showTrackInfo
+            if (this.showTrackInfo) {
+                setTimeout(() => { this.showTrackInfo = false }, 5000)
+            }
+        },
+        formatTime(seconds) {
+            if (isNaN(seconds) || seconds === null) return '00:00'
+            const mins = Math.floor(seconds / 60)
+            const secs = Math.floor(seconds % 60)
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+        },
+        startSeek(event) {
+            this.isDragging = true
+            this.updateSeekPosition(event)
+        },
+        updateSeek(event) {
+            if (this.isDragging) this.updateSeekPosition(event)
+        },
+        endSeek() {
+            if (this.isDragging) {
+                this.isDragging = false
+                this.currentTime = this.dragTime
+                if (this.player && this.player.seekTo) this.player.seekTo(this.dragTime, true)
+            }
+        },
+        updateSeekPosition(event) {
+            const rect = event.target.getBoundingClientRect()
+            const clientX = event.touches ? event.touches[0].clientX : event.clientX
+            const x = clientX - rect.left
+            this.dragProgress = Math.min(100, Math.max(0, (x / rect.width) * 100))
+            this.dragTime = (this.dragProgress / 100) * this.duration
+        },
+        onSeekChange(event) {
+            const time = Number(event.target.value)
+            this.currentTime = time
+            if (this.player && this.player.seekTo) this.player.seekTo(time, true)
+        },
+        startTimeUpdate() {
+            this.stopTimeUpdate()
+            this.timeUpdateInterval = setInterval(() => {
+                if (this.player && this.player.getCurrentTime) {
+                    this.currentTime = this.player.getCurrentTime()
+                    this.duration = this.player.getDuration()
+                }
+            }, 1000)
+        },
+        stopTimeUpdate() {
+            if (this.timeUpdateInterval) {
+                clearInterval(this.timeUpdateInterval)
+                this.timeUpdateInterval = null
+            }
+        },
         async search() {
             const q = this.query.trim()
             if (!q) return
@@ -376,7 +464,17 @@ export default {
                             if (this.player && this.player.setVolume) this.player.setVolume(this.volume)
                             if (this.lastPosition && this.lastPosition.id === videoId && this.lastPosition.time > 5) {
                                 this.player.seekTo(this.lastPosition.time, true)
+                                // YouTube IFrame API 특성: cue(autoplay:0)만 된 영상에 seekTo를 호출하면
+                                // paused와 달리 재생이 시작돼버림 — 자동재생 방지 의도를 무시하므로 즉시 되돌림
+                                if (!autoplay) this.player.pauseVideo()
                             }
+                            // 음원 MusicPlayer.vue와 동일하게, 재생 여부와 무관하게 준비되는 즉시 진행바를 채움
+                            // (재생 안 해도 복원된 위치/길이가 바로 보이도록). isPlaying watcher가 이후 폴링을 이어받음
+                            if (this.player && this.player.getCurrentTime) {
+                                this.currentTime = this.player.getCurrentTime()
+                                this.duration = this.player.getDuration()
+                            }
+                            this.startTimeUpdate()
                         },
                         onError: this.handlePlayerError,
                         onStateChange: this.handlePlayerStateChange,
@@ -450,6 +548,7 @@ export default {
     },
     beforeDestroy() {
         if (this.positionInterval) clearInterval(this.positionInterval)
+        this.stopTimeUpdate()
         this.savePosition()
         if (this.player && this.player.destroy) {
             try { this.player.destroy() } catch (e) { /* ignore */ }

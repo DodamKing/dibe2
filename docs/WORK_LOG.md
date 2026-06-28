@@ -7,6 +7,27 @@
 
 ## 완료된 작업
 
+### 2026-06-28 - 음원 플레이어에도 재생 위치 기억 추가
+- 배경: 비디오 쪽 "재생 위치 기억" 작업하면서 음원도 이미 그 기능이 있는 줄 알았는데 확인해보니 없었음(`store/player.js`엔 곡/큐/볼륨/셔플/반복만 저장, 위치는 전혀 저장 안 함) → 같이 추가
+- **구조적 차이**: 비디오는 페이지 로컬 `YT.Player`가 새로고침 시에도 즉시 영상을 cue하기 때문에 `onReady`에서 바로 `seekTo`로 복원하고 진행바에도 바로 보였지만, 음원은 공유 싱글톤(`utils/youtubePlayer.js`)이 새로고침 직후엔 곡을 전혀 로드 안 하고 실제 `play()`를 호출해야 `loadVideoById`로 로드됨 — 그래서 음원은 "재생 버튼을 누르는 순간 기억해둔 위치로 점프"하는 형태로만 구현, 재생 전 진행바 미리보기는 없음
+- **`store/player.js`**: `resumePosition` state 신규(`currentTime`과 분리 — 재생 중 값이 계속 바뀌는 `currentTime`을 재사용하면 다른 곡으로 바꾼 뒤 그 값으로 잘못 seek하는 버그가 생겨서 별도 필드로 분리). `initializeQueue`에서 `user_{id}_position`(`{trackId, time}`, 5초 이하는 무시) 복원
+- 저장은 `updateTrackProgress`(1초 polling, 재생 중일 때만) + `pause` 액션에서 — 비디오의 5초 간격보다 더 촘촘하지만 기존 1초 polling에 얹은 거라 추가 인터벌 없음
+- **버그: 처음 적용했을 때 안 먹음** — `play()` 액션 안에서 `loadVideoById` 호출 직후 곧바로 `seekTo`를 호출했는데, YouTube IFrame API가 새 영상을 막 로드한 시점엔 버퍼링 전이라 그 seekTo가 씹히는 경우가 있었음(비디오 쪽 자동재생 버그와는 다른 종류의 timing 이슈). **수정**: seek 타이밍을 `play()`(호출 직후, 신뢰 불가)에서 `initYoutubePlayer`의 `onStateChange`가 실제 `PLAYING` 상태를 보고하는 시점(영상이 진짜로 재생되기 시작해 seek이 항상 먹는 시점)으로 이동. `resumePosition`이 한 번 소비되면 `null`로 비워지므로 이후 PLAYING 이벤트에서는 재실행 안 됨
+
+### 2026-06-28 - 비디오 탭: 재생 컨트롤은 하단 고정 바로, 영상+재생목록은 토글 패널로 분리 + 셔플/반복 추가
+- 피드백 진행 과정: ① 미니플레이어 "+"(추가)는 필요 없고 셔플/반복이 더 맞음 ② 모바일 제목 잘림 → 마퀴 스크롤 시도했다가 폐기 → 음원처럼 제목 자체를 숨기고 썸네일 탭=툴팁으로 확인하는 방식으로 정착 ③ "영상과 음원 미니플레이어를 합친 개념"이라 영상은 보고 싶을 때만 보는 게 맞다고 판단 → 풀스크린 오버레이(영상+컨트롤+재생목록 한 덩어리, 화살표로 닫기) 구조를 버리고, 재생 컨트롤은 하단 고정 바에 항상 두고 영상+재생목록만 별도 토글 패널로 분리
+- **하단 고정 바**(항상 떠 있음): 썸네일(탭하면 음원 `MusicPlayer.vue`의 `toggleTrackInfo()`와 동일하게 제목 툴팁이 5초간 떴다 사라짐, 데스크탑은 `hidden sm:block`으로 제목 truncate 텍스트도 같이 노출), 반복, ◀▶, 재생/일시정지, 셔플, 음량(데스크탑만), "재생목록" 토글 버튼. 재생 컨트롤은 전부 여기 하나로 모음
+- **"지금 재생 중" 패널**(`showNowPlaying`): 영상 프레임 + 제목/채널명 + 재생목록(`VideoQueueList`)만 담당, 재생 컨트롤 중복 없음. 닫기는 우측 상단 화살표가 아니라 하단 바의 "재생목록" 버튼을 다시 누르는 토글(`showNowPlaying = !showNowPlaying`)
+- **z-index 재배치**: 패널이 화면 전체를 덮어도 하단 바의 토글 버튼을 계속 누를 수 있어야 해서 하단 바를 패널보다 위로(`z-40` vs 패널 `z-30`) 둠 — 안 그러면 패널 열린 상태에서 닫을 방법이 없어짐
+- **`store/videoQueue.js`에 셔플/반복 추가** — 음원 `store/player.js`와 동일 패턴(셔플은 현재 영상 제외 나머지 섞기 + `originalQueue` 보관/복원, 반복은 off→all→one 순환), `localStorage` 키도 동일 네이밍(`video_shuffle`, `video_repeat_mode`, `video_original_queue`)
+- repeat `'one'`의 실제 재시작(`seekTo(0)`+`playVideo()`)은 스토어가 아니라 `pages/video/index.vue`의 `playNext()` 메서드에서 처리 — 비디오는 음원과 달리 공유 싱글톤이 아니라 페이지 로컬 `YT.Player` 인스턴스라서 스토어에서 직접 플레이어를 제어할 수 없음. 스토어의 `playNext` 액션은 일반 다음곡 + repeat `'all'` wraparound만 담당
+- 이어서 추가 피드백 반영: "지금 재생 중" 패널의 "추가"/"유튜브에서 보기"를 더 다듬음
+  - **유튜브 링크 제외**: 정상재생 중엔 노출 안 함(차단 감지 안내 카드에만 남김)
+  - **"추가" 버튼 위치 이동**: 제목 줄 옆에 있던 위치가 UX상 안 좋다는 피드백 → 음원 `Playlist.vue`(재생 큐 목록)에도 "추가" 버튼이 없는 것과 동일선상에서, 재생목록 섹션 헤더("재생목록 (N)") 옆으로 이동
+  - **하단 고정 바에 진행바 추가**: 음원 `MusicPlayer.vue`의 진행바 패턴을 그대로 포팅 — `currentTime`/`duration`을 페이지 로컬 `YT.Player`의 `getCurrentTime()`/`getDuration()`으로 1초 polling(`isPlaying` watcher로 재생 중에만), 드래그/클릭 탐색은 `player.seekTo(time, true)` 직접 호출. 영상 전환 시 `currentTime`/`duration`을 0으로 리셋해 이전 영상 진행률이 잠깐 보이는 문제 방지
+- **버그 발견·수정: 자동재생 방지가 "재생 위치 기억"과 만나면 무력화됨** — `initVideoPlayer`의 `onReady`에서 `lastPosition`을 복원하려고 `seekTo()`를 호출하는데, YouTube IFrame API는 **cue만 된(autoplay:0) 영상**에 `seekTo`를 호출하면 paused 상태와 달리 재생이 시작되는 특성이 있음. 그래서 새로고침 복원 시 자동재생을 막아놨어도(`autoplay:0`), 기억된 위치가 5초를 넘으면 그 seekTo 때문에 재생이 시작돼버렸음. 수정: `!autoplay`일 때 seekTo 직후 `pauseVideo()`로 즉시 되돌림 — 위치는 정확히 복원되면서 실제로는 멈춰있는 상태 유지
+- **진행바가 재생 전엔 0:00으로 보이던 문제 수정**: 음원은 `MusicPlayer.vue`가 mount 시 재생 여부와 무관하게 폴링을 시작해서 멈춰 있어도 진행바에 복원된 위치가 바로 보이는데, 비디오는 `isPlaying` watcher로만 폴링을 시작해서 실제로 재생해야만 값이 채워졌음. `onReady`에서 위치 복원 직후 `currentTime`/`duration`을 즉시 한 번 읽고 `startTimeUpdate()`를 호출하도록 수정 — 음원과 동일하게 재생 전에도 진행바에 바로 표시됨
+
 ### 2026-06-28 - 비디오 탭을 유튜브 뮤직 미니플레이어 패턴으로 재구성 + 자동재생 방지
 - 피드백: 검색 탭에 (v-show로 숨겨놨다 해도) 기존 재생 영상 영역이 구조적으로 끼어있는 게 싫음 — 검색 탭은 검색+재생+추가만 있으면 됨. 영상 재생 자체는 유튜브 뮤직처럼 하고 싶다(미니플레이어 + 확장형 Now Playing)
 - **탭 3개→2개**: 검색/재생목록/보관함 → 검색/보관함. 재생목록(큐)은 최상위 탭에서 빠지고 "지금 재생 중" 오버레이 안으로 들어감
