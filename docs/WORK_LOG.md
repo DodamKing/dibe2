@@ -7,6 +7,16 @@
 
 ## 완료된 작업
 
+### 2026-07-02 - 로그인 페이지 리디자인 (소셜 로그인 전용) + 전역 Pretendard 폰트 적용
+- 배경: 아이디/비밀번호 로그인은 테스트용이었고 이제 안 쓸 것 → 구글/카카오 소셜 로그인만 남기고, 기존 템플릿 느낌 나던 UI를 현대적으로 재설계
+- **`pages/login.vue`**: 이메일/비밀번호 폼 완전 제거. 좌측 브랜드 패널(로고+그라데이션 블러 장식) + 우측 로그인 패널 2단 레이아웃, 모바일은 세로 스택으로 반응형 처리
+- **`components/SocialLoginButton.vue`**: 기존 flat 컬러 풀와이드 버튼 → 각 사 공식 버튼 가이드 반영
+  - 구글: Light 테마 스펙 그대로(`#FFFFFF` 배경/`#747775` 테두리/`#1F1F1F` 텍스트, 표준 멀티컬러 G 로고 SVG), 라벨 "Google 로그인"
+  - 카카오: `#FEE500` 배경/`black/85` 텍스트/정확히 12px radius(Tailwind `rounded-xl`), 라벨 "카카오 로그인". 말풍선 심볼은 공식 에셋이 아닌 근사치 SVG(정확도 필요해지면 `developers.kakao.com/tool/resource/login`에서 공식 에셋으로 교체 권장)
+  - 버튼 텍스트는 `font-bold`로 조정(피드백: 더 굵은 게 낫다)
+- **전역 폰트 Pretendard 적용**: `nuxt.config.js`에 jsDelivr CDN 링크 추가, `tailwind.config.js`의 `fontFamily.sans`를 Pretendard 우선으로 교체(Tailwind preflight가 `html`에 자동 적용). 기존엔 별도 폰트 지정이 전혀 없어 브라우저 기본 sans였음
+- 서버 `/api/users/login`, `/api/users/register` 엔드포인트는 그대로 유지(프론트에서만 제거, 백엔드 차단은 별도 논의 필요)
+
 ### 2026-06-28 - VideoAddModal "플레이리스트에 추가"에 로딩 스피너 추가
 - 배경: "재생목록에 추가"는 로컬(Vuex+localStorage)이라 네트워크 호출이 없지만, "플레이리스트에 추가"는 실제 `/api/video-playlists/:id/videos` POST라 배포 환경(Netlify Functions 콜드스타트 + MongoDB Atlas 왕복)에서 dev보다 체감 딜레이가 있을 수 있다는 지적 → 처리 중 피드백 없음
 - `addingPlaylistId` data 추가 — 어느 플레이리스트 버튼이 처리 중인지 추적해 그 버튼에만 스피너(`fa-spinner fa-spin`) 표시, 두 "추가" 버튼 전부 비활성화로 중복클릭 방지. 모달 닫힐 때(`show` watcher)도 같이 리셋

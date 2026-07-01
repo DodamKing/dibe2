@@ -1,5 +1,9 @@
 # 프론트엔드 구조
 
+## 폰트
+- 전역 폰트: **Pretendard** (jsDelivr CDN, `nuxt.config.js` head.link) — `tailwind.config.js`의 `theme.extend.fontFamily.sans`에 등록, Tailwind preflight가 `html`에 자동 적용하는 구조라 별도 클래스 지정 없이 앱 전체에 적용됨
+- font-awesome(아이콘 폰트)과는 별개, 서로 영향 없음
+
 ## 레이아웃
 - `layouts/main.vue` ★ 핵심 레이아웃
   - AppHeader, MusicPlayer(하단), Playlist(큐 사이드바) 포함
@@ -12,7 +16,7 @@
 | 경로 | 파일 | 레이아웃 | 설명 |
 |------|------|----------|------|
 | `/` | `pages/index.vue` | main | 차트 Top100 + 내 플레이리스트 |
-| `/login` | `pages/login.vue` | auth | 로그인 (구글/카카오) |
+| `/login` | `pages/login.vue` | auth | 로그인 (구글/카카오 소셜 로그인만 — 아이디/비밀번호 폼 없음). 좌측 브랜드 패널 + 우측 로그인 패널 2단 레이아웃(모바일은 세로 스택). 소셜 버튼(`SocialLoginButton.vue`)은 각 사 공식 버튼 가이드(색상/라벨/radius) 준수, 카카오 말풍선 심볼은 근사치 SVG(공식 에셋 아님) |
 | `/register` | `pages/register.vue` | auth | 회원가입 (현재 막혀있음) |
 | `/subscription-notice` | `pages/subscription-notice.vue` | - | 구독 만료 안내 |
 | `/playlist/:id` | `pages/playlist/_id.vue` | main | 플레이리스트 상세 |

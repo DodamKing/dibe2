@@ -4,6 +4,7 @@
 - **JWT 토큰 기반**: jsonwebtoken (Authorization: Bearer 헤더)
 - **소셜 로그인**: Google, Kakao
 - 일반 회원가입은 현재 막혀 있음 (register 기능 비활성)
+- 일반 로그인(아이디/비밀번호) UI도 `pages/login.vue`에서 제거됨 — 구글/카카오만 노출. 단, 서버 `/api/users/login`, `/api/users/register` 엔드포인트 자체는 그대로 살아있음(프론트에서만 막은 상태)
 
 ## JWT 토큰 구조
 ```
@@ -60,8 +61,8 @@ Secret: process.env.JWT_SECRET
 - `$axios.setToken(token, 'Bearer')` — 모든 요청에 Authorization 헤더 자동 추가
 
 ### 로그인 플로우
-1. 일반 로그인: POST /api/users/login → 응답 body에 `token` 포함 → localStorage 저장
-2. OAuth 로그인: 서버에서 쿠키(`dibe2_oauth_token`, maxAge 5분)로 토큰 전달 → 리다이렉트 → `plugins/auth-init.js`에서 쿠키 수신 → localStorage 저장
+1. 일반 로그인: POST /api/users/login → 응답 body에 `token` 포함 → localStorage 저장 (현재 UI에서는 진입 경로 없음, 엔드포인트만 존재)
+2. OAuth 로그인: 서버에서 쿠키(`dibe2_oauth_token`, maxAge 5분)로 토큰 전달 → 리다이렉트 → `plugins/auth-init.js`에서 쿠키 수신 → localStorage 저장 (현재 실제 로그인 경로는 이것뿐)
 
 ### 앱 초기화 (plugins/auth-init.js)
 1. 쿠키에 `dibe2_oauth_token` 있으면 → localStorage 저장 + 쿠키 삭제
