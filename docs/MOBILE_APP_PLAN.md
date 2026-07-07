@@ -1,6 +1,7 @@
 # 모바일 앱 계획 (Flutter)
 
 > 논의일: 2026-03-31
+> **진행 상황(2026-07-07)**: 방향 확정 및 실행 착수. Flutter 채택(Capacitor 대비 `audio_service`+`just_audio` 성숙도 우위), **Android 전용**(Windows 개발 환경이라 iOS 빌드 불가), A안 우선 진행으로 확정. 별도 저장소 `d:\projects\dibe2-app`에 프로젝트 생성 완료 — 자세한 진행 상황은 그 저장소의 `docs/PLAN.md`, `docs/WORK_LOG.md` 참고. 상세 내용은 `docs/WORK_LOG.md`의 2026-07-07 항목 참고
 
 ## 배경
 - 현재 웹앱에서는 모바일 백그라운드 재생이 불가능 (브라우저 제약)
