@@ -173,6 +173,66 @@ router.get('/kakao/callback', async (req, res) => {
     }
 })
 
+// 네이티브 앱(구글 SDK)에서 받은 access token으로 로그인 → JWT 발급
+// 웹은 리다이렉트(GET /google + /google/callback) 방식, 앱은 이 POST를 사용한다.
+router.post('/google', async (req, res) => {
+    const provider = 'google'
+    try {
+        const { accessToken } = req.body
+        if (!accessToken) return res.json({ message: 'accessToken이 필요합니다.', code: 4 })
+
+        const userInfo = await UserService.getGoogleUserInfo(accessToken)
+        const user = await UserService.findOrCreateUser(provider, userInfo.id, userInfo.email)
+
+        const tokenPayload = {
+            userId: user._id,
+            provider,
+            providerId: userInfo.id,
+            email: userInfo.email,
+            name: userInfo.name,
+            picture: userInfo.picture,
+            isAdmin: user.isAdmin,
+            expiryDate: user.expiryDate
+        }
+
+        const token = generateToken(tokenPayload)
+        res.json({ message: '로그인 성공', user: tokenPayload, token, code: 1 })
+    } catch (error) {
+        console.error('구글 네이티브 로그인 에러:', error?.response?.data || error.message)
+        res.json({ message: '구글 로그인에 실패했습니다.', code: 4 })
+    }
+})
+
+// 네이티브 앱(카카오 SDK)에서 받은 access token으로 로그인 → JWT 발급
+router.post('/kakao', async (req, res) => {
+    const provider = 'kakao'
+    try {
+        const { accessToken } = req.body
+        if (!accessToken) return res.json({ message: 'accessToken이 필요합니다.', code: 4 })
+
+        const userInfo = await UserService.getKakaoUserInfo(accessToken)
+        const email = userInfo.kakao_account?.email
+        const user = await UserService.findOrCreateUser(provider, userInfo.id, email)
+
+        const tokenPayload = {
+            userId: user._id,
+            provider,
+            providerId: userInfo.id,
+            email,
+            name: userInfo.properties?.nickname,
+            picture: userInfo.properties?.profile_image,
+            isAdmin: user.isAdmin,
+            expiryDate: user.expiryDate
+        }
+
+        const token = generateToken(tokenPayload)
+        res.json({ message: '로그인 성공', user: tokenPayload, token, code: 1 })
+    } catch (error) {
+        console.error('카카오 네이티브 로그인 에러:', error?.response?.data || error.message)
+        res.json({ message: '카카오 로그인에 실패했습니다.', code: 4 })
+    }
+})
+
 router.patch('/:userId/toggle-admin', adminMiddleware, async (req, res) => {
     try {
         const userId = req.params.userId
