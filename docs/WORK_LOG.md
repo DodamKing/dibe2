@@ -7,6 +7,17 @@
 
 ## 완료된 작업
 
+### 2026-07-11 - 앱 배포/자동 업데이트용 백엔드 + 다운로드 페이지 (`/api/app`)
+- 배경: dibe2-app(안드로이드)을 Play 스토어 밖에서 **직접 APK 배포 + 로그인 사용자만 다운로드**. APK는 private 저장소 `dibe2-app`의 GitHub Releases 자산으로 두고, dibe2가 게이팅 게이트웨이 역할
+- **`server/api/app.js` 신설** (`netlify/functions/api.js`에 `/app` 마운트, 전역 `jwtCheckMiddleware`로 로그인 게이팅):
+  - `GET /api/app/latest` → GitHub Releases API로 최신 릴리스 조회 → `{ version, notes, size }`
+  - `GET /api/app/download` → private 자산을 `Accept: application/octet-stream`으로 요청하면 GitHub이 단기 서명 URL(objects.githubusercontent.com, ~5분)로 302를 줌. 리다이렉트를 따라가지 않고 `Location`만 받아 `{ url, version, size, filename }`으로 반환 → 바이트를 Function이 프록시하지 않아 Netlify 6MB 응답 제한과 무관
+  - 필요 env: `GITHUB_TOKEN`(dibe2-app `contents:read` fine-grained). 미설정 시 500
+- **`pages/download.vue`**: 로그인 사용자용 다운로드 페이지(최신버전·변경사항·크기 + APK 다운로드 버튼, 단기 URL로 이동). 전역 `auth` 미들웨어라 비로그인 자동 차단
+- **`components/UserMenu.vue`**: 드롭다운에 "앱 다운로드" 진입점 추가 + 전 항목 아이콘/색 통일(프로필·설정·다운로드·관리자·로그아웃)
+- 외부 스토리지(R2/S3) 대신 GitHub Releases 채택: 게이팅·대용량·무비용을 이미 충족, 추가 서비스 0. 상세 설계·단계는 `dibe2-app/docs/RELEASE.md`
+- 앱 쪽(버전 비교·다운로드·설치 인텐트) 구현은 `dibe2-app/docs/WORK_LOG.md`(2026-07-11) 참고
+
 ### 2026-07-07 - 모바일 앱 방향 확정 (Flutter, Android 전용, A안 우선) + dibe2-app 프로젝트 초기 셋업
 - 배경: `docs/MOBILE_APP_PLAN.md`(2026-03-31)에서 논의했던 모바일 앱 계획을 재검토하고 실행 착수
 - **프레임워크 최종 결정: Flutter** — Capacitor도 비교 검토. `audio_service`+`just_audio` 조합이 백그라운드 재생+미디어 세션 컨트롤에 특화된 성숙한 표준 패키지라 채택. Capacitor는 이 문제에 대한 표준 솔루션이 없어 결국 자체 네이티브 플러그인을 새로 짜야 함

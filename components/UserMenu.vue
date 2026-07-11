@@ -8,12 +8,26 @@
         </button>
         <div v-if="showUserMenu"
             class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-            <a @click.stop.prevent href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">프로필</a>
-            <a @click.stop.prevent href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">설정</a>
+            <a @click.stop.prevent href="#"
+                class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <i class="fas fa-user w-4 text-center text-sky-500"></i>프로필
+            </a>
+            <a @click.stop.prevent href="#"
+                class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <i class="fas fa-cog w-4 text-center text-violet-500"></i>설정
+            </a>
+            <a @click.stop.prevent="goDownload" href="#"
+                class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <i class="fas fa-mobile-alt w-4 text-center text-pink-500"></i>앱 다운로드
+            </a>
             <a v-if="isAdmin" @click.stop.prevent="goAdmin" href="#"
-                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">관리자</a>
+                class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <i class="fas fa-user-shield w-4 text-center text-amber-500"></i>관리자
+            </a>
             <a @click.stop.prevent="logout" href="#"
-                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">로그아웃</a>
+                class="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <i class="fas fa-sign-out-alt w-4 text-center text-rose-500"></i>로그아웃
+            </a>
         </div>
     </div>
 </template>
@@ -50,7 +64,11 @@ export default {
                 console.error('로그아웃 중 오류 발생:', err)
             }
         },
-        goAdmin() { this.$router.push('/admin') }
+        goAdmin() { this.$router.push('/admin') },
+        goDownload() {
+            this.showUserMenu = false
+            this.$router.push('/download')
+        }
     },
     mounted() { document.addEventListener('click', this.closeUserMenu) },
     beforeDestroy() { document.removeEventListener('click', this.closeUserMenu) }

@@ -63,6 +63,14 @@
 | POST | `/google` | 구글 소셜 로그인 |
 | POST | `/kakao` | 카카오 소셜 로그인 |
 
+## App (`/api/app`) - server/api/app.js (안드로이드 앱 배포/자동 업데이트)
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | `/latest` | 최신 앱 버전. 응답: `{ version, notes, size }` (GitHub Releases API 조회). 로그인 필수 |
+| GET | `/download` | APK 다운로드용 단기 서명 URL. 응답: `{ url, version, size, filename }`. 로그인 필수(게이팅) |
+
+> APK는 private 저장소 `dibe2-app`의 GitHub Releases 자산으로 배포. `/download`는 private 자산을 octet-stream으로 요청해 GitHub이 주는 단기 서명 URL(약 5분)만 받아 반환(바이트 프록시 X → Netlify 6MB 제한 무관). Netlify env `GITHUB_TOKEN`(dibe2-app contents:read) 필요.
+
 ## 기타
 | Method | Path | 설명 |
 |--------|------|------|

@@ -14,6 +14,7 @@ const playlistRoutes = require('../../server/api/playlist')
 const videoPlaylistRoutes = require('../../server/api/videoPlaylist')
 const adminRoutes = require('../../server/api/admin')
 const youtubeRoutes = require('../../server/api/youtube')
+const appRoutes = require('../../server/api/app')
 
 const app = express()
 
@@ -55,6 +56,7 @@ app.use('/playlists', playlistRoutes)
 app.use('/video-playlists', videoPlaylistRoutes)
 app.use('/admin', adminMiddleware, adminRoutes)
 app.use('/youtube', youtubeRoutes)
+app.use('/app', appRoutes)
 
 // Slack 메시지
 const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL
