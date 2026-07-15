@@ -4,6 +4,14 @@ const db = require('../models')
 // 정상적인 "한 곡 반복 재생"은 곡 길이상 이 창을 넘기므로 억제되지 않는다.
 const PLAY_DEDUPE_WINDOW_MS = 20 * 1000
 
+// likeCount/playCount 필드가 도입 이전 곡 문서엔 존재하지 않는다.
+// Mongoose default는 저장/하이드레이트 때만 채워지고 .lean()은 하이드레이트를 건너뛰므로,
+// 그냥 두면 기존 곡 응답에서 두 필드가 undefined → JSON에서 통째로 사라진다.
+// 마이그레이션 대신 응답 시점에 0으로 정규화한다($inc는 없는 필드를 알아서 만들어 준다).
+function withCounts(song) {
+    return { ...song, likeCount: song.likeCount ?? 0, playCount: song.playCount ?? 0 }
+}
+
 module.exports = {
     // 좋아요 등록(멱등). 이미 눌러둔 상태면 카운터를 건드리지 않는다.
     // upsert의 upsertedCount로 "이번에 새로 생겼는지"를 판별 → 유니크 인덱스와 함께
@@ -64,7 +72,7 @@ module.exports = {
         // 곡이 삭제됐는데 Like가 남아있으면 populate 결과가 null → 걸러낸다.
         const songs = likes
             .filter(like => like.song)
-            .map(like => ({ ...like.song, likedAt: like.createdAt, liked: true }))
+            .map(like => ({ ...withCounts(like.song), likedAt: like.createdAt, liked: true }))
 
         return { songs, total, page, limit, hasMore: skip + songs.length < total }
     },
@@ -96,16 +104,16 @@ module.exports = {
         return { playCount: updated.playCount, counted: true }
     },
 
-    // 곡 목록에 현재 사용자의 liked 여부를 붙인다. 목록당 Like 쿼리 1회.
+    // 곡 목록에 현재 사용자의 liked 여부 + 카운터를 붙인다. 목록당 Like 쿼리 1회.
     attachLikedFlags: async (userId, songs) => {
         if (!userId || !songs.length) {
-            return songs.map(song => ({ ...song, liked: false }))
+            return songs.map(song => ({ ...withCounts(song), liked: false }))
         }
 
         const ids = songs.map(song => song._id)
         const likes = await db.Like.find({ user: userId, song: { $in: ids } }).select('song').lean()
         const likedIds = new Set(likes.map(like => like.song.toString()))
 
-        return songs.map(song => ({ ...song, liked: likedIds.has(song._id.toString()) }))
+        return songs.map(song => ({ ...withCounts(song), liked: likedIds.has(song._id.toString()) }))
     },
 }

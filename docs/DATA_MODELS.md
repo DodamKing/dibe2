@@ -33,6 +33,7 @@
 ```
 - `likeCount`/`playCount`는 **비정규화된 집계 캐시**다. 목록 응답마다 count 쿼리를 돌지 않으려고 둔 것이고, 진짜 원본은 `Like`/`PlayEvent`. 값이 틀어지면 원본에서 재계산할 수 있다
 - 인덱스: `likeCount: -1`, `playCount: -1` (인기순 정렬)
+- ⚠️ **도입(2026-07-15) 이전 곡 문서엔 두 필드가 물리적으로 없다**(당시 1091곡 전부). Mongoose default는 저장/하이드레이트 때만 채워지므로 **`.lean()` 조회에선 `undefined`가 그대로 나간다**. 백필 대신 `statsService.withCounts`가 응답 시점에 0으로 정규화한다 — `$inc`가 없는 필드를 생성해 주기 때문에 마이그레이션이 필요 없다. **`.lean()`으로 이 필드를 새로 읽는 코드를 추가할 땐 반드시 정규화를 거칠 것**
 
 ## Like - server/models/Like.js
 ```
