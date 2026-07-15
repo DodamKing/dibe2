@@ -20,14 +20,20 @@
   - 감소는 `{likeCount: {$gt: 0}}` 조건부 갱신. 스키마 `min:0`은 문서 검증이라 `$inc`를 못 막기 때문
   - `recordPlay`는 같은 유저·같은 곡 **20초 내 재발사를 중복으로 보고 무시**(앱 재시도/중복 발사 방어). 곡 길이상 정상적인 한곡반복은 억제되지 않음
 - **라우트(`server/api/song.js`)**: `GET /liked`, `POST|DELETE /:id/like`, `POST /:id/play`. `POST /by-ids` 응답에 `liked`/`likeCount`/`playCount` 부착(목록 하트 상태를 Like 쿼리 1회로 해결)
-- **함정 3개**:
+- **함정 4개**:
+  - 🔴🔴 **JWT 페이로드 키는 `_id`가 아니라 `userId`** — 이걸 놓쳐 새 라우트 4개가 전부 고장나 있었고, 그중 하나는 **사용자 간 데이터 유출**이었음. 기존 라우터(`playlist.js:9`, `videoPlaylist.js:9`, `user.js:77`)는 전부 `req.user.userId`를 쓰는데 새 코드만 `req.user._id`(=항상 undefined)를 읽었음. 로그인 5경로 전부 `userId: user._id`로 토큰을 만듦(`user.js:54,103,150,187,217`)
+    - **실측한 피해**: ① `POST /:id/like` → **200 OK인데 user 없는 고아 Like 문서 생성**(upsert는 기본적으로 required 검증을 안 돌리고 Mongoose가 undefined 키를 버림) ② `GET /liked` → `find({user: undefined})`는 `find({})`가 되는 게 **아니라 null/미존재 매칭**이라 정확히 그 고아들을 걸어옴 → **모든 좋아요가 고아가 되고 모든 사용자가 서로의 좋아요를 봄** ③ `POST /:id/play` → 500(PlayEvent는 `create`라 검증이 돌아서 터짐)
+    - **왜 첫 테스트가 놓쳤나**: 테스트가 토큰을 **직접 `{_id: ...}`로 만들어서** 실제 로그인 페이로드가 아니라 *내 가정*을 검증했음. → 테스트를 **실제 페이로드 형태(`userId`)로 교정**하고, 남의 `/liked`·`by-ids`가 새지 않는지 **유출 케이스를 추가**
+    - **재발 방지**: `statsService.requireUserId()` — userId가 비면 조용히 새는 대신 즉시 throw
+    - ⚠️ **다른 서비스에서 statsService를 부를 때도 `req.user.userId`를 넘길 것**
   - `/liked`는 `/:id` 계열보다 **먼저** 선언해야 param으로 안 먹힘
   - `getSongsByIds`가 하이드레이트 문서를 반환해 `{...song}` 스프레드가 깨졌음 → `.lean()` 추가로 해결. 잘못된 id 형식은 CastError→500→**슬랙 에러 알림**까지 울려서 400으로 끊음
   - 🔴 **`.lean()` + 기존 문서 = 카운터 필드 실종(하마터면 그대로 배포될 뻔)**: Mongoose default는 **저장/하이드레이트 때만** 채워지는데 `.lean()`은 하이드레이트를 건너뛴다. 도입 이전 곡 **1091곡 전부** `likeCount`/`playCount` 필드가 없어서 by-ids 응답에서 두 필드가 `undefined` → **JSON에서 통째로 사라짐**. 처음 테스트가 *새로 만든* 곡을 써서 못 잡았고, 운영 DB의 실제 곡으로 확인해서 발견
     - **해결: 마이그레이션 없이 응답 시점 정규화**(`statsService.withCounts`, `?? 0`). `$inc`가 없는 필드를 알아서 만들어 주므로 백필 불필요, 운영 DB 무수정. 크론 등이 Mongoose 밖에서 곡을 넣어도 안전
     - 회귀 테스트 추가: `$unset`으로 "도입 이전 문서"를 재현해 검증
-- **검증**: 서비스 31 + HTTP 라우트 17 = **48 케이스 전부 통과**(멱등성·동시성 가드·음수 방지·중복 발사·401/404/400·기존문서 정규화). 운영 DB를 건드리지 않으려고 임시 Song/User를 만들어 테스트하고 삭제(잔여 0 확인). 신규 린트 에러 0
-- **웹앱 영향 확인**: `/by-ids` 소비처는 `store/player.js:288`(`refreshQueueData`) 한 곳. 기존 필드는 그대로고 `liked`/`likeCount`/`playCount`만 **추가**되므로 깨지지 않음(큐 아이템에 병합될 뿐)
+- **검증**: 서비스 31 + HTTP 라우트 23 + 웹호환 6 = **60 케이스 전부 통과**(멱등성·동시성 가드·음수 방지·중복 발사·401/404/400·기존문서 정규화·**유출 방지**). 운영 DB를 건드리지 않으려고 임시 Song/User를 만들어 테스트하고 삭제(잔여 0 확인). 신규 린트 에러 0
+- **웹앱 영향 — 실측 확인함**: `/by-ids` 소비처는 `store/player.js:288`(`refreshQueueData`) 한 곳. **운영 DB의 실제 곡 5개로 변경 전/후 응답을 필드 단위 비교** → 기존 4필드(`_id`/`title`/`artist`/`coverUrl`) **전부 유지·값 동일**, `liked`/`likeCount`/`playCount`만 **추가**. `refreshQueueData`의 `freshMap.get(item._id) || item` 치환 로직도 그대로 재현해 정상 동작 확인. **웹 무영향**
+  - `.lean()` 전환도 웹엔 무영향 — 어차피 `res.json()`으로 직렬화돼 나가므로 와이어 포맷이 동일
 - **남은 것(앱 쪽)**: 하트 UI, 30초/50% 트리거에서 `POST /:id/play` 호출, "좋아요한 곡" 보관함 진입점
 
 ### 2026-07-11 - 앱 배포/자동 업데이트용 백엔드 + 다운로드 페이지 (`/api/app`)

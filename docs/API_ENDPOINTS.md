@@ -26,6 +26,7 @@
 | DELETE | `/:id/like` | 좋아요 해제(멱등) → `{liked:false, likeCount, changed}` |
 | POST | `/:id/play` | 재생 1회 기록. body: `{source}` (chart/playlist/search/recent/video) → `{playCount, counted}` |
 
+- 🔴 **유저 id는 `req.user.userId`** (JWT 페이로드 키가 `_id`가 아님 — `server/api/user.js` 5개 로그인 경로 전부 `userId`). `_id`로 읽으면 undefined가 흘러 **고아 문서 생성 + 사용자 간 좋아요 유출**이 발생한다. `statsService.requireUserId()`가 이제 즉시 throw로 막지만, 새 라우트를 붙일 땐 `userId`를 넘길 것
 - **라우트 순서 주의**: `/liked`는 `/:id` 계열보다 먼저 선언돼 있어야 param으로 먹히지 않는다.
 - `changed:false` = 이미 그 상태라 카운터 변화 없음(멱등). 앱은 `likeCount`만 신뢰하면 된다.
 - **재생 카운트 시점 = 30초 또는 50% 재생 도달 시 1회**(스킵은 안 셈). 서버는 같은 유저·같은 곡 20초 내 재발사를 중복으로 보고 무시하며 이때 `counted:false`.

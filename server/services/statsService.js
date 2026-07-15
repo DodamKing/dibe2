@@ -12,11 +12,26 @@ function withCounts(song) {
     return { ...song, likeCount: song.likeCount ?? 0, playCount: song.playCount ?? 0 }
 }
 
+// userId가 비어 있으면 조용히 넘어가면 안 된다. 실측(Mongoose 8.23)으로 확인한 실패 방식:
+//  1) 쓰기: upsert는 기본적으로 required 검증을 안 돌리고 Mongoose가 undefined 키를 버려서
+//     **user 없는 "고아" Like 문서**가 200 OK와 함께 조용히 생긴다.
+//  2) 읽기: `find({user: undefined})`는 `find({})`가 되는 게 아니라 **null/미존재 매칭**이라
+//     정확히 그 고아 문서들을 걸어온다.
+// 둘이 합쳐지면 모든 좋아요가 고아가 되고 모든 사용자의 조회가 그 고아 전부를 가져와
+// **결과적으로 전원이 서로의 좋아요를 보게 된다.**
+// (JWT 페이로드 키가 `_id`가 아니라 `userId`인 걸 놓쳐 실제로 재현됐던 버그다.)
+// → 호출자가 틀리면 데이터가 새는 대신 요란하게 터지도록 막는다.
+function requireUserId(userId) {
+    if (!userId) throw new Error('statsService: userId가 필요합니다 (JWT 페이로드 키는 userId)')
+    return userId
+}
+
 module.exports = {
     // 좋아요 등록(멱등). 이미 눌러둔 상태면 카운터를 건드리지 않는다.
     // upsert의 upsertedCount로 "이번에 새로 생겼는지"를 판별 → 유니크 인덱스와 함께
     // 동시 요청이 와도 likeCount가 실제 Like 수와 어긋나지 않는다.
     like: async (userId, songId) => {
+        requireUserId(userId)
         const song = await db.Song.findById(songId).select('_id')
         if (!song) return null
 
@@ -36,6 +51,7 @@ module.exports = {
 
     // 좋아요 해제(멱등). 실제로 지워졌을 때만 감소시킨다.
     unlike: async (userId, songId) => {
+        requireUserId(userId)
         const song = await db.Song.findById(songId).select('_id')
         if (!song) return null
 
@@ -57,6 +73,7 @@ module.exports = {
 
     // 내가 좋아요한 곡(최신순). Like가 원본이므로 여기서 조인해 온다.
     getLikedSongs: async (userId, page = 1, limit = 50) => {
+        requireUserId(userId)  // 빠지면 전 사용자 좋아요가 노출된다
         const skip = (page - 1) * limit
 
         const [likes, total] = await Promise.all([
@@ -79,6 +96,7 @@ module.exports = {
 
     // 재생 1회 기록. 앱이 30초/50% 도달 시 호출한다.
     recordPlay: async (userId, songId, source = 'unknown') => {
+        requireUserId(userId)
         const song = await db.Song.findById(songId).select('_id')
         if (!song) return null
 

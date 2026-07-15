@@ -79,7 +79,7 @@ router.post('/by-ids', async (req, res) => {
 
     const songs = await services.songService.getSongsByIds(ids)
     // 목록에 하트 상태를 그리려면 곡마다 liked가 필요하다. Like 쿼리 1회로 붙인다.
-    const withFlags = await services.statsService.attachLikedFlags(req.user?._id, songs)
+    const withFlags = await services.statsService.attachLikedFlags(req.user?.userId, songs)
     res.json({ songs: withFlags })
 })
 
@@ -92,7 +92,7 @@ router.get('/liked', async (req, res, next) => {
 
     try {
         const result = await services.statsService.getLikedSongs(
-            req.user._id,
+            req.user.userId,
             parseInt(page),
             Math.min(parseInt(limit), 100)
         )
@@ -107,7 +107,7 @@ router.post('/:id/like', async (req, res, next) => {
     if (!validSongId(req, res)) return
 
     try {
-        const result = await services.statsService.like(req.user._id, req.params.id)
+        const result = await services.statsService.like(req.user.userId, req.params.id)
         if (!result) return res.status(404).json({ message: '곡을 찾을 수 없습니다.' })
         res.json(result)
     } catch (err) {
@@ -120,7 +120,7 @@ router.delete('/:id/like', async (req, res, next) => {
     if (!validSongId(req, res)) return
 
     try {
-        const result = await services.statsService.unlike(req.user._id, req.params.id)
+        const result = await services.statsService.unlike(req.user.userId, req.params.id)
         if (!result) return res.status(404).json({ message: '곡을 찾을 수 없습니다.' })
         res.json(result)
     } catch (err) {
@@ -134,7 +134,7 @@ router.post('/:id/play', async (req, res, next) => {
     const { source } = req.body || {}
 
     try {
-        const result = await services.statsService.recordPlay(req.user._id, req.params.id, source)
+        const result = await services.statsService.recordPlay(req.user.userId, req.params.id, source)
         if (!result) return res.status(404).json({ message: '곡을 찾을 수 없습니다.' })
         res.json(result)
     } catch (err) {
