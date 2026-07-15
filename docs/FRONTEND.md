@@ -38,6 +38,7 @@
   - 곡 데이터는 표시 최소 필드만 저장 (`_id, title, artist, coverUrl`) — `stripForCache` 헬퍼
   - lyrics는 캐시 안 함 (가사 표시 시점에 `/api/songs/lyrics/:id`로 lazy fetch)
 - `initializeAudioSystem` 시작 시 캐시 큐 즉시 표시 후, `refreshQueueData` 백그라운드 디스패치 → `/api/songs/by-ids`로 fresh 데이터 받아 큐/currentTrack/originalQueue 갱신
+  - `/by-ids` 응답엔 2026-07-15부터 `liked`/`likeCount`/`playCount`가 **추가로** 실려 온다(앱 하트 UI용). 기존 4필드는 그대로라 웹은 무영향이고, `stripForCache`가 표시 최소 필드만 남기므로 **localStorage엔 안 들어간다**(메모리 큐엔 실려 있음) — 웹에서 하트를 쓸 거면 이미 받아둔 값이라 추가 요청 불필요
 - 차트는 `layouts/main.vue` `fetchPopularChart`에서 `dibe2_chart_cache` 키로 동일한 캐시-즉시-표시 + 백그라운드-refresh 패턴 사용
 - YouTube IFrame API로 재생 (`utils/youtubePlayer.js`)
 - 큐 제한: 1000곡

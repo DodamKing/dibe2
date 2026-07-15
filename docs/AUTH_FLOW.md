@@ -21,6 +21,13 @@ Payload: {
 Secret: process.env.JWT_SECRET
 만료: 30일
 ```
+> 🔴 **유저 id 접근은 `req.user.userId` — `req.user._id`가 아니다.** 페이로드 키가 `userId`라
+> `_id`로 읽으면 조용히 `undefined`가 흘러간다(예외가 안 남). Mongoose 문서 습관 때문에 틀리기 쉬움.
+> 로그인 5경로(`server/api/user.js`의 일반/구글웹/카카오웹/구글앱/카카오앱) 전부 `userId: user._id`로 발급하고,
+> 기존 라우터도 전부 `req.user.userId`를 쓴다(`playlist.js:9`, `videoPlaylist.js:9`, `user.js:77`).
+> **실제 사고 사례**: `_id`로 읽었다가 ① upsert가 user 없는 고아 문서를 200 OK로 생성하고
+> ② `find({user: undefined})`가 그 고아들을 매칭해 **사용자 간 좋아요 유출**이 발생했다
+> (배포 전 발견, 상세는 `WORK_LOG.md` 2026-07-15).
 
 ## 서버 인증 미들웨어 (server/middleware/auth.js)
 

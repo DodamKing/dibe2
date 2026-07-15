@@ -65,11 +65,14 @@ dibe2/
 │   │   ├── Chart.js     # 차트 (items: [{rank,title,artist,...}])
 │   │   ├── Playlist.js  # 플레이리스트 (user ref, songs[])
 │   │   ├── VideoPlaylist.js  # 비디오 플레이리스트 (user ref, videos[] — songId ref 없음, 전부 비정규화)
-│   │   ├── Song.js      # 곡 (title,artist,album,youtubeUrl,lyrics)
+│   │   ├── Song.js      # 곡 (title,artist,album,youtubeUrl,lyrics,likeCount,playCount)
+│   │   ├── Like.js      # 좋아요 (user+song 유니크). Song.likeCount의 원본
+│   │   ├── PlayEvent.js # 재생 이력 (user,song,source,playedAt) TTL 180일. 추천용 신호 + Song.playCount의 원본
 │   │   └── User.js      # 유저 (email,provider,expiryDate,isAdmin)
 │   ├── services/
 │   │   ├── index.js     # 서비스 export hub
 │   │   ├── songService.js    # 차트/곡/유튜브/검색 로직
+│   │   ├── statsService.js   # 좋아요/재생수 (like·unlike·getLikedSongs·recordPlay·attachLikedFlags)
 │   │   ├── playlistService.js
 │   │   ├── videoPlaylistService.js
 │   │   ├── adminService.js   # 통계, 접근 기간 설정
