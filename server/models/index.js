@@ -25,6 +25,8 @@ const Chart = require('./Chart')
 const Song = require('./Song')
 const Playlist = require('./Playlist')
 const VideoPlaylist = require('./VideoPlaylist')
+const Like = require('./Like')
+const PlayEvent = require('./PlayEvent')
 
 module.exports = {
     connectToMongoDB,
@@ -33,4 +35,6 @@ module.exports = {
     Song,
     Playlist,
     VideoPlaylist,
+    Like,
+    PlayEvent,
 }

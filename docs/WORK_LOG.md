@@ -7,6 +7,25 @@
 
 ## 완료된 작업
 
+### 2026-07-15 - 좋아요 / 재생수 API + 추천용 재생이력 스키마 신설
+- 배경: 앱(dibe2-app) 피드백에서 나온 실작업. 좋아요·재생수를 세고, **나중에 추천 기능을 붙일 수 있게 데이터를 미리 쌓아두는 것**이 목표
+- **설계 결정(사용자 확인)**: ① 대상은 **음원(Song)만** — 유튜브 영상 트랙은 `songId` 없이 `videoId`만 있어 Song 문서에 매핑 불가라 2차로 미룸 ② 재생 카운트는 **30초/50% 도달 시**(스킵 제외) ③ **카운터 + 재생이력 로그** 둘 다 (카운터만으론 추천 로직을 못 만듦)
+- **모델**:
+  - `Song`에 `likeCount`/`playCount` 추가(집계 캐시) + 인기순 인덱스
+  - `Like` 신설 — `{user, song}` 유니크 인덱스로 중복 좋아요를 DB에서 차단
+  - `PlayEvent` 신설 — `{user, song, source, playedAt}`, TTL 180일. 추천에 필요한 최근성·개인취향·유입경로 신호 확보용
+  - 상세 근거는 `docs/DATA_MODELS.md`
+- **서비스 `server/services/statsService.js` 신설**: `like`/`unlike`(멱등)/`getLikedSongs`/`recordPlay`/`attachLikedFlags`
+  - 좋아요는 **upsert의 `upsertedCount`로 신규 여부를 판별**해 카운터를 원자적으로 증감 → 동시 요청에도 카운터가 실제 Like 수와 안 어긋남
+  - 감소는 `{likeCount: {$gt: 0}}` 조건부 갱신. 스키마 `min:0`은 문서 검증이라 `$inc`를 못 막기 때문
+  - `recordPlay`는 같은 유저·같은 곡 **20초 내 재발사를 중복으로 보고 무시**(앱 재시도/중복 발사 방어). 곡 길이상 정상적인 한곡반복은 억제되지 않음
+- **라우트(`server/api/song.js`)**: `GET /liked`, `POST|DELETE /:id/like`, `POST /:id/play`. `POST /by-ids` 응답에 `liked`/`likeCount`/`playCount` 부착(목록 하트 상태를 Like 쿼리 1회로 해결)
+- **함정 2개**:
+  - `/liked`는 `/:id` 계열보다 **먼저** 선언해야 param으로 안 먹힘
+  - `getSongsByIds`가 하이드레이트 문서를 반환해 `{...song}` 스프레드가 깨졌음 → `.lean()` 추가로 해결. 잘못된 id 형식은 CastError→500→**슬랙 에러 알림**까지 울려서 400으로 끊음
+- **검증**: 서비스 22 + HTTP 라우트 17 = **39 케이스 전부 통과**(멱등성·동시성 가드·음수 방지·중복 발사·401/404/400). 운영 DB를 건드리지 않으려고 임시 Song/User를 만들어 테스트하고 삭제(잔여 0 확인). 신규 린트 에러 0
+- **남은 것(앱 쪽)**: 하트 UI, 30초/50% 트리거에서 `POST /:id/play` 호출, "좋아요한 곡" 보관함 진입점
+
 ### 2026-07-11 - 앱 배포/자동 업데이트용 백엔드 + 다운로드 페이지 (`/api/app`)
 - 배경: dibe2-app(안드로이드)을 Play 스토어 밖에서 **직접 APK 배포 + 로그인 사용자만 다운로드**. APK는 private 저장소 `dibe2-app`의 GitHub Releases 자산으로 두고, dibe2가 게이팅 게이트웨이 역할
 - **`server/api/app.js` 신설** (`netlify/functions/api.js`에 `/app` 마운트, 전역 `jwtCheckMiddleware`로 로그인 게이팅):

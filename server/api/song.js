@@ -1,9 +1,18 @@
 const express = require('express')
+const mongoose = require('mongoose')
 const helper = require('../utils/helper')
 const services = require('../services')
 const { adminMiddleware } = require('../middleware/auth')
 
 const router = express.Router()
+
+// 잘못된 형식의 id를 그냥 넘기면 Mongoose CastError → 500 → 슬랙 알림까지 울린다.
+// 클라이언트 잘못은 400으로 끊는다.
+function validSongId(req, res) {
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) return true
+    res.status(400).json({ message: '잘못된 곡 id 입니다.' })
+    return false
+}
 
 router.get('/test', async (req, res) => {
     try {
@@ -69,7 +78,68 @@ router.post('/by-ids', async (req, res) => {
     if (!Array.isArray(ids) || ids.length === 0) return res.json({ songs: [] })
 
     const songs = await services.songService.getSongsByIds(ids)
-    res.json({ songs })
+    // 목록에 하트 상태를 그리려면 곡마다 liked가 필요하다. Like 쿼리 1회로 붙인다.
+    const withFlags = await services.statsService.attachLikedFlags(req.user?._id, songs)
+    res.json({ songs: withFlags })
+})
+
+// ── 좋아요 / 재생수 ───────────────────────────────────────────────
+// 주의: '/liked'는 '/:id' 형태 라우트보다 먼저 선언해야 param으로 먹히지 않는다.
+
+// GET /api/songs/liked — 내가 좋아요한 곡(최신순)
+router.get('/liked', async (req, res, next) => {
+    const { page = 1, limit = 50 } = req.query
+
+    try {
+        const result = await services.statsService.getLikedSongs(
+            req.user._id,
+            parseInt(page),
+            Math.min(parseInt(limit), 100)
+        )
+        res.json(result)
+    } catch (err) {
+        next(err)
+    }
+})
+
+// POST /api/songs/:id/like — 좋아요 등록(멱등)
+router.post('/:id/like', async (req, res, next) => {
+    if (!validSongId(req, res)) return
+
+    try {
+        const result = await services.statsService.like(req.user._id, req.params.id)
+        if (!result) return res.status(404).json({ message: '곡을 찾을 수 없습니다.' })
+        res.json(result)
+    } catch (err) {
+        next(err)
+    }
+})
+
+// DELETE /api/songs/:id/like — 좋아요 해제(멱등)
+router.delete('/:id/like', async (req, res, next) => {
+    if (!validSongId(req, res)) return
+
+    try {
+        const result = await services.statsService.unlike(req.user._id, req.params.id)
+        if (!result) return res.status(404).json({ message: '곡을 찾을 수 없습니다.' })
+        res.json(result)
+    } catch (err) {
+        next(err)
+    }
+})
+
+// POST /api/songs/:id/play — 재생 1회 기록(앱이 30초/50% 도달 시 호출)
+router.post('/:id/play', async (req, res, next) => {
+    if (!validSongId(req, res)) return
+    const { source } = req.body || {}
+
+    try {
+        const result = await services.statsService.recordPlay(req.user._id, req.params.id, source)
+        if (!result) return res.status(404).json({ message: '곡을 찾을 수 없습니다.' })
+        res.json(result)
+    } catch (err) {
+        next(err)
+    }
 })
 
 router.get('/lyrics/:songId', async (req, res, next) => {

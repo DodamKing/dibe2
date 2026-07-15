@@ -10,13 +10,26 @@
 | POST | `/songsdata` | body: {songs[]} → 복수 곡 조회 |
 | GET | `/search?query=&type=&page=&limit=` | 곡 검색 (type: all/title/artist/lyrics) |
 | GET | `/youtubeId/:songId` | songId → YouTube 비디오 ID |
-| POST | `/by-ids` | body: {ids[]} → ID 배열로 일괄 조회 (lyrics 제외, 캐시 갱신용) |
+| POST | `/by-ids` | body: {ids[]} → ID 배열로 일괄 조회 (lyrics 제외, 캐시 갱신용). 응답에 `liked`/`likeCount`/`playCount` 포함 |
 | GET | `/lyrics/:songId` | songId → 가사 단일 조회 (lazy fetch용) |
 | POST | `/` | 곡 추가 |
 | PUT | `/:id` | 곡 수정 (관리자만) |
 | DELETE | `/delete/:id` | 곡 삭제 |
 | GET | `/search-bugs?query=` | Bugs Music 검색 |
 | GET | `/search-youtube?query=` | YouTube 검색 (2~6분 영상) |
+
+### 좋아요 / 재생수
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | `/liked?page=&limit=` | 내가 좋아요한 곡(최신순). → `{songs[], total, page, limit, hasMore}` (limit 최대 100) |
+| POST | `/:id/like` | 좋아요 등록(멱등) → `{liked:true, likeCount, changed}` |
+| DELETE | `/:id/like` | 좋아요 해제(멱등) → `{liked:false, likeCount, changed}` |
+| POST | `/:id/play` | 재생 1회 기록. body: `{source}` (chart/playlist/search/recent/video) → `{playCount, counted}` |
+
+- **라우트 순서 주의**: `/liked`는 `/:id` 계열보다 먼저 선언돼 있어야 param으로 먹히지 않는다.
+- `changed:false` = 이미 그 상태라 카운터 변화 없음(멱등). 앱은 `likeCount`만 신뢰하면 된다.
+- **재생 카운트 시점 = 30초 또는 50% 재생 도달 시 1회**(스킵은 안 셈). 서버는 같은 유저·같은 곡 20초 내 재발사를 중복으로 보고 무시하며 이때 `counted:false`.
+- 잘못된 id 형식은 400(500으로 새면 슬랙 에러 알림이 울림).
 
 ## Playlists (`/api/playlists`) - server/api/playlist.js
 | Method | Path | 설명 |

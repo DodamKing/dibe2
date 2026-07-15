@@ -251,8 +251,11 @@ module.exports = {
 
     getSongsByIds: async (ids) => {
         try {
+            // lean() — 응답은 어차피 JSON이고, statsService.attachLikedFlags가 스프레드로
+            // liked를 붙이려면 순수 객체여야 한다(하이드레이트된 문서는 스프레드가 안 먹힌다).
             const songs = await db.Song.find({ _id: { $in: ids } })
-                .select('_id title artist coverUrl')
+                .select('_id title artist coverUrl likeCount playCount')
+                .lean()
             return songs
         } catch (err) {
             console.error(err)
