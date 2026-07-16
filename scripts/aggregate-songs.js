@@ -50,11 +50,15 @@ async function main() {
             s = {
                 title: r.title, artist: r.artist, album: r.album,
                 coverUrl: r.coverUrl, detailLink: r.detailLink,
+                adult: false,
                 chartHits: 0, bestRank: 999, chartGenres: new Set(),
                 firstSeen: r.date, lastSeen: r.date,
             }
             songs.set(k, s)
         }
+        // 19금은 한 번이라도 배지가 붙었으면 19금이다. 벅스가 나중에 배지를 붙인 경우
+        // 같은 곡의 옛 행엔 배지가 없어서, 행 하나만 보면 놓친다.
+        if (r.adult) s.adult = true
         s.chartHits++
         if (r.rank && r.rank < s.bestRank) s.bestRank = r.rank
         s.chartGenres.add(r.genre)
