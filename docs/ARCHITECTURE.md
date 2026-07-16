@@ -83,8 +83,15 @@ dibe2/
 │       └── y2mate.js
 │
 ├── scripts/             # 로컬 실행 일회성/백필 스크립트 (배포 안 됨)
-│   └── backfill-genre.js  # 벅스 앨범 페이지에서 장르/스타일 백필 (--dry-run, --limit)
-│                          # ⚠️ DB 접속은 반드시 server/models의 connectToMongoDB() 사용
+│   │                      # ⚠️ DB 접속은 반드시 server/models의 connectToMongoDB() 사용
+│   ├── lib/bugs.js        # 벅스 공용 HTTP 클라이언트(지터·UA·쿠키) + HTML 파서
+│   ├── backfill-genre.js  # 기존 DB 곡에 장르/스타일 백필 (완료됨)
+│   ├── crawl-bugs-charts.js  # 장르 차트 → data/bugs-chart-rows.jsonl (DB 안 씀, 재개 가능)
+│   ├── aggregate-songs.js    # 원시 행 → data/songs.jsonl (유니크 곡 + 인기도, DB 읽기만)
+│   └── enrich-songs.js       # 곡에 장르/가사 → data/songs-enriched.jsonl (서킷 브레이커 내장)
+│
+├── data/                # 크롤링 산출물 (gitignore, 수십 MB) — DB가 아닌 중간 저장소
+│                        # 상세 설계·수치는 docs/WORK_LOG.md 2026-07-16 항목
 │
 ├── store/               # Vuex 스토어
 │   ├── index.js
