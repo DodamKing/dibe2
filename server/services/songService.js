@@ -334,8 +334,20 @@ module.exports = {
     getYoutubeId: async (songId) => {
         try {
             const song = await db.Song.findById(songId)
+            if (!song) return null
+
+            // youtubeUrl은 곡 저장(차트 크론 08:00)보다 늦게 채워진다(유튜브 크론 08:10).
+            // 그 사이에 눌린 곡은 여기서 즉석으로 채운다. 크론과 같은 검색을 쓰고, 둘 다
+            // "URL 없는 곡"만 고르므로 먼저 채운 쪽이 상대의 대상에서 빠져 중복은 안 생긴다.
+            let youtubeUrl = song.youtubeUrl
+            if (!youtubeUrl) youtubeUrl = await module.exports.updateYoutubeUrl(songId)
+
+            // 즉석 채우기도 실패할 수 있다(2~6분 조건에 맞는 영상이 없는 경우).
+            // undefined.match()로 터뜨리지 말고 "없음"을 알린다.
+            if (!youtubeUrl) return null
+
             const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
-            const match = song.youtubeUrl.match(regExp)
+            const match = youtubeUrl.match(regExp)
             return (match && match[2].length === 11) ? match[2] : null;
         } catch (err) {
             console.error('유뷰트 아이디:', err)

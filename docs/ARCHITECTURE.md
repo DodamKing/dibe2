@@ -65,7 +65,7 @@ dibe2/
 │   │   ├── Chart.js     # 차트 (items: [{rank,title,artist,...}])
 │   │   ├── Playlist.js  # 플레이리스트 (user ref, songs[])
 │   │   ├── VideoPlaylist.js  # 비디오 플레이리스트 (user ref, videos[] — songId ref 없음, 전부 비정규화)
-│   │   ├── Song.js      # 곡 (title,artist,album,youtubeUrl,lyrics,likeCount,playCount)
+│   │   ├── Song.js      # 곡 (title,artist,album,youtubeUrl,lyrics,genre,style,likeCount,playCount)
 │   │   ├── Like.js      # 좋아요 (user+song 유니크). Song.likeCount의 원본
 │   │   ├── PlayEvent.js # 재생 이력 (user,song,source,playedAt) TTL 180일. 추천용 신호 + Song.playCount의 원본
 │   │   └── User.js      # 유저 (email,provider,expiryDate,isAdmin)
@@ -81,6 +81,10 @@ dibe2/
 │       ├── helper.js              # Bugs 크롤링, 가사, Slack 알림
 │       ├── advancedInvidiousManager.js  # Invidious 오디오 스트리밍
 │       └── y2mate.js
+│
+├── scripts/             # 로컬 실행 일회성/백필 스크립트 (배포 안 됨)
+│   └── backfill-genre.js  # 벅스 앨범 페이지에서 장르/스타일 백필 (--dry-run, --limit)
+│                          # ⚠️ DB 접속은 반드시 server/models의 connectToMongoDB() 사용
 │
 ├── store/               # Vuex 스토어
 │   ├── index.js

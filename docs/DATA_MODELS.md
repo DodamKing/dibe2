@@ -27,10 +27,18 @@
   detailLink: String (Bugs Music 상세 페이지),
   lyrics: String,
   youtubeUrl: String,
+  genre: [String],                  // 벅스 앨범 페이지의 "장르" (큰 분류, UI 필터용)
+  style: [String],                  // 벅스 앨범 페이지의 "스타일" (세부 태그, 추천 신호용)
   likeCount: Number (default: 0),   // 집계 캐시 — 원본은 Like 컬렉션
   playCount: Number (default: 0)    // 집계 캐시 — 원본은 PlayEvent 컬렉션
 }
 ```
+- 인덱스: `genre: 1`
+- **`youtubeUrl`은 곡 저장보다 늦게 채워진다** (차트 크론 08:00 저장 → 유튜브 크론 08:10 채움). 그 사이엔 URL이 없는 곡이 존재하므로 **`youtubeUrl`이 항상 있다고 가정하지 말 것**. `getYoutubeId`가 없으면 즉석에서 채우고(lazy fill), 그래도 없으면 `null`을 반환한다 — 상세는 `docs/CRON_EXTERNAL.md`
+- `genre`/`style`은 **벅스가 트랙이 아니라 앨범에 붙이는 정보**라 앨범 페이지에서 가져온다. 앨범 ID는 `coverUrl` 경로에 그대로 있다(`.../album/images/50/206680/20668087.jpg` → `20668087`)
+- 둘은 **서로 다른 축**이다. `genre`는 12종 내외로 거칠고(`댄스/팝` 404곡), `style`은 잘게 쪼개진다(`팝 락` 141곡 — `락/메탈` 장르 64곡보다 많다). OST는 `genre`가 같아도 `style`이 `TV 드라마`/`카툰/코믹스`로 갈린다
+- ⚠️ 앨범 페이지의 장르 값은 **차트 장르 코드와 일치하지 않는다**(`J-POP`, `캐롤` 등은 차트 메뉴에 없는 값). UI 필터 목록은 차트 코드가 아니라 **DB에 실제로 쌓인 값**으로 뽑을 것
+- `default: undefined`라 백필 전 문서엔 필드가 **물리적으로 없다**(`likeCount`와 같은 함정). 다만 `$inc` 같은 자동 생성 경로가 없어 **백필로 실제로 채워야 한다** — `scripts/backfill-genre.js`로 기존 1091곡 완료(2026-07-16)
 - `likeCount`/`playCount`는 **비정규화된 집계 캐시**다. 목록 응답마다 count 쿼리를 돌지 않으려고 둔 것이고, 진짜 원본은 `Like`/`PlayEvent`. 값이 틀어지면 원본에서 재계산할 수 있다
 - 인덱스: `likeCount: -1`, `playCount: -1` (인기순 정렬)
 - ⚠️ **도입(2026-07-15) 이전 곡 문서엔 두 필드가 물리적으로 없다**(당시 1091곡 전부). Mongoose default는 저장/하이드레이트 때만 채워지므로 **`.lean()` 조회에선 `undefined`가 그대로 나간다**. 백필 대신 `statsService.withCounts`가 응답 시점에 0으로 정규화한다 — `$inc`가 없는 필드를 생성해 주기 때문에 마이그레이션이 필요 없다. **`.lean()`으로 이 필드를 새로 읽는 코드를 추가할 땐 반드시 정규화를 거칠 것**

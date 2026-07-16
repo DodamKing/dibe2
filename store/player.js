@@ -332,8 +332,15 @@ export const actions = {
 
         if (state.currentTrack && state.isYouTubeReady) {
             commit('SET_IS_LOADING', true)
-            const youtubeId = await this.$axios.$get('/api/songs/youtubeId/' + state.currentTrack._id)
             try {
+                const youtubeId = await this.$axios.$get('/api/songs/youtubeId/' + state.currentTrack._id)
+                // 아직 youtubeUrl이 없는 곡. loadVideoById(null)은 예외 없이 조용히 넘어가서
+                // 재생 중 표시만 남고 소리는 안 나므로 여기서 끊는다.
+                if (!youtubeId) {
+                    commit('SET_ERROR_MESSAGE', 'This track is not playable yet. Please try again later.')
+                    commit('SET_IS_PLAYING', false)
+                    return
+                }
                 if (youtubeId !== youtubePlayer.getCurrentVideoId()) youtubePlayer.loadVideo(youtubeId)
                 youtubePlayer.play()
                 // 재생 위치 점프는 onStateChange의 PLAYING 시점(initYoutubePlayer)에서 처리 —
