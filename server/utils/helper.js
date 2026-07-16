@@ -26,8 +26,43 @@ const formatter = new Intl.DateTimeFormat('ko-KR', {
     hour12: false,
 });
 
+/**
+ * 앨범 ID는 coverUrl 경로에 그대로 들어있다.
+ *   .../album/images/50/206680/20668087.jpg → 20668087
+ * 덕분에 트랙 페이지를 거치지 않고 앨범 페이지로 바로 갈 수 있다(요청 1회 절약).
+ */
+function albumIdFromCoverUrl(coverUrl) {
+    const m = /\/album\/images\/\d+\/\d+\/(\d+)\./.exec(coverUrl || '')
+    return m ? m[1] : null
+}
+
+/**
+ * 벅스는 장르/스타일을 트랙이 아니라 **앨범**에 붙인다. 트랙 페이지엔 장르가 없다.
+ * genre는 큰 분류(발라드/댄스·팝…), style은 세부 태그(팝 락/TV 드라마…)로 서로 다른 축이다.
+ */
+async function getAlbumGenre(albumId) {
+    try {
+        const { data } = await axios.get(`https://music.bugs.co.kr/album/${albumId}`)
+        const $ = cheerio.load(data)
+        const out = { genre: [], style: [] }
+        const split = t => t.split(',').map(s => s.trim()).filter(Boolean)
+        $('table.info tbody tr').each((i, el) => {
+            const label = $(el).find('th').text().trim()
+            const value = $(el).find('td').text().trim().replace(/\s+/g, ' ')
+            if (label === '장르') out.genre = split(value)
+            else if (label === '스타일') out.style = split(value)
+        })
+        return out
+    } catch (err) {
+        console.error('앨범 장르 크롤링 오류:', err.message)
+        return null
+    }
+}
+
 module.exports = {
     getLyrics: getLyrics,
+    albumIdFromCoverUrl,
+    getAlbumGenre,
     getBugsChart: async () => {
         try {
             const url = 'https://music.bugs.co.kr/chart/track/day/total';

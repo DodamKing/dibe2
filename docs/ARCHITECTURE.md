@@ -57,10 +57,7 @@ dibe2/
 │   │   └── youtube.js   # /api/youtube/* (비디오 페이지 전용 검색)
 │   ├── middleware/
 │   │   ├── auth.js      # JWT 인증 (jwtCheckMiddleware, adminMiddleware, generateToken)
-│   │   ├── cors.js
-│   │   ├── cron.js      # 크론잡 (차트/유튜브URL/가사 업데이트)
-│   │   ├── dailyVisitor.js
-│   │   └── dbConnection.js
+│   │   └── cors.js
 │   ├── models/
 │   │   ├── Chart.js     # 차트 (items: [{rank,title,artist,...}])
 │   │   ├── Playlist.js  # 플레이리스트 (user ref, songs[])
@@ -88,7 +85,8 @@ dibe2/
 │   ├── backfill-genre.js  # 기존 DB 곡에 장르/스타일 백필 (완료됨)
 │   ├── crawl-bugs-charts.js  # 장르 차트 → data/bugs-chart-rows.jsonl (DB 안 씀, 재개 가능)
 │   ├── aggregate-songs.js    # 원시 행 → data/songs.jsonl (유니크 곡 + 인기도, DB 읽기만)
-│   └── enrich-songs.js       # 곡에 장르/가사 → data/songs-enriched.jsonl (서킷 브레이커 내장)
+│   ├── enrich-songs.js       # 곡에 장르/가사 → data/songs-enriched.jsonl (서킷 브레이커 내장)
+│   └── fill-youtube.js       # 곡에 videoId → data/songs-youtube.jsonl (서킷 브레이커 내장)
 │
 ├── data/                # 크롤링 산출물 (gitignore, 수십 MB) — DB가 아닌 중간 저장소
 │                        # 상세 설계·수치는 docs/WORK_LOG.md 2026-07-16 항목
@@ -109,17 +107,17 @@ dibe2/
 │   ├── audioPlayer.js
 │   └── youtubePlayer.js # YouTube IFrame API 래퍼
 │
-├── nuxt.config.js       # Nuxt 설정 (serverMiddleware 순서 중요)
+├── modules/             # ⚠️ 전부 죽은 코드 — nuxt.config.js에서 주석 처리됨
+│   ├── cron.js          #   node-cron 기반 크론. 24시간 살아있는 서버가 있어야 도는데
+│   │                    #   ssr:false + target:static 이라 런타임에 Nuxt 서버가 없음.
+│   │                    #   Netlify Functions도 응답 후 죽어서 setInterval/타이머가 불가능.
+│   │                    #   → 크론은 netlify/functions/cron-*.js (Netlify Scheduled Functions)가 담당
+│   └── dbConnection.js  #   위와 같은 이유로 사용 안 함
+│
+├── nuxt.config.js       # Nuxt 설정
 ├── ecosystem.config.js  # PM2 배포 설정
 └── tailwind.config.js
 ```
-
-## serverMiddleware 실행 순서 (nuxt.config.js)
-1. `cors`
-2. `dbConnection` (MongoDB 연결)
-3. `cron` (크론잡 등록, pass-through)
-4. `/api` → `server/api/index.js` (Express 앱)
-5. `dailyVisitor` (방문자 통계)
 
 ## Netlify Functions 미들웨어 순서 (netlify/functions/api.js)
 1. CORS

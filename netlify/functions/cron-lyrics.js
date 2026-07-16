@@ -5,7 +5,9 @@ const { connectToMongoDB } = require('../../server/models')
 const { songService } = require('../../server/services')
 const { sendErrorToSlack } = require('../../server/utils/helper')
 
-module.exports.handler = schedule('0 17 * * *', async () => {
+// 08:30 KST — 차트 크론(08:00)이 곡을 저장한 뒤에 돈다.
+// 예전엔 02:00이었으나 특별한 이유가 없었고, "곡 저장 → 필드 채움" 순서를 지키려고 옮김.
+module.exports.handler = schedule('30 23 * * *', async () => {
     console.log('가사 업데이트 시작:', new Date().toISOString())
     try {
         await connectToMongoDB()

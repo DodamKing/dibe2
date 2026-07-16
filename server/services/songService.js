@@ -15,6 +15,23 @@ function parseSimpleTextDuration(simpleText) {
     }
 }
 
+// youtube-search-api 는 URL을 encodeURI 로 만드는데 encodeURI 는 '#' 을 인코딩하지 않는다.
+// 그래서 '#'부터 뒤가 URL 프래그먼트로 잘려나가 search_query 가 통째로 비어버린다
+// ("#첫사랑 볼빨간사춘기" → 검색어 ""). 제목에 # 있는 곡은 검색 결과가 영원히 0건이라
+// 크론으로도 lazy fill 로도 URL을 못 받는다. 실측으로 확인함(2026-07-16).
+const youtubeQuery = (title, artist) =>
+    `${title} ${artist} official audio`.replace(/#/g, ' ').replace(/\s+/g, ' ').trim()
+
+// Netlify 스케줄 함수는 **30초 제한이고 설정으로 못 늘린다**(동기 60초 / 백그라운드 15분과 별개).
+// 타임아웃은 강제 종료라 catch 가 안 돌아 슬랙 알림도 없이 조용히 죽는다.
+// 그래서 크론이 도는 함수는 전부 시간 예산을 보고 스스로 멈춘다.
+//
+// 곡 수로 끊지 않고 경과 시간으로 끊는 이유: 대상 사이트가 느린 날에도 안 터진다.
+// 못 끝낸 곡은 다음 날 이어서 처리되므로 손실이 없다.
+const CRON_BUDGET_MS = 22000
+
+const overBudget = startedAt => Date.now() - startedAt > CRON_BUDGET_MS
+
 const createFlexibleRegex = (query) => {
     // 쿼리의 각 문자 사이에 선택적 공백을 허용하는 정규표현식 생성
     const flexibleQuery = query.split('').join('\\s*');
@@ -85,11 +102,18 @@ module.exports = {
 
     updateYoutubeUrls: async () => {
         try {
-            const songs = await db.Song.find({ youtubeUrl: { $in: [null, ''] } })
+            const startedAt = Date.now()
+            // 대상 전체를 한 번에 가져오지 않는다. 백로그가 수천 곡이면 쿼리부터 무거워진다.
+            const songs = await db.Song.find({ youtubeUrl: { $in: [null, ''] } }).limit(40)
+            let processed = 0
 
             for (const song of songs) {
+                if (overBudget(startedAt)) {
+                    console.log(`시간 예산 도달 — ${processed}곡 처리하고 중단(나머지는 다음 실행에서)`)
+                    break
+                }
                 try {
-                    const searchQuery = `${song.title} ${song.artist} official audio`
+                    const searchQuery = youtubeQuery(song.title, song.artist)
                     const searchResults = await YouTubeSearch.GetListByKeyword(searchQuery, false, 10)
 
                     let foundSuitableVideo = false
@@ -116,6 +140,7 @@ module.exports = {
                     }
 
                     if (!foundSuitableVideo) console.log(`YouTube URL 결과 없음: ${song.title} by ${song.artist}`)
+                    processed++
 
                     // YouTube API 제한을 고려한 딜레이
                     await new Promise(resolve => setTimeout(resolve, 1000))
@@ -123,6 +148,7 @@ module.exports = {
                     console.error('유튜브 검색하다 에러남:', searchErr)
                 }
             }
+            console.log(`YouTube URL 업데이트: ${processed}곡 처리`)
         } catch (err) {
             console.error('YouTube URL 업데이트 중 오류 발생:', err)
         }
@@ -131,7 +157,7 @@ module.exports = {
     updateYoutubeUrl: async (_id) => {
         try {
             const song = await db.Song.findById(_id)
-            const searchQuery = `${song.title} ${song.artist} official audio`
+            const searchQuery = youtubeQuery(song.title, song.artist)
             const searchResults = await YouTubeSearch.GetListByKeyword(searchQuery, false, 10)
 
             let foundSuitableVideo = false
@@ -315,19 +341,70 @@ module.exports = {
 
     updateLyrics: async () => {
         try {
-            const songs = await db.Song.find({ lyrics: { $in: [null, ''] }, detailLink: { $ne: null } })
+            const startedAt = Date.now()
+            const songs = await db.Song.find({ lyrics: { $in: [null, ''] }, detailLink: { $ne: null } }).limit(120)
+            let processed = 0
 
             for (const song of songs) {
+                if (overBudget(startedAt)) {
+                    console.log(`시간 예산 도달 — ${processed}곡 처리하고 중단(나머지는 다음 실행에서)`)
+                    break
+                }
                 try {
                     const lyrics = await helper.getLyrics(song.detailLink)
                     await song.updateOne({ lyrics })
-                    console.log(`가사 업데이트: ${song.title} by ${song.artist}`)
+                    processed++
                 } catch (err) {
                     console.error(`가사 업데이트 에러: ${song.title} by ${song.artist}`)
                 }
             }
+            console.log(`가사 업데이트: ${processed}곡 처리`)
         } catch (err) {
             console.error('가사 업데이트 중 에러: ', err)
+        }
+    },
+
+    /**
+     * 장르/스타일 채우기. 곡 저장(cron-chart)과 분리한 이유:
+     * 앨범 요청이 cron-chart 안에 있으면 신곡이 많은 날 30초를 넘겨 **곡 저장 자체가 실패**한다.
+     * 가사/유튜브와 같은 "저장 먼저, 필드는 나중에" 패턴을 따른다.
+     */
+    updateGenres: async () => {
+        try {
+            const startedAt = Date.now()
+            // genre 필드가 아예 없는 문서만. 빈 배열([])은 "찾아봤는데 없더라"라 재시도하지 않는다.
+            const songs = await db.Song.find({ genre: { $exists: false }, coverUrl: { $ne: null } }).limit(120)
+            let processed = 0
+
+            // 같은 앨범 곡은 값이 같다. 한 번의 실행 안에서만이라도 캐시하면 요청이 준다.
+            const cache = new Map()
+
+            for (const song of songs) {
+                if (overBudget(startedAt)) {
+                    console.log(`시간 예산 도달 — ${processed}곡 처리하고 중단(나머지는 다음 실행에서)`)
+                    break
+                }
+                try {
+                    const albumId = helper.albumIdFromCoverUrl(song.coverUrl)
+                    if (!albumId) {
+                        // 앨범 ID를 못 뽑으면 매번 다시 시도해도 결과가 같다. 빈 값으로 닫는다.
+                        await song.updateOne({ genre: [], style: [] })
+                        processed++
+                        continue
+                    }
+                    if (!cache.has(albumId)) cache.set(albumId, await helper.getAlbumGenre(albumId))
+                    const info = cache.get(albumId)
+                    if (!info) continue // 네트워크 실패 — 다음 실행에서 재시도
+
+                    await song.updateOne({ genre: info.genre, style: info.style })
+                    processed++
+                } catch (err) {
+                    console.error(`장르 업데이트 에러: ${song.title} by ${song.artist}`)
+                }
+            }
+            console.log(`장르 업데이트: ${processed}곡 처리 (앨범 요청 ${cache.size}회)`)
+        } catch (err) {
+            console.error('장르 업데이트 중 에러: ', err)
         }
     },
 
