@@ -18,6 +18,7 @@ const fs = require('fs')
 const path = require('path')
 const axios = require('axios')
 const cheerio = require('cheerio')
+const B = require('./lib/bugs')
 
 // 국내 장르만. 코드는 벅스 차트 페이지의 링크 경로에서 확인한 값.
 const GENRES = {
@@ -100,7 +101,7 @@ async function fetchChart(genre, date) {
     const rows = []
     $('.list > tbody > tr').each((i, el) => {
         const $el = $(el)
-        const title = $el.find('.title').text().trim()
+        const { title, adult } = B.parseTitleCell($el.find('.title'))
         const artist = $el.find('.artist > a').first().text().trim()
         if (!title || !artist) return
         rows.push({
@@ -110,6 +111,7 @@ async function fetchChart(genre, date) {
             album: $el.find('.album').text().trim(),
             coverUrl: $el.find('.thumbnail > img').attr('src') || '',
             detailLink: $el.find('.trackInfo').attr('href') || '',
+            adult,
         })
     })
     return rows

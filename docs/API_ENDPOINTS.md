@@ -11,12 +11,16 @@
 | GET | `/search?query=&type=&page=&limit=` | 곡 검색 (type: all/title/artist/lyrics) |
 | GET | `/youtubeId/:songId` | songId → YouTube 비디오 ID |
 | POST | `/by-ids` | body: {ids[]} → ID 배열로 일괄 조회 (lyrics 제외, 캐시 갱신용). 응답에 `liked`/`likeCount`/`playCount` 포함 |
-| GET | `/lyrics/:songId` | songId → 가사 단일 조회 (lazy fetch용) |
+| GET | `/lyrics/:songId` | songId → `{lyrics, adult}`. **비어 있으면 즉석에서 채운다(lazy fill)** — 상세는 아래 |
 | POST | `/` | 곡 추가 |
 | PUT | `/:id` | 곡 수정 (관리자만) |
 | DELETE | `/delete/:id` | 곡 삭제 |
 | GET | `/search-bugs?query=` | Bugs Music 검색 |
 | GET | `/search-youtube?query=` | YouTube 검색 (2~6분 영상) |
+
+- **`/lyrics/:songId` 는 조회가 아니라 "조회 + 즉석 채우기"다.** 가사가 비어 있으면 벅스 트랙 페이지를 그 자리에서 긁어 저장하고 반환한다(실측 671ms). 크론(08:30)만으로는 백로그를 다 채우는 데 수개월이 걸리는데, lazy fill 은 **사용자가 실제로 튼 곡부터** 채우므로 그 대기가 사실상 사라진다. `youtubeUrl` 의 `getYoutubeId` 와 같은 패턴이고, 크론과 lazy fill 이 둘 다 "가사 없는 곡"만 고르므로 중복이 없다
+  - 응답의 `adult` 는 **"가사 없음"과 "19금이라 제공 안 됨"을 UI가 구분**하기 위한 것. 19금 곡과 이미 "없음"으로 닫힌 곡(`lyricsCheckedAt`)은 **긁지 않고 즉시 반환**한다(실측 43~52ms) — 안 그러면 가사를 못 받는 곡을 누를 때마다 벅스를 때리는 증폭기가 된다
+  - 프론트는 `lyrics === undefined`(아직 응답 전 = 로딩)와 `''`(받아왔는데 없음)를 구분한다. `store/player.js`의 `fetchCurrentTrackLyrics`는 **응답이 늦게 와서 다음 곡에 붙는 걸 막는 가드**가 있다(lazy fill 이 1초 가까이 걸릴 수 있음)
 
 ### 좋아요 / 재생수
 | Method | Path | 설명 |

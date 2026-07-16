@@ -118,9 +118,10 @@ export const mutations = {
     SET_QUEUE_ENDED(state, isEnded) {
         state.isQueueEnded = isEnded
     },
-    SET_CURRENT_TRACK_LYRICS(state, lyrics) {
+    // lyrics 가 undefined = 아직 안 받아옴(로딩), '' = 받아왔는데 가사가 없는 곡. UI가 이걸 구분한다.
+    SET_CURRENT_TRACK_LYRICS(state, { lyrics, adult }) {
         if (state.currentTrack) {
-            state.currentTrack = { ...state.currentTrack, lyrics }
+            state.currentTrack = { ...state.currentTrack, lyrics, adult }
         }
     },
 }
@@ -315,9 +316,13 @@ export const actions = {
 
     async fetchCurrentTrackLyrics({ state, commit }) {
         if (!state.currentTrack) return
+        // 응답이 오기 전에 곡이 바뀔 수 있다. 서버가 가사를 즉석에서 채우면(lazy fill)
+        // 벅스를 긁느라 1초 가까이 걸려서 더 잘 어긋난다 — 늦게 온 응답을 다음 곡에 붙이면 안 된다.
+        const trackId = state.currentTrack._id
         try {
-            const { lyrics } = await this.$axios.$get(`/api/songs/lyrics/${state.currentTrack._id}`)
-            commit('SET_CURRENT_TRACK_LYRICS', lyrics || '')
+            const { lyrics, adult } = await this.$axios.$get(`/api/songs/lyrics/${trackId}`)
+            if (state.currentTrack?._id !== trackId) return
+            commit('SET_CURRENT_TRACK_LYRICS', { lyrics: lyrics || '', adult: !!adult })
         } catch (err) {
             console.error('가사 fetch 실패:', err)
         }

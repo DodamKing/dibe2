@@ -32,6 +32,30 @@ const CRON_BUDGET_MS = 22000
 
 const overBudget = startedAt => Date.now() - startedAt > CRON_BUDGET_MS
 
+/**
+ * 크론 처리 순서 — **차트에 최근 오른 곡부터**.
+ *
+ * 정렬이 없으면 자연순(≈ _id, 오래된 삽입분부터)이라 대량 적재분이 앞을 막아
+ * 오늘 차트에 오른 신곡이 몇 달 뒤에나 처리된다. `lastChartedAt` 은 차트 크론(08:00)이
+ * 매일 찍으므로 "지금 사람들이 듣는 곡"이 자동으로 앞에 온다.
+ * 값이 없는 곡(적재분·과거 곡)은 뒤로 밀리는데, 신곡을 다 처리하고 남는 예산으로
+ * 갉아먹으면 되므로 의도한 동작이다.
+ */
+const CRON_ORDER = { lastChartedAt: -1 }
+
+/**
+ * "가사를 아직 못 받은 곡" 조건. 세 가지를 빼야 무한 재시도가 안 생긴다:
+ *  - `lyricsCheckedAt` 있음 = 찾아봤는데 없더라(영구 실패). 다시 긁어도 결과가 같다
+ *  - `adult` = 19금은 성인 인증(로그인)이 있어야 보인다. 크롤링으로는 원리적으로 못 받는다
+ *  - `detailLink` 없음 = 긁을 주소 자체가 없다(수동 추가분 등)
+ */
+const LYRICS_PENDING = {
+    lyrics: { $in: [null, ''] },
+    lyricsCheckedAt: { $exists: false },
+    adult: { $ne: true },
+    detailLink: { $ne: null },
+}
+
 const createFlexibleRegex = (query) => {
     // 쿼리의 각 문자 사이에 선택적 공백을 허용하는 정규표현식 생성
     const flexibleQuery = query.split('').join('\\s*');
@@ -104,7 +128,13 @@ module.exports = {
         try {
             const startedAt = Date.now()
             // 대상 전체를 한 번에 가져오지 않는다. 백로그가 수천 곡이면 쿼리부터 무거워진다.
-            const songs = await db.Song.find({ youtubeUrl: { $in: [null, ''] } }).limit(40)
+            // youtubeCheckedAt 제외 — 안 그러면 못 찾는 곡이 매일 앞을 막는다(가사와 같은 병).
+            const songs = await db.Song.find({
+                youtubeUrl: { $in: [null, ''] },
+                youtubeCheckedAt: { $exists: false },
+            })
+                .sort(CRON_ORDER)
+                .limit(40)
             let processed = 0
 
             for (const song of songs) {
@@ -139,7 +169,12 @@ module.exports = {
                         }
                     }
 
-                    if (!foundSuitableVideo) console.log(`YouTube URL 결과 없음: ${song.title} by ${song.artist}`)
+                    // 검색은 됐는데 조건(2~6분)에 맞는 영상이 없는 곡. 매일 같은 검색을 반복해봐야
+                    // 결과가 같으므로 닫는다. 검색 자체가 터진 경우는 catch 로 가서 마커가 안 찍힌다.
+                    if (!foundSuitableVideo) {
+                        console.log(`YouTube URL 결과 없음: ${song.title} by ${song.artist}`)
+                        await song.updateOne({ youtubeCheckedAt: new Date() })
+                    }
                     processed++
 
                     // YouTube API 제한을 고려한 딜레이
@@ -289,13 +324,63 @@ module.exports = {
         }
     },
 
+    /**
+     * 가사 조회 + **즉석 채우기(lazy fill)**.
+     *
+     * 크론(08:30)만으로는 백로그를 다 채우는 데 수개월이 걸린다. 사용자가 실제로 튼 곡을
+     * 그 자리에서 채우면 그 대기가 사실상 사라진다. youtubeUrl 의 `getYoutubeId` 와 같은 패턴이고,
+     * 크론과 lazy fill 이 둘 다 "가사 없는 곡"만 고르므로 먼저 채운 쪽이 상대 대상에서 빠져 중복이 없다.
+     *
+     * 반환은 문자열이 아니라 `{ lyrics, adult }` 다 — 19금은 "가사 없음"이 아니라
+     * "19금이라 제공 안 됨"으로 구분해서 보여줘야 하기 때문.
+     */
     getLyrics: async (id) => {
         try {
-            const song = await db.Song.findById(id).select('lyrics')
-            return song ? song.lyrics || '' : ''
+            const song = await db.Song.findById(id).select('lyrics adult detailLink lyricsCheckedAt')
+            if (!song) return { lyrics: '', adult: false }
+            if (song.lyrics) return { lyrics: song.lyrics, adult: !!song.adult }
+
+            // 아래는 전부 "긁어봐야 소용없는" 경우 — 요청을 아낀다.
+            // 19금은 성인 인증이 있어야 보이므로 눌릴 때마다 시도하면 벅스만 때린다.
+            if (song.adult) return { lyrics: '', adult: true }
+            // 이미 "찾아봤는데 없더라"로 닫힌 곡
+            if (song.lyricsCheckedAt) return { lyrics: '', adult: false }
+            if (!song.detailLink) return { lyrics: '', adult: false }
+
+            const lyrics = await helper.getLyrics(song.detailLink)
+            // null = 네트워크 실패. 마커를 안 찍어야 크론이 나중에 다시 시도한다.
+            if (lyrics === null) return { lyrics: '', adult: false }
+
+            await db.Song.updateOne(
+                { _id: id },
+                lyrics ? { lyrics, lyricsCheckedAt: new Date() } : { lyricsCheckedAt: new Date() },
+            )
+            return { lyrics: lyrics || '', adult: false }
         } catch (err) {
             console.error(err)
-            return ''
+            return { lyrics: '', adult: false }
+        }
+    },
+
+    /**
+     * 차트에 오른 곡들에 등장 시각/횟수를 기록한다. 크론 우선순위(`lastChartedAt`)와
+     * 추천 신호(`chartHits`)가 여기서 나온다. `saveSongData` 다음에 불러야 신곡도 포함된다.
+     * 100곡을 순차 update 하면 30초 예산이 아까우므로 bulkWrite 한 방으로 처리한다.
+     */
+    markCharted: async (chartData) => {
+        try {
+            const now = new Date()
+            const ops = chartData.map(song => ({
+                updateOne: {
+                    filter: { title: song.title, artist: song.artist },
+                    update: { $set: { lastChartedAt: now }, $inc: { chartHits: 1 } },
+                },
+            }))
+            if (!ops.length) return
+            const res = await db.Song.bulkWrite(ops, { ordered: false })
+            console.log(`차트 등장 기록: ${res.modifiedCount}곡`)
+        } catch (err) {
+            console.error('차트 등장 기록 중 에러:', err)
         }
     },
 
@@ -342,8 +427,10 @@ module.exports = {
     updateLyrics: async () => {
         try {
             const startedAt = Date.now()
-            const songs = await db.Song.find({ lyrics: { $in: [null, ''] }, detailLink: { $ne: null } }).limit(120)
-            let processed = 0
+            const songs = await db.Song.find(LYRICS_PENDING)
+                .sort(CRON_ORDER)
+                .limit(120)
+            let processed = 0, closed = 0
 
             for (const song of songs) {
                 if (overBudget(startedAt)) {
@@ -352,13 +439,24 @@ module.exports = {
                 }
                 try {
                     const lyrics = await helper.getLyrics(song.detailLink)
-                    await song.updateOne({ lyrics })
+
+                    // null = 네트워크/파싱 실패. 마커를 찍지 않아야 다음 실행에서 재시도된다.
+                    if (lyrics === null) continue
+
+                    // '' = 페이지는 멀쩡한데 가사가 원래 없는 곡. 여기서 닫지 않으면 영원히 재시도한다.
+                    if (!lyrics) {
+                        await song.updateOne({ lyricsCheckedAt: new Date() })
+                        closed++
+                        continue
+                    }
+
+                    await song.updateOne({ lyrics, lyricsCheckedAt: new Date() })
                     processed++
                 } catch (err) {
                     console.error(`가사 업데이트 에러: ${song.title} by ${song.artist}`)
                 }
             }
-            console.log(`가사 업데이트: ${processed}곡 처리`)
+            console.log(`가사 업데이트: ${processed}곡 채움 | ${closed}곡 "가사 없음"으로 닫음`)
         } catch (err) {
             console.error('가사 업데이트 중 에러: ', err)
         }
@@ -373,7 +471,9 @@ module.exports = {
         try {
             const startedAt = Date.now()
             // genre 필드가 아예 없는 문서만. 빈 배열([])은 "찾아봤는데 없더라"라 재시도하지 않는다.
-            const songs = await db.Song.find({ genre: { $exists: false }, coverUrl: { $ne: null } }).limit(120)
+            const songs = await db.Song.find({ genre: { $exists: false }, coverUrl: { $ne: null } })
+                .sort(CRON_ORDER)
+                .limit(120)
             let processed = 0
 
             // 같은 앨범 곡은 값이 같다. 한 번의 실행 안에서만이라도 캐시하면 요청이 준다.

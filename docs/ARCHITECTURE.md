@@ -75,14 +75,13 @@ dibe2/
 │   │   ├── adminService.js   # 통계, 접근 기간 설정
 │   │   └── userService.js
 │   └── utils/
-│       ├── helper.js              # Bugs 크롤링, 가사, Slack 알림
-│       ├── advancedInvidiousManager.js  # Invidious 오디오 스트리밍
-│       └── y2mate.js
+│       └── helper.js              # Bugs 크롤링(parseTitleCell/getLyrics/getAlbumGenre), Slack 알림
 │
 ├── scripts/             # 로컬 실행 일회성/백필 스크립트 (배포 안 됨)
 │   │                      # ⚠️ DB 접속은 반드시 server/models의 connectToMongoDB() 사용
 │   ├── lib/bugs.js        # 벅스 공용 HTTP 클라이언트(지터·UA·쿠키) + HTML 파서
 │   ├── backfill-genre.js  # 기존 DB 곡에 장르/스타일 백필 (완료됨)
+│   ├── fix-dirty-titles.js   # DB의 오염된 제목([19금]\n곡명) 정리 + adult 이관 (완료됨, dry-run 기본)
 │   ├── crawl-bugs-charts.js  # 장르 차트 → data/bugs-chart-rows.jsonl (DB 안 씀, 재개 가능)
 │   ├── aggregate-songs.js    # 원시 행 → data/songs.jsonl (유니크 곡 + 인기도, DB 읽기만)
 │   ├── enrich-songs.js       # 곡에 장르/가사 → data/songs-enriched.jsonl (서킷 브레이커 내장)

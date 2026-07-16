@@ -142,10 +142,12 @@ router.post('/:id/play', async (req, res, next) => {
     }
 })
 
+// 가사가 비어 있으면 여기서 즉석으로 채운다(lazy fill). 응답의 adult 는
+// "가사 없음"과 "19금이라 제공 안 됨"을 UI가 구분해서 보여주기 위한 것.
 router.get('/lyrics/:songId', async (req, res, next) => {
     try {
-        const lyrics = await services.songService.getLyrics(req.params.songId)
-        res.json({ lyrics })
+        const { lyrics, adult } = await services.songService.getLyrics(req.params.songId)
+        res.json({ lyrics, adult })
     } catch (err) {
         next(err)
     }

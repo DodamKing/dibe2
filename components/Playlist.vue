@@ -40,7 +40,7 @@
                             <div class="bg-gray-800 bg-opacity-50 rounded-lg p-6">
                                 <div class="text-base lg:text-lg leading-relaxed text-white"
                                     style="white-space: pre-line; word-break: keep-all;">
-                                    {{ currentTrack.lyrics || '가사 정보가 없습니다.' }}
+                                    {{ lyricsText }}
                                 </div>
                             </div>
                         </div>
@@ -101,7 +101,7 @@
                                             <div class="text-base lg:text-lg leading-relaxed text-white p-8 mb-40"
                                                 ref="lyricsContent"
                                                 style="white-space: pre-line; word-break: keep-all;">
-                                                {{ currentTrack?.lyrics || '가사 정보가 없습니다.' }}
+                                                {{ lyricsText }}
                                             </div>
                                         </div>
                                     </div>
@@ -236,6 +236,21 @@ export default {
         },
         allSelected() {
             return this.queue.length > 0 && this.selectedSongs.length === this.queue.length
+        },
+        /**
+         * 가사 영역에 띄울 문구. 네 가지를 구분한다:
+         *  - 19금  : 벅스가 성인 인증을 요구해 **원리적으로 못 받는다**. "없음"과 구분해서 알린다
+         *  - 가사   : 정상
+         *  - undefined: 아직 응답 전(서버가 즉석에서 채우는 중일 수 있어 최대 1초쯤 걸린다)
+         *  - ''    : 받아왔는데 가사가 원래 없는 곡
+         */
+        lyricsText() {
+            const track = this.currentTrack
+            if (!track) return ''
+            if (track.adult) return '19금 곡은 가사를 제공하지 않습니다.'
+            if (track.lyrics) return track.lyrics
+            if (track.lyrics === undefined) return '가사를 불러오는 중...'
+            return '가사 정보가 없습니다.'
         }
     },
     watch: {

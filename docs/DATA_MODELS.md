@@ -27,14 +27,26 @@
   detailLink: String (Bugs Music 상세 페이지),
   lyrics: String,
   youtubeUrl: String,
+  adult: Boolean (default: false),  // 벅스 19금 배지 — 가사를 원리적으로 못 받는 곡
+  lyricsCheckedAt: Date,            // "찾아봤는데 없더라" 마커 (영구 실패만)
+  youtubeCheckedAt: Date,           // 〃
+  lastChartedAt: Date,              // 마지막 차트 등장 — 크론 우선순위 정렬 키
+  chartHits: Number (default: 0),   // 차트 등장 횟수 — 인기 신호(추천 콜드스타트)
   genre: [String],                  // 벅스 앨범 페이지의 "장르" (큰 분류, UI 필터용)
   style: [String],                  // 벅스 앨범 페이지의 "스타일" (세부 태그, 추천 신호용)
   likeCount: Number (default: 0),   // 집계 캐시 — 원본은 Like 컬렉션
-  playCount: Number (default: 0)    // 집계 캐시 — 원본은 PlayEvent 컬렉션
+  playCount: Number (default: 0),   // 집계 캐시 — 원본은 PlayEvent 컬렉션
+  createdAt, updatedAt (timestamps)
 }
 ```
-- 인덱스: `genre: 1`
+- 인덱스: `genre: 1`, `likeCount: -1`, `playCount: -1`, `lastChartedAt: -1`(크론 정렬용)
 - **`youtubeUrl`은 곡 저장보다 늦게 채워진다** (차트 크론 08:00 저장 → 유튜브 크론 08:10 채움). 그 사이엔 URL이 없는 곡이 존재하므로 **`youtubeUrl`이 항상 있다고 가정하지 말 것**. `getYoutubeId`가 없으면 즉석에서 채우고(lazy fill), 그래도 없으면 `null`을 반환한다 — 상세는 `docs/CRON_EXTERNAL.md`
+- **`lyrics`도 마찬가지로 늦게 채워지고, lazy fill 이 있다**(가사 크론 08:30 / `songService.getLyrics`가 재생 시점에 즉석 채움). 실측 671ms
+- 🔴 **`lyricsCheckedAt`/`youtubeCheckedAt`은 "찾아봤는데 없더라"를 닫는 마커다.** 이게 없으면 못 받는 곡을 **매일 다시 긁는다**(실측: 6곡이 **567일째** 재시도 중이었음). 백로그가 커지면 치명적 — 크론은 22초에 80곡을 도는데 **못 받는 곡 80개가 앞을 막으면 매일 그것만 하고 끝난다**(head-of-line)
+  - **영구 실패에만 찍을 것.** `helper.getLyrics`는 네트워크 실패면 `null`, 가사가 원래 없으면 `''`를 반환한다. `''`일 때만 찍어야 네트워크 실패가 자연히 재시도된다
+  - `genre: []`로 닫는 `updateGenres`와 같은 패턴
+- **`adult`(19금)는 가사를 원리적으로 못 받는 곡**이다. 벅스가 성인 인증(로그인)을 요구한다(`bugs.ui.showLoginLayer()` / `adultcheckval`). 크론·lazy fill 양쪽에서 **시도 자체를 스킵**하고, UI엔 "가사 없음"이 아니라 **"19금이라 제공 안 됨"으로 구분해서** 표시한다
+- **`lastChartedAt`은 크론의 처리 순서를 정한다.** 없으면 자연순(≈`_id`, 오래된 삽입분부터)이라 **대량 적재분이 앞을 막아 오늘 차트 신곡이 몇 달 뒤에나 처리된다**. 가사는 lazy fill 이 있어 그나마 낫지만 **장르는 lazy 가 불가능**(추천이 곡을 누르기 전에 장르로 후보를 고른다 → 없으면 후보에 안 뜨고 → 아무도 안 눌러 영원히 안 채워지는 데드락)해서 신곡이 추천에서 통째로 빠진다. 차트 크론(08:00)이 `markCharted()`로 매일 찍는다
 - `genre`/`style`은 **벅스가 트랙이 아니라 앨범에 붙이는 정보**라 앨범 페이지에서 가져온다. 앨범 ID는 `coverUrl` 경로에 그대로 있다(`.../album/images/50/206680/20668087.jpg` → `20668087`)
 - 둘은 **서로 다른 축**이다. `genre`는 12종 내외로 거칠고(`댄스/팝` 404곡), `style`은 잘게 쪼개진다(`팝 락` 141곡 — `락/메탈` 장르 64곡보다 많다). OST는 `genre`가 같아도 `style`이 `TV 드라마`/`카툰/코믹스`로 갈린다
 - ⚠️ 앨범 페이지의 장르 값은 **차트 장르 코드와 일치하지 않는다**(`J-POP`, `캐롤` 등은 차트 메뉴에 없는 값). UI 필터 목록은 차트 코드가 아니라 **DB에 실제로 쌓인 값**으로 뽑을 것

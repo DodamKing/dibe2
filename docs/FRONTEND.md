@@ -36,7 +36,9 @@
 ### player 스토어 주요 동작
 - `localStorage`에 유저별 큐/현재곡/볼륨/셔플/반복 저장 (`user_{id}_key`)
   - 곡 데이터는 표시 최소 필드만 저장 (`_id, title, artist, coverUrl`) — `stripForCache` 헬퍼
-  - lyrics는 캐시 안 함 (가사 표시 시점에 `/api/songs/lyrics/:id`로 lazy fetch)
+  - lyrics는 캐시 안 함 (곡이 바뀔 때 `/api/songs/lyrics/:id`로 fetch — `fetchCurrentTrackLyrics`)
+    - **서버가 가사를 즉석에서 채울 수 있어(lazy fill) 최대 1초쯤 걸린다.** 그래서 요청 시점의 `trackId`와 응답 시점의 `currentTrack._id`를 비교해 **늦게 온 응답을 다음 곡에 붙이지 않는 가드**가 있다
+    - 응답은 `{lyrics, adult}`. `Playlist.vue`의 `lyricsText` computed 가 네 가지를 구분한다 — **19금**(벅스가 성인 인증을 요구해 원리적으로 못 받음) / 가사 / `undefined`(아직 응답 전 = 로딩) / `''`(받아왔는데 없는 곡)
 - `initializeAudioSystem` 시작 시 캐시 큐 즉시 표시 후, `refreshQueueData` 백그라운드 디스패치 → `/api/songs/by-ids`로 fresh 데이터 받아 큐/currentTrack/originalQueue 갱신
   - `/by-ids` 응답엔 2026-07-15부터 `liked`/`likeCount`/`playCount`가 **추가로** 실려 온다(앱 하트 UI용). 기존 4필드는 그대로라 웹은 무영향이고, `stripForCache`가 표시 최소 필드만 남기므로 **localStorage엔 안 들어간다**(메모리 큐엔 실려 있음) — 웹에서 하트를 쓸 거면 이미 받아둔 값이라 추가 요청 불필요
 - 차트는 `layouts/main.vue` `fetchPopularChart`에서 `dibe2_chart_cache` 키로 동일한 캐시-즉시-표시 + 백그라운드-refresh 패턴 사용

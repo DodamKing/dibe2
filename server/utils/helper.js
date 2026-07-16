@@ -59,10 +59,30 @@ async function getAlbumGenre(albumId) {
     }
 }
 
+/**
+ * 벅스는 `[19금]` 배지를 스크린리더용 숨김 텍스트로 제목 셀 **안에** 넣는다:
+ *   <button class="badge o19"><span class="blind">[19금]</span></button><a title="BAND">BAND</a>
+ * `.title` 을 통째로 text() 하면 "[19금]\nBAND" 가 되어 제목이 오염된다. 그 오염은
+ * UI 노출로 끝나지 않고 **title+artist 를 키로 쓰는 중복 판별**과 유튜브 검색어까지 번진다.
+ * 제목은 링크 텍스트에서만 가져오고, 19금 여부는 배지 존재로 따로 잡는다.
+ *
+ * ⚠️ 문자열(`^\[...\]`)로 판별하면 안 된다. `[드포즈 극장] 바그다드 카페`처럼
+ * 대괄호가 **진짜 제목**인 곡이 있다(배지는 뒤에 개행이 붙고, 진짜 제목은 공백으로 이어진다).
+ * 배지는 요소가 분리돼 있으므로 셀렉터로 판별하는 게 안전하다.
+ * `.title button` 은 19금이 아닌 행에도 있어서 못 쓴다 — `.o19` 로 좁힌다. (실측 2026-07-17)
+ */
+function parseTitleCell($cell) {
+    const linked = $cell.find('a').first().text().trim()
+    // 벅스가 마크업을 바꿔 링크가 사라지면 제목이 통째로 빈다. 그럴 바엔 배지만 걷어낸 원문이 낫다.
+    const title = linked || $cell.text().trim().replace(/^\[[^\]]+\]\s*\n\s*/, '')
+    return { title, adult: $cell.find('.o19').length > 0 }
+}
+
 module.exports = {
     getLyrics: getLyrics,
     albumIdFromCoverUrl,
     getAlbumGenre,
+    parseTitleCell,
     getBugsChart: async () => {
         try {
             const url = 'https://music.bugs.co.kr/chart/track/day/total';
@@ -75,7 +95,7 @@ module.exports = {
             const rows = $('.list > tbody > tr').toArray();
             for (const element of rows) {
                 const rank = $(element).find('.ranking > strong').text().trim();
-                const title = $(element).find('.title').text().trim();
+                const { title, adult } = parseTitleCell($(element).find('.title'))
                 const artist = $(element).find('.artist > a').first().text().trim()
                 const album = $(element).find('.album').text().trim();
                 const coverUrl = $(element).find('.thumbnail > img').attr('src');
@@ -89,6 +109,7 @@ module.exports = {
                     album,
                     coverUrl,
                     detailLink,
+                    adult,
                     // lyrics
                 });
             }
@@ -198,7 +219,7 @@ module.exports = {
                 const $el = $(element);
                 
                 if ($el.attr('rowtype') === 'track') {
-                    const title = $el.find('.title').text().trim();
+                    const { title, adult } = parseTitleCell($el.find('.title'))
                     const artist = $el.find('.artist > a').text().trim();
                     const album = $el.find('.album').text().trim();
                     const coverUrl = $el.find('.thumbnail > img').attr('src');
@@ -209,7 +230,8 @@ module.exports = {
                         artist,
                         album,
                         coverUrl,
-                        detailLink
+                        detailLink,
+                        adult
                     });
                 }
     
