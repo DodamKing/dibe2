@@ -82,10 +82,13 @@ dibe2/
 │   ├── lib/bugs.js        # 벅스 공용 HTTP 클라이언트(지터·UA·쿠키) + HTML 파서
 │   ├── backfill-genre.js  # 기존 DB 곡에 장르/스타일 백필 (완료됨)
 │   ├── fix-dirty-titles.js   # DB의 오염된 제목([19금]\n곡명) 정리 + adult 이관 (완료됨, dry-run 기본)
+│   ├── clean-collected-titles.js  # 수집본(data/*.jsonl) 제목 정리 + adult 이관 (완료됨, .bak 백업)
+│   │                              #   ⚠️ 배지 판별은 개행 기준 — `[드포즈 극장] …`은 진짜 제목이다
 │   ├── crawl-bugs-charts.js  # 장르 차트 → data/bugs-chart-rows.jsonl (DB 안 씀, 재개 가능)
-│   ├── aggregate-songs.js    # 원시 행 → data/songs.jsonl (유니크 곡 + 인기도, DB 읽기만)
+│   ├── aggregate-songs.js    # 원시 행 → data/songs.jsonl (유니크 곡 + 인기도 + adult, DB 읽기만)
 │   ├── enrich-songs.js       # 곡에 장르/가사 → data/songs-enriched.jsonl (서킷 브레이커 내장)
-│   └── fill-youtube.js       # 곡에 videoId → data/songs-youtube.jsonl (서킷 브레이커 내장)
+│   ├── fill-youtube.js       # 곡에 videoId → data/songs-youtube.jsonl (서킷 브레이커 내장)
+│   └── load-songs.js         # 위 3개 파일 조인 → DB 적재 (파이프라인 마지막, 완료됨 12,632곡)
 │
 ├── data/                # 크롤링 산출물 (gitignore, 수십 MB) — DB가 아닌 중간 저장소
 │                        # 상세 설계·수치는 docs/WORK_LOG.md 2026-07-16 항목

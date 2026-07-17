@@ -39,7 +39,8 @@
   createdAt, updatedAt (timestamps)
 }
 ```
-- 인덱스: `genre: 1`, `likeCount: -1`, `playCount: -1`, `lastChartedAt: -1`(크론 정렬용)
+- 인덱스: `genre: 1`, `likeCount: -1`, `playCount: -1`, **`{lastChartedAt: -1, chartHits: -1}`**(크론 정렬용 복합)
+  - 2차 키가 필요한 이유: 적재분은 `lastChartedAt`이 **차트 등장 '월' 단위**라 같은 값이 무더기로 생긴다. 그것만으로 정렬하면 그 안에서는 삽입 순서가 이겨버려 인기순이 죽는다
 - **`youtubeUrl`은 곡 저장보다 늦게 채워진다** (차트 크론 08:00 저장 → 유튜브 크론 08:10 채움). 그 사이엔 URL이 없는 곡이 존재하므로 **`youtubeUrl`이 항상 있다고 가정하지 말 것**. `getYoutubeId`가 없으면 즉석에서 채우고(lazy fill), 그래도 없으면 `null`을 반환한다 — 상세는 `docs/CRON_EXTERNAL.md`
 - **`lyrics`도 마찬가지로 늦게 채워지고, lazy fill 이 있다**(가사 크론 08:30 / `songService.getLyrics`가 재생 시점에 즉석 채움). 실측 671ms
 - 🔴 **`lyricsCheckedAt`/`youtubeCheckedAt`은 "찾아봤는데 없더라"를 닫는 마커다.** 이게 없으면 못 받는 곡을 **매일 다시 긁는다**(실측: 6곡이 **567일째** 재시도 중이었음). 백로그가 커지면 치명적 — 크론은 22초에 80곡을 도는데 **못 받는 곡 80개가 앞을 막으면 매일 그것만 하고 끝난다**(head-of-line)
