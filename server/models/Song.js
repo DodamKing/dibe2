@@ -47,7 +47,9 @@ const songSchema = new mongoose.Schema({
 songSchema.index({ genre: 1 })
 songSchema.index({ likeCount: -1 })
 songSchema.index({ playCount: -1 })
-// 크론이 "차트에 최근 오른 곡"부터 처리하려고 매번 정렬한다. 곡이 만 단위라 인덱스 없이는 느리다.
-songSchema.index({ lastChartedAt: -1 })
+// 크론이 "차트에 최근 오른 곡"부터, 같은 시각이면 "인기 있는 곡"부터 처리하려고 매번 정렬한다.
+// 곡이 만 단위라 인덱스 없이는 느리다. 2차 키가 필요한 이유: 적재분은 lastChartedAt 이
+// 차트 등장 '월' 단위라 같은 값이 무더기로 생긴다 → chartHits 로 갈라야 인기순이 산다.
+songSchema.index({ lastChartedAt: -1, chartHits: -1 })
 
 module.exports = mongoose.model('Song', songSchema )

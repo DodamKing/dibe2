@@ -53,13 +53,15 @@ Netlify 기본값 — 동기 60초 / **스케줄 30초** / 백그라운드 15분
 ### lazy fill (youtubeUrl / lyrics)
 곡 저장(08:00)보다 필드가 늦게 채워지는 갭에 눌린 곡은 **재생 시점에 즉석으로 채운다.** 크론만으로는 백로그를 다 채우는 데 수개월이 걸리는데, lazy fill 은 **사용자가 실제로 튼 곡부터** 채우므로 그 대기가 사실상 사라진다.
 
-| | 진입점 | 소스 | 실측 |
-|---|---|---|---|
-| youtubeUrl | `songService.getYoutubeId` → `updateYoutubeUrl(_id)` | YouTube 검색 | 1.1초 |
-| lyrics | `songService.getLyrics(id)` (`GET /api/songs/lyrics/:songId`) | 벅스 트랙 페이지 | 671ms |
+| | 진입점 | 트리거 | 소스 | 실측 |
+|---|---|---|---|---|
+| youtubeUrl | `songService.getYoutubeId` → `updateYoutubeUrl(_id)` | **재생의 필수 경로**(서버가 재생을 안다) | YouTube 검색 | 1.1초 |
+| lyrics | `songService.getLyrics(id)` (`GET /api/songs/lyrics/:songId`) | **화면**이 부를 때만(서버는 재생을 모른다) | 벅스 트랙 페이지 | 671ms |
 
 - 크론과 lazy fill 둘 다 "비어 있는 곡"만 고르므로 **먼저 채운 쪽이 상대의 대상에서 빠져** 중복 작업이 안 생긴다
-- **API 레벨 방어**라 앱(dibe2-app)도 수정 없이 보호된다. 다만 "유튜브에 정말 없는 곡"에서 **멈출지 다음 곡으로 넘길지는 큐를 아는 클라이언트 몫**(서버는 큐를 모름)
+- 🔴 **둘의 커버리지가 다르다.** youtubeUrl 은 **API 레벨 방어**라 앱(dibe2-app)도 수정 없이 보호되지만, **가사는 웹 화면 전용이다** — `components/Playlist.vue` 의 `currentTrack` watcher 가 곡 전환 때 부른다(이 컴포넌트는 `layouts/main.vue` 에 항상 마운트돼 있어서 재생목록을 안 열어도 나간다). 앱이 `/api/songs/lyrics` 를 부르면 그때 채워지지만, 안 부르면 앱에선 크론이 채울 때까지 가사가 없다
+  - 서버에서 "진짜 재생 기준"으로 만들려면 `getYoutubeId` 에 가사 채우기를 붙여야 하는데, `await` 하면 **재생이 671ms 느려지고** fire-and-forget 은 **Netlify Functions 가 응답 후 죽어서 불가능**하다(`modules/cron.js` 가 죽은 코드인 것과 같은 제약). 재생을 막지 않고 화면이 병렬로 요청하는 현 구조가 이 환경에선 맞다
+- "유튜브에 정말 없는 곡"에서 **멈출지 다음 곡으로 넘길지는 큐를 아는 클라이언트 몫**(서버는 큐를 모름)
 - 🔴 **lazy fill 은 마커가 있어야 안전하다.** 마커 없이 붙이면 가사를 원래 못 받는 곡(19금 등)을 **누를 때마다** 벅스를 때리는 증폭기가 된다. 19금·마커 찍힌 곡은 긁지 않고 즉시 반환(실측 43~52ms)
 - **장르/스타일은 lazy fill 이 불가능하다.** 추천/필터가 곡을 **누르기 전에** 장르로 후보를 고르므로, 없으면 후보에 안 뜨고 → 아무도 안 누르고 → 영원히 안 채워지는 자기참조 데드락. 그래서 장르는 크론+백필이 책임진다
 

@@ -268,7 +268,15 @@ export default {
                     this.scrollToCurrentTrack()
                 })
                 // 곡이 바뀌면 가사 fresh fetch (캐시에는 lyrics 없음).
-                // immediate로 마운트 시 한 번 실행되어 v-if로 열릴 때마다 최신 가사 확보.
+                //
+                // 이 컴포넌트는 layouts/main.vue 에 `:show` prop 으로 **항상 마운트**돼 있다
+                // (`v-if`는 내부 렌더만 막는다). 그래서 재생목록을 열지 않아도, 가사 탭을 보지 않아도
+                // 곡이 바뀔 때마다 여기서 fetch 가 나간다 = **재생 기준으로 미리 채운다**.
+                // 서버는 "재생"을 모른다 — 이 트리거는 순수하게 화면 몫이다.
+                // (youtubeUrl 은 반대다. `getYoutubeId`가 재생의 필수 경로라 API 레벨에서 걸린다)
+                //
+                // 의도된 동작이다: 가사 탭을 열면 이미 채워져 있어 즉시 보인다. 대가는 안 볼 가사까지
+                // 곡마다 벅스 요청 1회(그 곡 최초 1회뿐 — 채우고 나면 DB에서 나온다).
                 if (newTrack && newTrack._id !== oldTrack?._id) {
                     this.fetchCurrentTrackLyrics()
                 }

@@ -73,6 +73,14 @@
 | `chartHits` | 인기 신호(추천 콜드스타트) |
 | `timestamps: true` | 없어서 `createdAt` 자체가 없었음 |
 
+**🔴 브라우저 검증에서 원래 있던 버그 발견 — 초기화 때 가사가 안 뜬다**
+- 증상: 앱을 켜자마자 가사를 보면 안 나오고, **곡을 한 번 넘겼다 오면 나온다**
+- 원인: `refreshQueueData` 가 `/by-ids` 응답(**lyrics 없음 — 의도적 제외**)으로 `setCurrentTrack` 을 부르면서 **`fetchCurrentTrackLyrics` 가 방금 채운 가사를 통째로 덮어썼다.** 그 뒤 `Playlist.vue` 의 watcher 는 `_id` 가 같아서 다시 안 부르므로 영영 복구가 안 된다
+  - 실측 2026-07-17: `lyrics` 341ms < `by-ids` 577ms → 가사가 먼저 도착해 커밋되고, 뒤늦은 by-ids 가 지운다
+- **내가 만든 버그가 아니라 원래 있던 것**이다. 기존 UI 가 `{{ lyrics || '가사 정보가 없습니다.' }}` 라 **"가사 없는 곡"으로 조용히 오표시**됐을 뿐 — 이번에 로딩(`undefined`)/없음(`''`)을 구분하면서 드러났다
+- 수정: `refreshQueueData` 가 `setCurrentTrack` 할 때 `lyrics`/`adult` 를 살려서 넘긴다
+- 🔑 **API 검증만으로는 절대 못 찾았다.** API 응답은 `{"lyrics":"","adult":true}` 로 완벽했고, 스토어에서 지워지는 게 문제였다. Playwright 로 실제 화면을 봐야 보였다
+
 **작업 2 상세 (수집본 정리 → 재집계)** — `scripts/clean-collected-titles.js` (dry-run 기본, `--apply`)
 
 | 파일 | 정리 | 결과 |

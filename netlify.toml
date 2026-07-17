@@ -2,7 +2,11 @@
   command = "nuxt"
   port = 3000
   targetPort = 3333
-  targetPortReadyTimeout = 60
+  # Nuxt 2(webpack) 첫 빌드가 이 시간을 넘기면 netlify dev 가 "Timed out waiting for port 3333"
+  # 으로 죽는다. `.nuxt` 캐시가 있으면 ~10초라 넉넉해 보이지만, **캐시가 없으면 60초를 넘긴다**
+  # (클론 직후·새 환경·CI에서 반드시 밟는다. 실측 2026-07-17: 캐시 없음 실패 → 캐시 있음 9.5초 성공).
+  # 서버가 일찍 뜨면 그만큼만 기다리므로 값을 키워도 평소 체감은 그대로다.
+  targetPortReadyTimeout = 180
 
 [build]
   command = "nuxt generate"

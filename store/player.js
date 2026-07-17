@@ -304,9 +304,15 @@ export const actions = {
                 if (originalQueueKey) localStorage.setItem(originalQueueKey, JSON.stringify(updatedOriginal.map(stripForCache)))
             }
 
-            // currentTrack도 fresh로
+            // currentTrack도 fresh로.
+            // ⚠️ lyrics/adult 는 살려서 넘긴다. `/by-ids` 응답엔 lyrics 가 없는데(의도적 제외)
+            // 그대로 덮으면 **fetchCurrentTrackLyrics 가 방금 채운 가사가 날아간다**.
+            // 그러고 나면 Playlist.vue 의 watcher 는 `_id`가 같아서 다시 부르지 않으므로
+            // 가사가 영영 안 나온다(초기화 때만 터지는 레이스라 조용히 지나갔다 — 곡을 한 번
+            // 넘겼다 오면 멀쩡해 보이는 게 그 때문). 실측 2026-07-17: lyrics 341ms < by-ids 577ms.
             if (state.currentTrack && freshMap.has(state.currentTrack._id)) {
-                await dispatch('setCurrentTrack', freshMap.get(state.currentTrack._id))
+                const { lyrics, adult } = state.currentTrack
+                await dispatch('setCurrentTrack', { ...freshMap.get(state.currentTrack._id), lyrics, adult })
             }
         } catch (err) {
             // 네트워크 에러 등 — 캐시 유지
