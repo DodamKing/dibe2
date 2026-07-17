@@ -27,18 +27,27 @@
             </header>
         </div>
         <transition name="fade">
+            <!--
+                헤더의 돋보기에서 열리는 검색창.
+                - `items-start`: 화면 정중앙에 띄우면 어디서 나온 팝업인지 연결이 안 된다.
+                  헤더 바로 아래(pt-20)에 붙여서 돋보기에서 내려온 것처럼 보이게 한다.
+                - 색: 앱이 다크 테마인데 여기만 `bg-white` + `bg-gray-100` 이라 심하게 튀었다.
+                  데스크탑 검색창(헤더 안 반투명)·SearchResultsModal(bg-gray-800)과 톤을 맞춘다.
+            -->
             <div v-if="showSearch"
-                class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+                class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center p-4 pt-20"
                 @click="closeSearchOnOutsideClick">
-                <div class="bg-white w-full max-w-md rounded-lg shadow-lg" @click.stop>
-                    <div class="p-4 flex items-center">
+                <div class="bg-gray-800 w-full max-w-md rounded-lg shadow-lg" @click.stop>
+                    <div class="p-3 flex items-center gap-1">
                         <input ref="mobileSearchInput" v-model="localSearchQuery" @keyup.enter="executeSearch"
                             type="text" placeholder="노래, 앨범, 아티스트 검색" autofocus
-                            class="flex-grow bg-gray-100 text-gray-800 rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-purple-500">
-                        <button @click="executeSearch" class="ml-2 text-gray-600">
+                            class="flex-grow min-w-0 bg-gray-700 text-white placeholder-gray-400 rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <button @click="executeSearch" aria-label="검색"
+                            class="p-2 min-w-[44px] min-h-[44px] text-gray-300 hover:text-white flex-shrink-0">
                             <i class="fas fa-search"></i>
                         </button>
-                        <button @click="toggleSearch" class="ml-2 text-gray-600">
+                        <button @click="toggleSearch" aria-label="검색 닫기"
+                            class="p-2 min-w-[44px] min-h-[44px] text-gray-300 hover:text-white flex-shrink-0">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
