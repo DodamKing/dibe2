@@ -5,28 +5,35 @@
         <h2 class="text-3xl font-bold text-gray-900 mb-8">음원 관리</h2>
         <div class="bg-white shadow-md rounded-lg overflow-hidden">
             <div class="p-6">
-                <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 mb-6">
+                <!-- 모바일은 검색바 한 줄 + [필터/검색/추가] 한 줄. 세로로 쌓으면 스크롤만 길어진다. -->
+                <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
                     <div class="flex-grow">
                         <input v-model="searchQuery" type="text" placeholder="음원 검색"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            class="w-full px-4 py-2 min-h-[44px] border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             @keyup.enter="searchSongs">
                     </div>
-                    <div class="flex space-x-2">
+                    <div class="flex gap-2">
                         <select v-model="searchType"
-                            class="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            class="flex-1 sm:flex-none px-3 sm:px-4 py-2 min-h-[44px] border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                             <option value="all">전체</option>
                             <option value="title">제목</option>
                             <option value="artist">아티스트</option>
                         </select>
                         <button @click="searchSongs"
-                            class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                            class="px-5 sm:px-6 py-2 min-h-[44px] bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap">
                             검색
+                        </button>
+                        <button @click="showAddModal = true"
+                            class="sm:hidden px-4 py-2 min-h-[44px] bg-green-600 text-white rounded-md hover:bg-green-700 whitespace-nowrap"
+                            aria-label="새 음원 추가">
+                            <i class="fas fa-plus"></i>
                         </button>
                     </div>
                 </div>
 
+                <!-- 데스크탑 전용 — 모바일은 위 검색줄의 + 아이콘이 대신한다(라벨은 hidden sm:inline 패턴) -->
                 <button @click="showAddModal = true"
-                    class="mb-6 px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                    class="hidden sm:block mb-6 px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
                     새 음원 추가
                 </button>
 
@@ -36,21 +43,27 @@
                     <p class="mt-2 text-gray-600">검색 중...</p>
                 </div>
 
-                <div v-else-if="songs.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!--
+                    모바일은 한 곡이 한 줄(썸네일 옆 정보), 데스크탑(sm+)은 기존 카드 그리드.
+                    카드 그대로 두면 커버(h-48)가 풀폭으로 늘어나 **한 곡이 화면을 통째로 먹는다**
+                    (실측 2026-07-17: 20곡 = 8,542px ≈ 10화면). 관리자는 곡을 훑고 고치는 화면이라
+                    목록성이 중요하다. 홈 차트·검색 결과가 쓰는 리스트 패턴과도 맞춘다.
+                    마크업을 둘로 나누지 않고 `flex sm:block` 한 벌로 처리한다.
+                -->
+                <div v-else-if="songs.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                     <div v-for="song in songs" :key="song._id"
-                        class="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
-                        <picture>
-                            <source :srcset="song.coverUrl.replace('/50/', '/700/') || '/default-album-cover.jpg'"
-                                media="(min-width: 640px)">
-                            <img :src="song.coverUrl.replace('/50/', '/300/') || '/default-album-cover.jpg'"
-                                :alt="`${song.title} 앨범 커버`" class="w-full h-48 object-cover">
+                        class="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 flex sm:block">
+                        <picture class="flex-shrink-0">
+                            <source :srcset="coverUrl(song, 700)" media="(min-width: 640px)">
+                            <img :src="coverUrl(song, 300)" :alt="`${song.title} 앨범 커버`"
+                                class="w-24 h-24 sm:w-full sm:h-48 object-cover">
                         </picture>
-                        <div class="p-4">
-                            <div class="mb-3">
+                        <div class="p-3 sm:p-4 flex-1 min-w-0 flex flex-col justify-center sm:block">
+                            <div class="mb-2 sm:mb-3 min-w-0">
                                 <div class="group relative inline-block w-full">
                                     <h3 class="font-semibold text-lg truncate" :title="song.title">{{ song.title }}</h3>
                                     <div
-                                        class="opacity-0 bg-black text-white text-center text-xs rounded-lg py-2 absolute z-10 group-hover:opacity-100 bottom-full left-1/2 -translate-x-1/2 px-3 pointer-events-none">
+                                        class="hidden sm:block opacity-0 bg-black text-white text-center text-xs rounded-lg py-2 absolute z-10 group-hover:opacity-100 bottom-full left-1/2 -translate-x-1/2 px-3 pointer-events-none">
                                         {{ song.title }}
                                         <svg class="absolute text-black h-2 w-full left-0 top-full" x="0px" y="0px"
                                             viewBox="0 0 255 255" xml:space="preserve">
@@ -61,7 +74,7 @@
                                 <div class="group relative inline-block w-full">
                                     <p class="text-gray-600 truncate" :title="song.artist">{{ song.artist }}</p>
                                     <div
-                                        class="opacity-0 bg-black text-white text-center text-xs rounded-lg py-2 absolute z-10 group-hover:opacity-100 bottom-full left-1/2 -translate-x-1/2 px-3 pointer-events-none">
+                                        class="hidden sm:block opacity-0 bg-black text-white text-center text-xs rounded-lg py-2 absolute z-10 group-hover:opacity-100 bottom-full left-1/2 -translate-x-1/2 px-3 pointer-events-none">
                                         {{ song.artist }}
                                         <svg class="absolute text-black h-2 w-full left-0 top-full" x="0px" y="0px"
                                             viewBox="0 0 255 255" xml:space="preserve">
@@ -72,7 +85,7 @@
                                 <div class="group relative inline-block w-full">
                                     <p class="text-sm text-gray-500 truncate" :title="song.album">{{ song.album }}</p>
                                     <div
-                                        class="opacity-0 bg-black text-white text-center text-xs rounded-lg py-2 absolute z-10 group-hover:opacity-100 bottom-full left-1/2 -translate-x-1/2 px-3 pointer-events-none">
+                                        class="hidden sm:block opacity-0 bg-black text-white text-center text-xs rounded-lg py-2 absolute z-10 group-hover:opacity-100 bottom-full left-1/2 -translate-x-1/2 px-3 pointer-events-none">
                                         {{ song.album }}
                                         <svg class="absolute text-black h-2 w-full left-0 top-full" x="0px" y="0px"
                                             viewBox="0 0 255 255" xml:space="preserve">
@@ -81,17 +94,18 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="flex justify-between">
+                            <!-- 터치 영역 44px 확보(py-2 + min-h) — FRONTEND.md 모바일 규칙 -->
+                            <div class="flex gap-1 sm:gap-0 sm:justify-between">
                                 <button @click="editSong(song)"
-                                    class="text-blue-600 hover:text-blue-800 font-medium transition duration-150 ease-in-out">
+                                    class="px-3 py-2 min-h-[44px] sm:min-h-0 sm:px-0 sm:py-0 text-blue-600 hover:text-blue-800 font-medium transition duration-150 ease-in-out">
                                     수정
                                 </button>
                                 <button @click="playSong(song)"
-                                    class="text-green-600 hover:text-green-800 font-medium transition duration-150 ease-in-out">
+                                    class="px-3 py-2 min-h-[44px] sm:min-h-0 sm:px-0 sm:py-0 text-green-600 hover:text-green-800 font-medium transition duration-150 ease-in-out">
                                     재생
                                 </button>
                                 <button @click="deleteSong(song)"
-                                    class="text-red-600 hover:text-red-800 font-medium transition duration-150 ease-in-out">
+                                    class="px-3 py-2 min-h-[44px] sm:min-h-0 sm:px-0 sm:py-0 text-red-600 hover:text-red-800 font-medium transition duration-150 ease-in-out">
                                     삭제
                                 </button>
                             </div>
@@ -118,10 +132,17 @@
         </div>
 
         <!-- 음원 추가/수정 모달 -->
+        <!--
+            모바일은 풀스크린(top-20 여백을 주면 좁은 화면에서 위쪽만 날리고 폼은 더 밀린다),
+            데스크탑은 기존처럼 가운데 뜨는 카드. 제목은 sticky 로 붙여 스크롤해도 맥락이 남는다.
+        -->
         <div v-if="showAddModal || editingSong"
             class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
-                <h3 class="text-lg font-semibold mb-4">{{ editingSong ? '음원 수정' : '새 음원 추가' }}</h3>
+            <div
+                class="relative min-h-full sm:min-h-0 sm:top-20 mx-auto p-4 sm:p-5 border w-full max-w-2xl shadow-lg sm:rounded-md bg-white sm:mb-20">
+                <h3 class="text-lg font-semibold mb-4 sticky top-0 bg-white py-2 -mt-2 z-10 sm:static sm:py-0 sm:mt-0">
+                    {{ editingSong ? '음원 수정' : '새 음원 추가' }}
+                </h3>
 
                 <!-- 검색 인터페이스 -->
                 <div v-if="!editingSong" class="mb-4">
@@ -148,7 +169,13 @@
                 </div>
 
                 <!-- 검색 결과 -->
-                <div v-if="showSearchResults && bugsSearchResults.length" class="mb-4 max-h-96 overflow-y-auto">
+                <!--
+                    모바일은 중첩 스크롤을 만들지 않는다(max-h-none). 모달 안에 또 스크롤 박스가 있으면
+                    손가락이 어느 쪽을 굴리는지 알 수 없어 스크롤이 갇힌다. 결과가 길면 위의
+                    "검색 결과 접기"로 닫으면 된다. 데스크탑은 기존처럼 박스 안에서만 스크롤.
+                -->
+                <div v-if="showSearchResults && bugsSearchResults.length"
+                    class="mb-4 max-h-none sm:max-h-96 sm:overflow-y-auto">
                     <div v-for="result in bugsSearchResults" :key="result.detailLink"
                         class="p-2 hover:bg-gray-100 cursor-pointer flex items-center space-x-4"
                         @click="selectBugsResult(result)">
@@ -219,18 +246,24 @@
                         </button>
 
                         <!-- Youtube 검색 결과 -->
-                        <div v-if="showYoutubeResults && youtubeSearchResults.length"
+                        <div v-if="showYoutubeResults && youtubeSearchResults.length" ref="youtubeResults"
                             class="mt-2 border rounded-md overflow-hidden">
-                            <div class="max-h-64 overflow-y-auto">
+                            <!-- 벅스 결과와 같은 이유로 모바일은 중첩 스크롤 없음 -->
+                            <div class="max-h-none sm:max-h-64 sm:overflow-y-auto">
                                 <!-- form 태그 밖으로 이동시켜야 함 -->
                                 <div v-for="result in youtubeSearchResults" :key="result.id"
                                     class="p-3 hover:bg-gray-50 border-b last:border-b-0">
                                     <div class="flex items-center space-x-3">
                                         <div class="relative w-24 h-16 flex-shrink-0">
                                             <img :src="result.thumbnail" class="w-full h-full object-cover rounded">
-                                            <div class="absolute inset-0 bg-black bg-opacity-50 rounded flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer"
+                                            <!--
+                                                모바일엔 hover 가 없다. opacity-0 hover:opacity-100 로 두면
+                                                **터치 기기에선 재생 버튼이 영영 안 보인다**(탭하면 동작은 하지만
+                                                존재를 알 길이 없다). 모바일은 항상 보이게 하고 오버레이만 옅게.
+                                            -->
+                                            <div class="absolute inset-0 bg-black bg-opacity-30 sm:bg-opacity-50 rounded flex items-center justify-center opacity-100 sm:opacity-0 sm:hover:opacity-100 transition-opacity cursor-pointer"
                                                 @click.prevent="previewYoutubeInModal(result, $event)">
-                                                <i class="fas fa-play text-white text-lg"></i>
+                                                <i class="fas fa-play text-white text-lg drop-shadow"></i>
                                             </div>
                                         </div>
                                         <div class="flex-1 min-w-0 cursor-pointer" @click="selectYoutubeUrl(result)">
@@ -273,12 +306,18 @@
                             </div>
                         </div>
                     </div>
-                    <div class="flex justify-end space-x-2">
+                    <!--
+                        모바일은 하단에 붙여둔다. 폼이 길어서(7필드 + 검색결과) 저장하려면 매번 끝까지
+                        스크롤해야 했다. sticky 라 데스크탑에선 평소처럼 폼 끝에 그대로 있다.
+                    -->
+                    <div
+                        class="flex justify-end gap-2 sticky bottom-0 bg-white py-3 -mx-4 px-4 border-t sm:static sm:py-0 sm:mx-0 sm:px-0 sm:border-0">
                         <button type="button" @click="closeModal"
-                            class="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400">
+                            class="px-4 py-2 min-h-[44px] bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400">
                             취소
                         </button>
-                        <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                        <button type="submit"
+                            class="px-6 py-2 min-h-[44px] bg-blue-500 text-white rounded-md hover:bg-blue-600">
                             저장
                         </button>
                     </div>
@@ -369,6 +408,15 @@ export default {
         }
     },
     methods: {
+        /**
+         * 벅스 커버 URL은 경로에 크기가 박혀 있다(.../images/50/...). 그 자리를 바꿔 원하는 크기를 받는다.
+         * 예전엔 `song.coverUrl.replace(...) || '/default...'` 였는데, **coverUrl 이 없으면
+         * `.replace` 에서 터진다**(폴백이 replace 뒤에 있어서 아무 소용이 없었다).
+         */
+        coverUrl(song, size) {
+            if (!song.coverUrl) return '/default-album-cover.jpg'
+            return song.coverUrl.replace('/50/', `/${size}/`)
+        },
         async searchSongs() {
             if (!this.searchQuery.trim()) return
 
@@ -620,7 +668,12 @@ export default {
                     }
                 });
                 this.youtubeSearchResults = response.results;
-                this.showYoutubeResults = true;  
+                this.showYoutubeResults = true;
+                // 결과는 폼 아래에 붙어서 뜬다. 모바일은 화면이 좁아 **검색을 눌러도 아무 일도
+                // 안 일어난 것처럼 보인다**(결과가 화면 밖). 결과로 데려다준다.
+                this.$nextTick(() => {
+                    this.$refs.youtubeResults?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+                })
             } catch (error) {
                 console.error('YouTube 검색 중 오류:', error);
                 this.$toast.error('YouTube 검색 중 오류가 발생했습니다.');

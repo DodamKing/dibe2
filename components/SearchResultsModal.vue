@@ -1,7 +1,16 @@
 <template>
-    <div v-if="show" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2 sm:p-4">
-        <div class="bg-gray-800 w-full max-w-4xl rounded-lg shadow-lg overflow-hidden text-white">
-            <div class="p-3 sm:p-4 bg-gray-700 flex items-center gap-2">
+    <!--
+        z-index: MusicPlayer 가 z-50 이고 DOM 상 이 모달보다 뒤에 있어서, 같은 z-50 이면
+        **플레이어가 모달 위에 그려져 결과 마지막 줄을 덮는다.** 모달이 위로 와야 한다.
+    -->
+    <div v-if="show" class="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-2 sm:p-4">
+        <!--
+            max-h-full + flex-col: 카드가 뷰포트를 넘지 않게 하고, 내부에서 결과 영역만 늘어나게 한다.
+            예전엔 결과 영역이 `h-[calc(100vh-300px)]` 였는데 300px 이 근거 없는 매직넘버였고,
+            모바일 100vh 는 주소창을 포함한 높이라 **실제 보이는 영역보다 커서 카드가 화면 밖으로 나갔다**.
+        -->
+        <div class="bg-gray-800 w-full max-w-4xl max-h-full rounded-lg shadow-lg overflow-hidden text-white flex flex-col">
+            <div class="p-3 sm:p-4 bg-gray-700 flex items-center gap-2 flex-shrink-0">
                 <div class="flex-grow relative">
                     <input v-model="localQuery" @keyup.enter="executeSearch" type="text"
                         placeholder="검색어 입력"
@@ -13,15 +22,15 @@
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div class="p-3 sm:p-4">
-                <div class="flex flex-wrap gap-2 mb-3 sm:mb-4">
+            <div class="p-3 sm:p-4 flex-1 min-w-0 min-h-0 flex flex-col">
+                <div class="flex flex-wrap gap-2 mb-3 sm:mb-4 flex-shrink-0">
                     <button v-for="tab in tabs" :key="tab" @click="changeTab(tab)"
                         :class="['px-2 py-1 sm:px-3 sm:py-2 rounded-md transition-colors text-sm sm:text-base',
                             getApiType(tab) === activeTab ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600']">
                         {{ tab }}
                     </button>
                 </div>
-                <div class="mb-3 sm:mb-4 flex justify-between items-center">
+                <div class="mb-3 sm:mb-4 flex justify-between items-center flex-shrink-0">
                     <div class="flex items-center text-sm sm:text-base">
                         <label class="flex items-center cursor-pointer">
                             <input type="checkbox" v-model="selectAll" @change="toggleSelectAll" class="mr-2">
@@ -45,7 +54,8 @@
                         </button>
                     </div>
                 </div>
-                <div class="h-[calc(100vh-300px)] sm:h-96 overflow-y-auto custom-scrollbar" ref="scrollContainer"
+                <!-- 부모가 flex-col + min-h-0 이라 남는 높이를 전부 먹는다. 고정 높이(매직넘버) 불필요 -->
+                <div class="flex-1 min-h-0 sm:h-96 sm:flex-none overflow-y-auto custom-scrollbar" ref="scrollContainer"
                     @scroll="handleScroll">
                     <div v-if="filteredResults.length > 0">
                         <div v-for="song in filteredResults" :key="song._id"
@@ -124,6 +134,11 @@ export default {
         }
     },
     methods: {
+        /** 배경(body) 스크롤 잠금. 모달이 열려 있는 동안만. */
+        lockBackground(lock) {
+            if (typeof document === 'undefined') return
+            document.body.style.overflow = lock ? 'hidden' : ''
+        },
         ...mapActions({
             fetchResults: 'search/fetchResults',
             changeActiveTab: 'search/changeActiveTab',
@@ -245,11 +260,18 @@ export default {
             if (newVal) {
                 this.localQuery = this.searchQuery
             }
+            // 모달이 떠 있는 동안 배경을 잠근다. 안 잠그면 결과 목록을 넘기려다
+            // 뒤의 차트가 같이 밀려서 "모달이 떠내려가는" 것처럼 보인다(모바일에서 특히 심함).
+            this.lockBackground(newVal)
         },
         filteredResults() {
             this.selectAll = false
             this.selectedSongs = []
         }
+    },
+    // 모달이 열린 채로 컴포넌트가 사라지면 body 가 잠긴 채 남는다 — 반드시 푼다.
+    beforeDestroy() {
+        this.lockBackground(false)
     },
 }
 </script>
