@@ -392,14 +392,25 @@ module.exports = {
         let searchCriteria;
 
         if (type === 'all') {
-            searchCriteria = {
-                $or: [
-                    { title: { $regex: flexibleRegex } },
-                    { artist: { $regex: flexibleRegex } },
-                    // { album: { $regex: flexibleRegex } },
-                    // { lyrics: { $regex: exactRegex } }
-                ]
-            };
+            // 공백으로 나눈 각 토큰이 title 또는 artist 어디에 걸리든 통과(토큰 간 AND).
+            // "아이유 좋은날"처럼 가수(artist)+제목(title)이 다른 필드로 나뉘어 있어도 잡는다.
+            // 단일 토큰이면 $and:[{$or:[…]}]라 기존 $or과 결과가 완전히 같다.
+            const tokens = query.trim().split(/\s+/).filter(Boolean);
+            searchCriteria = tokens.length
+                ? {
+                    $and: tokens.map((t) => {
+                        const rx = createFlexibleRegex(t);
+                        return { $or: [{ title: { $regex: rx } }, { artist: { $regex: rx } }] };
+                    })
+                }
+                : {
+                    $or: [
+                        { title: { $regex: flexibleRegex } },
+                        { artist: { $regex: flexibleRegex } },
+                        // { album: { $regex: flexibleRegex } },
+                        // { lyrics: { $regex: exactRegex } }
+                    ]
+                };
         } else if (type === 'lyrics') {
             searchCriteria = {
                 [type]: { $regex: query, $options: 'i' }

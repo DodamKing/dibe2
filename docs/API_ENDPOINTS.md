@@ -8,7 +8,7 @@
 | GET | `/chart` | Bugs Top100 차트 데이터 |
 | GET | `/songdata?title=&artist=` | 제목+아티스트로 곡 조회 |
 | POST | `/songsdata` | body: {songs[]} → 복수 곡 조회 |
-| GET | `/search?query=&type=&page=&limit=` | 곡 검색 (type: all/title/artist/lyrics) |
+| GET | `/search?query=&type=&page=&limit=` | 곡 검색 (type: all/title/artist/lyrics). **all=공백 토큰 AND**(각 토큰이 title∪artist 어디든 매칭) → "아이유 좋은날"처럼 가수+제목 조합도 잡힘. 단일 토큰은 종전과 동일 |
 | GET | `/youtubeId/:songId` | songId → YouTube 비디오 ID |
 | POST | `/by-ids` | body: {ids[]} → ID 배열로 일괄 조회 (lyrics 제외, 캐시 갱신용). 응답에 `liked`/`likeCount`/`playCount` 포함 |
 | GET | `/lyrics/:songId` | songId → `{lyrics, adult}`. **비어 있으면 즉석에서 채운다(lazy fill)** — 상세는 아래 |
