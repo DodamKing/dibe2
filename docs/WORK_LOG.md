@@ -9,6 +9,22 @@
 
 ## 완료된 작업
 
+### 2026-07-23 - 크론 헬스체크 스크립트 + 채움 크론 "조용한 죽음" 알림
+
+**배경**: "크론 잘 도나?" 점검. 프로덕션 Netlify 크론 로그는 직접 못 보므로 **DB 상태로** 판단. 확인 결과 chart·youtube·lyrics·genre 모두 정상(신곡 상위 100곡 100% 커버, genre 백로그 0). 다만 `youtubeCheckedAt` 마커가 전 DB에 0개라 잠시 의심 → 인기곡은 항상 영상을 찾아 실패 마커 찍을 일이 없어서였음(playCount=0인데 채워진 곡 다수로 크론 동작 확증).
+
+**발견한 gap**: 세 채움 크론(youtube/lyrics/genre)의 per-song `catch`가 에러를 삼켜, **한 곡도 못 채워도 outer try는 성공→200 반환→슬랙 없이 "초록불인데 죽음"**. 특히 youtube는 IP 차단 시 검색이 **예외 대신 빈 결과**를 돌려줄 수 있는데, 그 경우 기존 코드가 `youtubeCheckedAt` 마커를 찍어 **멀쩡한 곡을 "영상 없음"으로 영구 오염**시킴.
+
+**변경**(`server/services/songService.js`):
+- `alertIfWiped(jobName, progressed, failed)` 추가 — 한 실행이 전멸(진행 0 + 실패>0)이면 슬랙 알림. 세 크론 끝에 호출.
+- 각 루프에 `failed` 카운터 추가(youtube: 빈결과+throw, lyrics: `null`+throw, genre: 앨범fetch 실패+throw). 요약 로그에 실패 수 노출.
+- **youtube 빈결과 방어**: 아이템 0개면 마커를 찍지 않고 `failed`로 세어 다음 실행 재시도(`fill-youtube.js`의 기존 방어와 동일). "아이템은 왔는데 2~6분짜리가 없음"일 때만 닫음.
+  - 부작용(미미): `#`-title 등 영구 빈결과 곡은 이제 마커로 안 닫혀 가끔 재검색됨. 극소수라 무시 가능.
+
+**추가**: `scripts/cron-health.js`(읽기 전용) — 크론 최근 실행 흔적/미처리 백로그(크론 쿼리와 동일 조건)/소진 ETA/신곡 커버리지를 한 번에. `node scripts/cron-health.js`.
+
+**백로그 현황**: genre 0(완료). youtubeUrl 11,380 / lyrics 12,174 남음 — 크론만으론 각 ~2.8년/~1년이지만 **꼬리는 lazy fill이 책임지는 설계**라 그대로 둠(신곡은 매일 앞자리에서 즉시 처리). 대량 소진이 필요하면 DB 순회 백필 스크립트를 별도로.
+
 ### 2026-07-18 - 음원 검색 `type=all` 토큰 AND (가수+제목 조합 매칭)
 
 **배경**: 앱 사용자 지적 — "아이유 좋은날"처럼 **가수+제목을 한 줄로** 치면 0건. 원인은 `searchSong`의 `type=all`이 쿼리를 글자 단위 단일 정규식(`createFlexibleRegex`)으로 만들어 **title 또는 artist 한 필드 안에서 통째로** 찾은 것 — 가수는 artist, 제목은 title이라 어느 필드에도 전체가 없어 매칭 실패.

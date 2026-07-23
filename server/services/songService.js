@@ -32,6 +32,19 @@ const CRON_BUDGET_MS = 22000
 
 const overBudget = startedAt => Date.now() - startedAt > CRON_BUDGET_MS
 
+// per-song catch(및 null·빈결과 같은 조용한 실패)가 에러를 삼키면, 한 곡도 못 채워도
+// outer try 는 성공해 200을 반환한다 → 슬랙 없이 "초록불인데 죽음". 한 실행이 전멸
+// (진행 0 + 실패 있음)이면 알려서 조용한 죽음을 관측 가능한 신호로 바꾼다.
+const alertIfWiped = (jobName, progressed, failed) => {
+    if (progressed === 0 && failed > 0) {
+        console.error(`⚠️ ${jobName}: ${failed}곡 시도 전부 실패, 진행 0 — 크론이 조용히 죽었을 수 있음`)
+        helper.sendErrorToSlack(
+            new Error(`${jobName} 전멸: ${failed}곡 시도, 진행 0`),
+            null, { context: 'Cron', jobName },
+        )
+    }
+}
+
 /**
  * 크론 처리 순서 — **차트에 최근 오른 곡부터, 같은 시각이면 인기 있는 곡부터**.
  *
@@ -137,20 +150,21 @@ module.exports = {
             })
                 .sort(CRON_ORDER)
                 .limit(40)
-            let processed = 0
+            let filled = 0, closed = 0, failed = 0
 
             for (const song of songs) {
                 if (overBudget(startedAt)) {
-                    console.log(`시간 예산 도달 — ${processed}곡 처리하고 중단(나머지는 다음 실행에서)`)
+                    console.log(`시간 예산 도달 — ${filled + closed}곡 처리하고 중단(나머지는 다음 실행에서)`)
                     break
                 }
                 try {
                     const searchQuery = youtubeQuery(song.title, song.artist)
                     const searchResults = await YouTubeSearch.GetListByKeyword(searchQuery, false, 10)
+                    const hadResults = !!(searchResults && searchResults.items && searchResults.items.length > 0)
 
                     let foundSuitableVideo = false
 
-                    if (searchResults && searchResults.items && searchResults.items.length > 0) {
+                    if (hadResults) {
                         for (const item of searchResults.items) {
                             const durationInSeconds = parseSimpleTextDuration(item.length.simpleText)
 
@@ -171,21 +185,29 @@ module.exports = {
                         }
                     }
 
-                    // 검색은 됐는데 조건(2~6분)에 맞는 영상이 없는 곡. 매일 같은 검색을 반복해봐야
-                    // 결과가 같으므로 닫는다. 검색 자체가 터진 경우는 catch 로 가서 마커가 안 찍힌다.
-                    if (!foundSuitableVideo) {
+                    if (foundSuitableVideo) {
+                        filled++
+                    } else if (hadResults) {
+                        // 검색은 됐는데 2~6분짜리가 없는 곡. 매일 같은 결과이니 마커로 닫는다.
                         console.log(`YouTube URL 결과 없음: ${song.title} by ${song.artist}`)
                         await song.updateOne({ youtubeCheckedAt: new Date() })
+                        closed++
+                    } else {
+                        // 아이템 0개 = 유튜브가 예외 대신 빈 결과로 조용히 막았을 수 있다.
+                        // 여기서 마커를 찍으면 멀쩡한 곡을 "영상 없음"으로 영구 오염시키므로,
+                        // 닫지 않고 실패로 세어 다음 실행에서 재시도한다(fill-youtube.js 와 같은 방어).
+                        failed++
                     }
-                    processed++
 
                     // YouTube API 제한을 고려한 딜레이
                     await new Promise(resolve => setTimeout(resolve, 1000))
                 } catch (searchErr) {
+                    failed++
                     console.error('유튜브 검색하다 에러남:', searchErr)
                 }
             }
-            console.log(`YouTube URL 업데이트: ${processed}곡 처리`)
+            console.log(`YouTube URL 업데이트: ${filled}곡 채움 | ${closed}곡 없음확정 | ${failed}곡 실패`)
+            alertIfWiped('updateYoutubeUrls', filled + closed, failed)
         } catch (err) {
             console.error('YouTube URL 업데이트 중 오류 발생:', err)
         }
@@ -443,7 +465,7 @@ module.exports = {
             const songs = await db.Song.find(LYRICS_PENDING)
                 .sort(CRON_ORDER)
                 .limit(120)
-            let processed = 0, closed = 0
+            let processed = 0, closed = 0, failed = 0
 
             for (const song of songs) {
                 if (overBudget(startedAt)) {
@@ -454,7 +476,7 @@ module.exports = {
                     const lyrics = await helper.getLyrics(song.detailLink)
 
                     // null = 네트워크/파싱 실패. 마커를 찍지 않아야 다음 실행에서 재시도된다.
-                    if (lyrics === null) continue
+                    if (lyrics === null) { failed++; continue }
 
                     // '' = 페이지는 멀쩡한데 가사가 원래 없는 곡. 여기서 닫지 않으면 영원히 재시도한다.
                     if (!lyrics) {
@@ -466,10 +488,12 @@ module.exports = {
                     await song.updateOne({ lyrics, lyricsCheckedAt: new Date() })
                     processed++
                 } catch (err) {
+                    failed++
                     console.error(`가사 업데이트 에러: ${song.title} by ${song.artist}`)
                 }
             }
-            console.log(`가사 업데이트: ${processed}곡 채움 | ${closed}곡 "가사 없음"으로 닫음`)
+            console.log(`가사 업데이트: ${processed}곡 채움 | ${closed}곡 "가사 없음"으로 닫음 | ${failed}곡 실패`)
+            alertIfWiped('updateLyrics', processed + closed, failed)
         } catch (err) {
             console.error('가사 업데이트 중 에러: ', err)
         }
@@ -487,7 +511,7 @@ module.exports = {
             const songs = await db.Song.find({ genre: { $exists: false }, coverUrl: { $ne: null } })
                 .sort(CRON_ORDER)
                 .limit(120)
-            let processed = 0
+            let processed = 0, failed = 0
 
             // 같은 앨범 곡은 값이 같다. 한 번의 실행 안에서만이라도 캐시하면 요청이 준다.
             const cache = new Map()
@@ -507,15 +531,17 @@ module.exports = {
                     }
                     if (!cache.has(albumId)) cache.set(albumId, await helper.getAlbumGenre(albumId))
                     const info = cache.get(albumId)
-                    if (!info) continue // 네트워크 실패 — 다음 실행에서 재시도
+                    if (!info) { failed++; continue } // 네트워크 실패 — 다음 실행에서 재시도
 
                     await song.updateOne({ genre: info.genre, style: info.style })
                     processed++
                 } catch (err) {
+                    failed++
                     console.error(`장르 업데이트 에러: ${song.title} by ${song.artist}`)
                 }
             }
-            console.log(`장르 업데이트: ${processed}곡 처리 (앨범 요청 ${cache.size}회)`)
+            console.log(`장르 업데이트: ${processed}곡 처리 | ${failed}곡 실패 (앨범 요청 ${cache.size}회)`)
+            alertIfWiped('updateGenres', processed, failed)
         } catch (err) {
             console.error('장르 업데이트 중 에러: ', err)
         }
