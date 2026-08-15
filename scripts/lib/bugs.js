@@ -61,6 +61,26 @@ function parseAlbumInfo(html) {
     return out
 }
 
+/**
+ * 앨범 정보 전체. `parseAlbumInfo` 는 장르/스타일만 보는데, 중복 곡 중 어느 앨범을 남길지
+ * 고르려면 **유형(정규/싱글/OST/컴필)과 발매일**이 필요하다. 앨범명 문자열로 추측하면
+ * `Guckkasten` 과 `Guckkasten (Before Regular Album)` 을 구분할 수 없다.
+ * (parseAlbumInfo 는 기존 스크립트가 쓰고 있어 건드리지 않는다)
+ */
+function parseAlbumDetail(html) {
+    const $ = cheerio.load(html)
+    const out = { genre: [], style: [], type: '', releaseDate: '' }
+    $('table.info tbody tr').each((i, el) => {
+        const label = $(el).find('th').text().trim()
+        const value = $(el).find('td').text().trim().replace(/\s+/g, ' ')
+        if (label === '장르') out.genre = splitField(value)
+        else if (label === '스타일') out.style = splitField(value)
+        else if (label === '유형') out.type = value
+        else if (label === '발매일') out.releaseDate = value
+    })
+    return out
+}
+
 /** 가사는 트랙 상세 페이지의 <xmp>에 있다. 전용 엔드포인트(lyricsDtl 등)는 404라 이 경로뿐. */
 function parseLyrics(html) {
     return cheerio.load(html)('xmp').first().text().trim()
@@ -85,6 +105,6 @@ function parseTitleCell($cell) {
 
 module.exports = {
     UA, sleep, jitter, createClient,
-    albumIdFromCoverUrl, parseAlbumInfo, parseLyrics, parseTitleCell,
+    albumIdFromCoverUrl, parseAlbumInfo, parseAlbumDetail, parseLyrics, parseTitleCell,
     albumUrl: id => `https://music.bugs.co.kr/album/${id}`,
 }

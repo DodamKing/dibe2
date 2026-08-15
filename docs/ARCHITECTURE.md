@@ -84,14 +84,38 @@ dibe2/
 │   ├── fix-dirty-titles.js   # DB의 오염된 제목([19금]\n곡명) 정리 + adult 이관 (완료됨, dry-run 기본)
 │   ├── clean-collected-titles.js  # 수집본(data/*.jsonl) 제목 정리 + adult 이관 (완료됨, .bak 백업)
 │   │                              #   ⚠️ 배지 판별은 개행 기준 — `[드포즈 극장] …`은 진짜 제목이다
+│   │
+│   │  ── 차트 대량 수집 파이프라인 (2026-07, 완료 12,632곡) ──
 │   ├── crawl-bugs-charts.js  # 장르 차트 → data/bugs-chart-rows.jsonl (DB 안 씀, 재개 가능)
 │   ├── aggregate-songs.js    # 원시 행 → data/songs.jsonl (유니크 곡 + 인기도 + adult, DB 읽기만)
 │   ├── enrich-songs.js       # 곡에 장르/가사 → data/songs-enriched.jsonl (서킷 브레이커 내장)
 │   ├── fill-youtube.js       # 곡에 videoId → data/songs-youtube.jsonl (서킷 브레이커 내장)
-│   └── load-songs.js         # 위 3개 파일 조인 → DB 적재 (파이프라인 마지막, 완료됨 12,632곡)
+│   ├── load-songs.js         # 위 3개 파일 조인 → DB 적재 (파이프라인 마지막)
+│   │
+│   │  ── 아티스트별 수집 파이프라인 (2026-08, 적재 대기) ──
+│   │     차트가 아니라 "이 가수의 곡을 빠짐없이". 인기도(chartHits) 신호가 없다.
+│   ├── crawl-artist-tracks.js   # --search 로 아티스트 후보 → --artist 로 전곡 → data/artist-rows.jsonl
+│   ├── enrich-artist-albums.js  # 앨범 단위로 장르/스타일/유형/발매일 → data/artist-albums.json
+│   ├── enrich-artist-tracks.js  # 트랙 상세에서 가사 + 재생시간 → data/artist-tracks.jsonl
+│   ├── build-artist-songs.js    # Inst 제외 + 중복 수록반 정리 + 기존 DB 대조 → data/artist-songs.jsonl
+│   ├── verify-youtube.js        # 후보 10개를 판정 근거와 함께 → data/artist-youtube.jsonl
+│   │                            #   --rescore(요청0 재채점) / --second-pass / --include-existing
+│   ├── check-embed.js           # 채택 영상이 실제로 임베드 재생되는지 (oEmbed) --swap 으로 교체까지
+│   ├── apply-decisions.js       # 사람 판단을 데이터에 반영
+│   │                            #   docs/artist-import-decisions.json(git 추적) + data/youtube-choices.json
+│   ├── report-artist-songs.js   # 적재 후보 검토 화면 → data/artist-report.html
+│   ├── report-youtube.js        # 유튜브 매칭 검토 화면 → data/youtube-review.html
+│   └── serve-review.js          # 위 검토 화면용 로컬 서버(127.0.0.1:4321) + 선택 결과 수신
+│                                #   file:// 로 열면 유튜브 임베드가 오류 153으로 거부한다
 │
-├── data/                # 크롤링 산출물 (gitignore, 수십 MB) — DB가 아닌 중간 저장소
-│                        # 상세 설계·수치는 docs/WORK_LOG.md 2026-07-16 항목
+├── data/                # 크롤링 산출물 (gitignore) — DB가 아닌 중간 저장소
+│                        # 차트 수집분 bugs-chart-rows/songs*.jsonl (약 37MB, 적재 완료)
+│                        # 🔴 아티스트 수집분 artist-*.jsonl / embed-check.json 은 **적재 전**이다.
+│                        #    재생성에 벅스+유튜브 요청 약 660회가 드니 적재 끝날 때까지 지우지 말 것
+│                        # 상세 설계·수치는 docs/WORK_LOG.md (2026-07-16 / 2026-08-15)
+│
+├── docs/artist-import-decisions.json   # 아티스트 수집분 유튜브 매칭에서 사람이 내린 판단 + 이유
+│                        # data/ 가 아닌 이유: 재생성이 안 되는 기록이라 git 에 남긴다
 │
 ├── store/               # Vuex 스토어
 │   ├── index.js

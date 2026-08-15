@@ -16,7 +16,7 @@
 | PUT | `/:id` | 곡 수정 (관리자만) |
 | DELETE | `/delete/:id` | 곡 삭제 |
 | GET | `/search-bugs?query=` | Bugs Music 검색 |
-| GET | `/search-youtube?query=` | YouTube 검색 (2~6분 영상) |
+| GET | `/search-youtube?query=` | YouTube 검색 (2~6분 영상) ⏳ 곡 길이 대조로 교체 예정 → `docs/CRON_EXTERNAL.md` |
 
 - **`/lyrics/:songId` 는 조회가 아니라 "조회 + 즉석 채우기"다.** 가사가 비어 있으면 벅스 트랙 페이지를 그 자리에서 긁어 저장하고 반환한다(실측 671ms). 크론(08:30)만으로는 백로그를 다 채우는 데 수개월이 걸리는데, lazy fill 은 **사용자가 실제로 튼 곡부터** 채우므로 그 대기가 사실상 사라진다. `youtubeUrl` 의 `getYoutubeId` 와 같은 패턴이고, 크론과 lazy fill 이 둘 다 "가사 없는 곡"만 고르므로 중복이 없다
   - 응답의 `adult` 는 **"가사 없음"과 "19금이라 제공 안 됨"을 UI가 구분**하기 위한 것. 19금 곡과 이미 "없음"으로 닫힌 곡(`lyricsCheckedAt`)은 **긁지 않고 즉시 반환**한다(실측 43~52ms) — 안 그러면 가사를 못 받는 곡을 누를 때마다 벅스를 때리는 증폭기가 된다
