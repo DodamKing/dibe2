@@ -1,18 +1,50 @@
 const axios = require('axios')
 const cheerio = require('cheerio')
 
-async function getLyrics(detailLink) {
+/** 트랙 상세의 `재생 시간 = 06:09` → 369초. 앨범 페이지의 값은 앨범 전체 길이라 못 쓴다. */
+function parseTrackDuration($) {
+    let text = ''
+    $('table.info tbody tr').each((i, el) => {
+        if ($(el).find('th').text().trim() === '재생 시간') text = $(el).find('td').text().trim()
+    })
+    const m = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(text)
+    if (!m) return null
+    return m[3]
+        ? (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3])
+        : (+m[1]) * 60 + (+m[2])
+}
+
+/**
+ * 트랙 상세 페이지 한 번으로 **가사와 곡 길이를 같이** 가져온다.
+ *
+ * 길이를 따로 받지 않는 게 핵심이다 — 가사 크론이 어차피 이 페이지를 받으므로
+ * `duration` 은 **요청 0회**로 딸려온다. 길이는 유튜브 매칭에서 고정 상한(2~6분)을
+ * 대체하는 기준이라, 이걸 위해 요청을 새로 만들면 크론 예산(30초)이 감당 못 한다.
+ *
+ * 🔴 반환 계약 — 마커(`lyricsCheckedAt`) 로직이 이 구분에 기대고 있다:
+ *   `null`                        네트워크/파싱 실패. **마커를 찍으면 안 된다**(다음 실행에서 재시도)
+ *   `{ lyrics: '', duration }`    페이지는 멀쩡한데 가사가 원래 없는 곡. 마커로 닫는다
+ *   `{ lyrics: '…', duration }`   정상. duration 은 못 읽으면 `null` 이다(길이 없는 곡이 있다)
+ */
+async function getTrackDetail(detailLink) {
     try {
         const response = await axios.get(detailLink);
-        const html = response.data;
-        const $ = cheerio.load(html);
+        const $ = cheerio.load(response.data);
 
-        const lyrics = $('xmp').text().trim();
-        return lyrics;
+        return {
+            lyrics: $('xmp').text().trim(),
+            duration: parseTrackDuration($),
+        }
     } catch (error) {
-        console.error('Error getting lyrics:', error);
+        console.error('Error getting track detail:', error);
         return null;
     }
+}
+
+/** 가사만 필요한 호출부용 얇은 래퍼. 실패 `null` / 가사 없음 `''` 계약은 종전과 같다. */
+async function getLyrics(detailLink) {
+    const detail = await getTrackDetail(detailLink)
+    return detail === null ? null : detail.lyrics
 }
 
 const formatter = new Intl.DateTimeFormat('ko-KR', {
@@ -80,6 +112,7 @@ function parseTitleCell($cell) {
 
 module.exports = {
     getLyrics: getLyrics,
+    getTrackDetail,
     albumIdFromCoverUrl,
     getAlbumGenre,
     parseTitleCell,

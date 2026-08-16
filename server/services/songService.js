@@ -15,6 +15,24 @@ function parseSimpleTextDuration(simpleText) {
     }
 }
 
+/**
+ * 후보 영상의 길이가 이 곡의 것인지 판정한다. **매칭 정책의 핵심이라 한 곳에만 둔다** —
+ * 크론/lazy fill 이 각자 조건을 들고 있으면 한 군데만 고쳐서 어긋난다(실제로 그랬다).
+ *
+ * 🔴 **반드시 이중화** — `duration` 은 아티스트 수집분 167곡에만 있고 기존 13,760곡엔 없다.
+ * 길이를 필수로 보면 대부분의 곡이 후보를 하나도 못 고른다. 길이가 있을 때만 정밀해진다.
+ *
+ * ±5초 근거(2026-08 아티스트 수집 실측): 정답 후보의 길이차는 0~2초 65건 / 3~5초 20건에
+ * 몰리는 반면, 라이브·다른 버전은 16초 이상으로 31건이 확연히 갈렸다.
+ * 고정 상한은 6분 넘는 곡을 영영 못 찾고(`Mandrake` 6:09) 라이브를 통과시킨다.
+ *
+ * ⚠️ 반주(Instrumental)는 이걸로 못 거른다 — 원곡과 길이가 같다. 제목으로 걸러야 한다.
+ */
+const DURATION_TOLERANCE_SEC = 5
+const durationFits = (songDuration, videoSeconds) => songDuration
+    ? Math.abs(videoSeconds - songDuration) <= DURATION_TOLERANCE_SEC
+    : (videoSeconds >= 120 && videoSeconds <= 360)
+
 // youtube-search-api 는 URL을 encodeURI 로 만드는데 encodeURI 는 '#' 을 인코딩하지 않는다.
 // 그래서 '#'부터 뒤가 URL 프래그먼트로 잘려나가 search_query 가 통째로 비어버린다
 // ("#첫사랑 볼빨간사춘기" → 검색어 ""). 제목에 # 있는 곡은 검색 결과가 영원히 0건이라
@@ -173,7 +191,7 @@ module.exports = {
                                 continue
                             }
 
-                            if (durationInSeconds >= 120 && durationInSeconds <= 360) {
+                            if (durationFits(song.duration, durationInSeconds)) {
                                 const videoId = item.id
                                 const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`
 
@@ -188,7 +206,7 @@ module.exports = {
                     if (foundSuitableVideo) {
                         filled++
                     } else if (hadResults) {
-                        // 검색은 됐는데 2~6분짜리가 없는 곡. 매일 같은 결과이니 마커로 닫는다.
+                        // 검색은 됐는데 길이 조건에 맞는 게 없는 곡. 매일 같은 결과이니 마커로 닫는다.
                         console.log(`YouTube URL 결과 없음: ${song.title} by ${song.artist}`)
                         await song.updateOne({ youtubeCheckedAt: new Date() })
                         closed++
@@ -231,7 +249,7 @@ module.exports = {
                         continue
                     }
 
-                    if (durationInSeconds >= 120 && durationInSeconds <= 360) {
+                    if (durationFits(song.duration, durationInSeconds)) {
                         const videoId = item.id
                         youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`
 
@@ -360,7 +378,7 @@ module.exports = {
      */
     getLyrics: async (id) => {
         try {
-            const song = await db.Song.findById(id).select('lyrics adult detailLink lyricsCheckedAt')
+            const song = await db.Song.findById(id).select('lyrics adult detailLink lyricsCheckedAt duration')
             if (!song) return { lyrics: '', adult: false }
             if (song.lyrics) return { lyrics: song.lyrics, adult: !!song.adult }
 
@@ -371,13 +389,20 @@ module.exports = {
             if (song.lyricsCheckedAt) return { lyrics: '', adult: false }
             if (!song.detailLink) return { lyrics: '', adult: false }
 
-            const lyrics = await helper.getLyrics(song.detailLink)
+            // 크론과 같은 함수를 쓴다 — 이 페이지에 길이도 있어서 **요청 없이** 같이 채운다.
+            // 재생 시점이라 지연에 민감한데, 요청 수가 그대로라 비용이 안 늘어난다.
+            const detail = await helper.getTrackDetail(song.detailLink)
             // null = 네트워크 실패. 마커를 안 찍어야 크론이 나중에 다시 시도한다.
-            if (lyrics === null) return { lyrics: '', adult: false }
+            if (detail === null) return { lyrics: '', adult: false }
+
+            const { lyrics, duration } = detail
+            const durationPatch = (duration != null && song.duration == null) ? { duration } : {}
 
             await db.Song.updateOne(
                 { _id: id },
-                lyrics ? { lyrics, lyricsCheckedAt: new Date() } : { lyricsCheckedAt: new Date() },
+                lyrics
+                    ? { lyrics, lyricsCheckedAt: new Date(), ...durationPatch }
+                    : { lyricsCheckedAt: new Date(), ...durationPatch },
             )
             return { lyrics: lyrics || '', adult: false }
         } catch (err) {
@@ -473,19 +498,24 @@ module.exports = {
                     break
                 }
                 try {
-                    const lyrics = await helper.getLyrics(song.detailLink)
+                    // 같은 페이지에서 길이도 딸려온다(요청 0회 추가). 유튜브 매칭이 이 값을 쓴다.
+                    const detail = await helper.getTrackDetail(song.detailLink)
 
                     // null = 네트워크/파싱 실패. 마커를 찍지 않아야 다음 실행에서 재시도된다.
-                    if (lyrics === null) { failed++; continue }
+                    if (detail === null) { failed++; continue }
+
+                    const { lyrics, duration } = detail
+                    // 길이는 가사와 독립이다 — 가사가 없는 곡도 길이는 저장한다.
+                    const durationPatch = (duration != null && song.duration == null) ? { duration } : {}
 
                     // '' = 페이지는 멀쩡한데 가사가 원래 없는 곡. 여기서 닫지 않으면 영원히 재시도한다.
                     if (!lyrics) {
-                        await song.updateOne({ lyricsCheckedAt: new Date() })
+                        await song.updateOne({ lyricsCheckedAt: new Date(), ...durationPatch })
                         closed++
                         continue
                     }
 
-                    await song.updateOne({ lyrics, lyricsCheckedAt: new Date() })
+                    await song.updateOne({ lyrics, lyricsCheckedAt: new Date(), ...durationPatch })
                     processed++
                 } catch (err) {
                     failed++
