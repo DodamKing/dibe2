@@ -280,21 +280,19 @@ module.exports = {
                 for (const item of searchResults.items) {
                     if (!item.length?.simpleText) continue
 
-                    const durationInSeconds = parseSimpleTextDuration(item.length.simpleText)
-
-                    if (durationInSeconds === null) continue
-
-                    // 2분(120초) ~ 6분(360초) 사이의 영상만 수집
-                    if (durationInSeconds >= 120 && durationInSeconds <= 360) {
-                        youtubeUrls.push({
-                            id: item.id,
-                            url: `https://www.youtube.com/watch?v=${item.id}`,
-                            title: item.title,
-                            duration: item.length.simpleText,
-                            thumbnail: item.thumbnail?.thumbnails?.[0]?.url || '',
-                            channelTitle: item.channelTitle || ''
-                        });
-                    }
+                    // 🔴 길이로 거르지 않는다 — 여기는 **관리자가 눈으로 보고 고르는** 화면이다.
+                    // 예전엔 크론과 같은 2~6분 상한이 걸려 있어서 6분 넘는 곡(`Mandrake` 6:09)은
+                    // 손으로 찾으려 해도 후보에 아예 안 떴다. 자동 판정(크론/lazy fill)은
+                    // durationFits 로 좁히지만, 사람이 판단하는 자리에서는 넓게 보여준다.
+                    // 길이는 `duration` 으로 같이 내려주니 화면에서 보고 판단하면 된다.
+                    youtubeUrls.push({
+                        id: item.id,
+                        url: `https://www.youtube.com/watch?v=${item.id}`,
+                        title: item.title,
+                        duration: item.length.simpleText,
+                        thumbnail: item.thumbnail?.thumbnails?.[0]?.url || '',
+                        channelTitle: item.channelTitle || ''
+                    });
                 }
             }
 
