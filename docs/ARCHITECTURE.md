@@ -92,7 +92,7 @@ dibe2/
 │   ├── fill-youtube.js       # 곡에 videoId → data/songs-youtube.jsonl (서킷 브레이커 내장)
 │   ├── load-songs.js         # 위 3개 파일 조인 → DB 적재 (파이프라인 마지막)
 │   │
-│   │  ── 아티스트별 수집 파이프라인 (2026-08, 적재 대기) ──
+│   │  ── 아티스트별 수집 파이프라인 (2026-08, 완료 176곡) ──
 │   │     차트가 아니라 "이 가수의 곡을 빠짐없이". 인기도(chartHits) 신호가 없다.
 │   ├── crawl-artist-tracks.js   # --search 로 아티스트 후보 → --artist 로 전곡 → data/artist-rows.jsonl
 │   ├── enrich-artist-albums.js  # 앨범 단위로 장르/스타일/유형/발매일 → data/artist-albums.json
@@ -105,13 +105,17 @@ dibe2/
 │   │                            #   docs/artist-import-decisions.json(git 추적) + data/youtube-choices.json
 │   ├── report-artist-songs.js   # 적재 후보 검토 화면 → data/artist-report.html
 │   ├── report-youtube.js        # 유튜브 매칭 검토 화면 → data/youtube-review.html
-│   └── serve-review.js          # 위 검토 화면용 로컬 서버(127.0.0.1:4321) + 선택 결과 수신
-│                                #   file:// 로 열면 유튜브 임베드가 오류 153으로 거부한다
+│   ├── serve-review.js          # 위 검토 화면용 로컬 서버(127.0.0.1:4321) + 선택 결과 수신
+│   │                            #   file:// 로 열면 유튜브 임베드가 오류 153으로 거부한다
+│   └── load-artist-songs.js     # 위 3개 파일 조인 → DB 적재 (파이프라인 마지막)
+│                                #   🔴 URL 없는 곡은 적재에서 뺀다(곡 목록은 그대로 두고 여기서 거른다)
+│                                #   기존 DB 곡은 건너뛰지 않고 갱신한다 — 차트용 load-songs.js 와 반대
 │
 ├── data/                # 크롤링 산출물 (gitignore) — DB가 아닌 중간 저장소
 │                        # 차트 수집분 bugs-chart-rows/songs*.jsonl (약 37MB, 적재 완료)
-│                        # 🔴 아티스트 수집분 artist-*.jsonl / embed-check.json 은 **적재 전**이다.
-│                        #    재생성에 벅스+유튜브 요청 약 660회가 드니 적재 끝날 때까지 지우지 말 것
+│                        # 아티스트 수집분 artist-*.jsonl / embed-check.json 은 적재 완료(2026-08-16).
+│                        #    사람이 내린 판단은 전부 docs/artist-import-decisions.json(git)에 있어
+│                        #    이제 지워도 된다 — 지우면 재생성에 벅스+유튜브 요청 약 660회가 들 뿐
 │                        # 상세 설계·수치는 docs/WORK_LOG.md (2026-07-16 / 2026-08-15)
 │
 ├── docs/artist-import-decisions.json   # 아티스트 수집분 유튜브 매칭에서 사람이 내린 판단 + 이유

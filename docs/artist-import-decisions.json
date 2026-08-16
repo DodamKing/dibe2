@@ -15,7 +15,6 @@
   { "title": "촛불", "artist": "터치드(TOUCHED)", "why": "촛불 = Candle. 현재 픽 제목이 대응을 확인해 줌" },
   { "title": "눈덩이", "why": "눈덩이 = Snowball" },
   { "title": "나 어떡해", "why": "나 어떡해 = What shall I do (산울림 원곡)" },
-  { "title": "무이이야 (Rock Ver.)", "why": "무이이야(無異異也) = No Difference, (Rock Ver.) 표기까지 일치" },
   { "title": "항가 (巷歌)", "why": "항가(巷歌) = Street song" },
   { "title": "좋았던 기억만 남아있다면", "why": "= Good Memories. 유통사 Topic 채널" }
  ],
@@ -23,7 +22,9 @@
  "video": [
   { "title": "불놀이야", "videoId": "vbLJbRIWOAc", "why": "`불놀이야 (불놀이야)` [Release - Topic] 3:56 — 유통사 음원. 기존 픽은 커버 밴드 vol.touched 였음" },
   { "title": "질풍가도 [하현우]", "videoId": "uP4c2ccDY4A", "why": "`The Windstorm Road (Ha Hyun Woo Version)` [PearlAbyssMusic - Topic] 1:41 — 유통사 음원이자 하현우 버전 명시" },
-  { "title": "Hi Bully", "artist": "터치드(TOUCHED)", "videoId": "x7lduCekwu4", "why": "`'Hi Bully' Official MV` [터치드 TOUCHED] 3:29 — 원곡. 기존 픽 `(Acoustic ver.)` 3:08 은 별도 곡 `Hi Bully (Acoustic ver.)` 가 이미 쓰고 있었음" },
+  { "title": "Hi Bully", "artist": "터치드(TOUCHED)", "videoId": "tOI2K1CD_Ik", "why": "**사용자가 직접 들어보고 정함.** `Hi Bully - 터치드 (Touched)ㅣ[Lyrics / 가사]` [이곡띵곡] 3:26 — 음원. 제가 골랐던 공식 MV(`x7lduCekwu4`, 3:29)는 뮤비라 음원판을 택했다. 기존 DB 곡이라 벅스 길이가 없어 길이 대조는 불가" },
+  { "title": "Lazenca, Save Us (우리 동네 음악대장) (Bonus Track)", "artist": "하현우(국카스텐)", "videoId": "kATWdPEXHvo", "why": "**사용자가 직접 들어보고 정함.** [대파] 3:29 가사영상. 스크립트 픽이던 [VLENDING 블렌딩] 3:29 와 길이는 같다. 기존 DB 곡이라 벅스 길이가 없어 길이 대조는 불가" },
+  { "title": "무이이야 (Rock Ver.)", "artist": "하현우(국카스텐)", "videoId": "ooPDdLAN8iM", "why": "**사용자가 직접 들어보고 정함.** 무이이야(無異異也) = No Difference 라 공식 채널의 영문 제목판으로 교체하는 건 원래 판단(adopt-official)이었는데, 같은 채널에 같은 제목·같은 길이(3:43) 업로드가 둘(`kxntlIho6GE` / `ooPDdLAN8iM`)이라 규칙만으로는 어느 쪽인지 못 정한다. 그래서 videoId 를 못 박는다" },
   { "title": "라플레시아", "videoId": "zy9u-S4r-5A", "why": "`라플레시아 (before regular 초판)` 4:49 — 이 곡은 Before Regular Album 수록분이고, 같은 채널의 씽크홀·토들·비트리올 초판이 이미 채택돼 있어 기준이 일관됨. 공식 채널 `RAFFLESIA` 는 정규 버전이라 별도 곡에 배정됨" }
  ],
 
@@ -31,7 +32,13 @@
   { "title": "ANGSTBLÜTE", "why": "유튜브에 원곡 음원이 없음 — 후보가 Official Instrumental(반주) / 라이브 공연 / 베이스 부스트 변조판뿐" },
   { "title": "파우스트", "why": "2008 싱글 초판인데 공식 채널엔 정규 버전(`FAUST`)만 있고 나머지는 전부 공연 영상. 정규 버전은 이미 별도 곡 `Faust` 에 배정됨" },
   { "title": "WAKE UP (Piano by 양방언)", "why": "양방언 피아노가 참여한 스튜디오 버전인데 공식 채널엔 그 버전이 없음 — 후보가 영어 가사판(4:47) / 반주판 / 열린음악회 라이브뿐. 일반 `WAKE UP`(4:44)은 이미 별도 곡에 배정됨. 기존 DB 곡이라 제외해도 URL만 비는 것이고 재생 시점 lazy fill 이 다시 찾는다" },
-  { "title": "Montage", "why": "`몽타주 (Montage)`(싱글 2012, 3:40)와 이 곡(정규 Frame 2014, 3:42)은 길이가 2초 달라 다른 녹음일 수 있지만 **유튜브엔 영상이 하나뿐**이라 두 곡이 같은 영상을 가리키고 있었다. 하나는 반드시 틀리므로 한쪽만 남긴다. 남기는 쪽은 제목에 한글·영문이 다 들어 있어 검색이 양쪽 다 되는 `몽타주 (Montage)` — 유형 우선(정규) 규칙보다 검색 실용성을 택했다" }
+  { "title": "몽타주 (Montage)", "why": "`몽타주 (Montage)`(싱글 2012, 3:40)와 `Montage`(정규 Frame 2014, 3:42)는 길이가 2초 달라 다른 녹음일 수 있지만 **유튜브엔 영상이 하나뿐**이라 두 곡이 같은 영상을 가리키고 있었다. 하나는 반드시 틀리므로 한쪽만 남긴다. 남기는 쪽은 정규 `Montage` — 유형 우선(정규>싱글) 규칙과 일치한다. **사용자가 검토 화면에서 직접 들어보고 정함**(처음엔 검색 실용성을 들어 한글 제목 쪽을 남겼으나 뒤집힘)" },
+
+  { "title": "DREAM", "artist": "국카스텐(Guckkasten)", "why": "가사 없음 — 벅스 트랙 상세의 가사 영역이 비어 있다(요청 실패가 아니라 `\"\"`). 2025.09.18 정규 `AURUM` 수록곡이라 원래 없는 곡으로 보기 어렵고, 같은 앨범 `BACK DOOR`·`751nm~` 도 나란히 비어 있어 **벅스에 아직 안 올라온 것**으로 판단. 유튜브 URL 은 멀쩡하지만 가사가 채워진 뒤 넣는다" },
+  { "title": "Tagtraume", "artist": "국카스텐(Guckkasten)", "why": "가사 없음(`\"\"`). 동명 EP 타이틀곡인데 가사 영역이 비어 있다 — 연주곡일 수 있으나 확인 전까지 넣지 않는다" },
+  { "title": "Ithaca (Piano Ver. By AEV)", "artist": "하현우(국카스텐)", "why": "가사 없음(`\"\"`). 제목대로 피아노 연주 버전이라 원래 가사가 없는 곡으로 보이지만, 확인 전까지 넣지 않는다" },
+  { "title": "Ithaca (Acoustic Guitar Ver. By 정성하)", "artist": "하현우(국카스텐)", "why": "가사 없음(`\"\"`). 제목대로 어쿠스틱 기타 연주 버전이라 원래 가사가 없는 곡으로 보이지만, 확인 전까지 넣지 않는다" },
+  { "title": "3456", "artist": "김연아", "why": "장르 없음 — 벅스 앨범 `민국 (民國, 100th Anniversary)` 에 스타일(`기념일 음악`)만 있고 장르가 아예 없다(크롤링 실패가 아니라 원본에 없음). 장르는 추천의 입력이라 빈 채로 넣으면 추천에서 겉돈다. 애초에 하현우 참여로 딸려온 3·1운동 100주년 기념곡이고 대표 아티스트도 김연아라 이번 수집 목적과도 거리가 있다" }
  ],
 
  "keep": [

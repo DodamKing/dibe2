@@ -8,6 +8,17 @@ const songSchema = new mongoose.Schema({
     detailLink: { type: String, trim: true },
     lyrics: { type: String, trim: true },
     youtubeUrl : { type: String, trim: true },
+    /**
+     * 곡 길이(초). 벅스 트랙 상세의 `재생 시간` 을 그대로 담는다.
+     *
+     * 유튜브 매칭에서 **후보가 원곡인지 가르는 기준**이다. 고정 상한(2~6분)은 6분 넘는 곡을
+     * 영영 못 찾고(`Mandrake` 6:09) 라이브를 통과시킨다. 실제 길이와 ±5초로 대조하면 둘 다 잡힌다
+     * (정답 후보는 0~5초 안에 몰리고, 라이브·다른 버전은 16초 이상으로 갈린다).
+     *
+     * **없을 수 있다** — 기존 13,759곡은 이 값이 없다. 그래서 매칭은 항상
+     * "길이가 있으면 ±5초, 없으면 기존 2~6분 룰" 로 이중화해야 한다. 필수로 만들면 안 된다.
+     */
+    duration: { type: Number },
     // 벅스 19금 배지. 해당 곡은 성인 인증(로그인)이 있어야 가사가 보이므로 **크롤링으로 못 받는다**.
     // 가사를 못 받은 게 아니라 원래 안 주는 곡이라, 재시도 대상에서 빼고 UI에도 그렇게 표시한다.
     adult: { type: Boolean, default: false },
