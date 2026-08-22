@@ -150,12 +150,16 @@ dibe2/
 ```
 
 ## Netlify Functions 미들웨어 순서 (netlify/functions/api.js)
-1. CORS
-2. JSON 파싱
-3. MongoDB 연결
-4. `jwtCheckMiddleware` (JWT 인증)
-5. `visitorMiddleware` (방문자 통계)
+1. 경로 정규화 (`/api/*` · `/.netlify/functions/api/*` → `/*`)
+2. CORS
+3. JSON 파싱
+4. MongoDB 연결 — **실패하면 여기서 500으로 끊는다** (라우터에 도달하지 않음)
+5. `jwtCheckMiddleware` (JWT 인증)
 6. 라우터
+
+🔴 **DB 연결이 인증보다 먼저다.** 토큰 없는 요청도 Mongo 연결을 치르고 나서 401을 받는다. 뒤집어 말하면 **아무 경로나 토큰 없이 때리면 "부팅 + Atlas 연결" 비용만 쿼리 없이 측정할 수 있다**(2026-08-22 콜드 스타트 측정에 쓴 방법 — `WORK_LOG` 참고).
+
+이 순서에 무언가를 끼워 넣을 때 주의: **4번 뒤 5번 앞**에 라우트를 두면 `jwtCheckMiddleware`의 `publicPaths` 배열을 안 건드리고 공개 경로를 만들 수 있다(그 배열은 토큰이 **있으면** `res.redirect('/')` 하는 분기가 있어 용도가 다르다).
 
 ## 데이터 흐름
 - Bugs Music → 크롤링 → Chart/Song 모델에 저장
