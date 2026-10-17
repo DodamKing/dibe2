@@ -91,7 +91,8 @@ node scripts/refresh-themes.js                      # 전 테마 수집 → DB �
 - 정의에서 뺀 테마는 `Theme.active=false`(곡 데이터는 남는다). 테마 추가·수정은 `themeDefinitions.js`를 고치고 스크립트를 돌리면 끝 — API가 DB만 읽으므로 **배포가 필요 없다**
 
 ## API (상세는 `docs/API_ENDPOINTS.md`)
-- `GET /api/themes` → `{ themes: [{ key, name, songCount, updatedAt }] }`
+- `GET /api/themes` → `{ themes: [{ key, name, songCount, updatedAt, cover }] }`
+  - `cover`: 그 테마 core 점수 1위(국내곡)의 썸네일. **앱 카드 그림용** — 앱이 테마별 그림을 하드코딩하지 않아서 테마를 추가해도(배포 없음) 카드가 저절로 그려진다. 1위는 수집 갱신 때만 바뀐다
 - `GET /api/themes/:key?seed=` → `{ theme: {key, name}, seed, updatedAt, songs: [{ videoId, title, artist, duration, thumbnail, tier }] }` (50곡)
 - 썸네일은 `i.ytimg.com/vi/{videoId}/hqdefault.jpg`로 만든다(저장 안 함)
 
@@ -100,7 +101,7 @@ node scripts/refresh-themes.js                      # 전 테마 수집 → DB �
 1. **인증**: 다른 API와 같이 `Authorization: Bearer <JWT>` 필수(없으면 401). 앱은 이미 로그인 토큰을 쓰고 있으니 같은 토큰으로 호출
 2. **화면 흐름**: 테마 목록(`GET /api/themes`) → 테마 선택 → `GET /api/themes/:key` → 50곡
 3. **새로고침 / 재현**: 새로고침은 `seed` 없이 다시 요청. 화면 복원·"아까 그 목록"은 응답의 `seed`를 저장했다가 `?seed=`로 다시 요청하면 같은 목록이 온다(서버 풀이 갱신되기 전까지)
-4. **재생**: 결과는 **유튜브 `videoId`뿐**(`Song`·벅스와 무관, `songId` 없음). 웹 비디오 모드처럼 `youtube-nocookie.com` 임베드로 재생하면 된다. ⚠️ 네이티브 백그라운드 재생(오디오 스트림 URL)은 **앱 전체의 미해결 과제**라 이 API로 해결되지 않는다 — `docs/MOBILE_APP_PLAN.md`
+4. **재생**: 결과는 **유튜브 `videoId`뿐**(`Song`·벅스와 무관, `songId` 없음). 앱은 videoId를 **폰에서 직접 오디오로 추출해 백그라운드 재생**한다(유튜브 검색 결과와 같은 경로) — 임베드 불필요. 앱 쪽 재생 구조는 `d:\projects\dibe2-app\CLAUDE.md`부터. `songId`가 없어 재생수 집계·좋아요·가사는 붙지 않는다
 5. **저장**: 마음에 드는 곡을 남기려면 기존 비디오 플레이리스트(`POST /api/video-playlists/:id/videos`)에 `videoId`·`title`·`thumbnail`로 넣으면 된다(같은 영상 기준 구조). `duration`은 이 API는 **초(숫자)**, 비디오 플레이리스트는 `"3:45"` **문자열**이라 변환 필요
 6. **`tier`**: `core`(여러 리스트가 합의한 곡) / `explore`(탐색곡). UI에 굳이 노출할 필요는 없고, 나중에 피드백(넘김·좋아요) 수집 시 구분용
 7. **배포**: API는 `dibe2` main 배포(Netlify) 후부터 운영 주소에서 호출 가능. 데이터는 이미 운영 DB에 있다

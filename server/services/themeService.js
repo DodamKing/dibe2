@@ -63,19 +63,27 @@ function toItem(s) {
         title: s.title,
         artist: s.artist,
         duration: s.duration,
-        thumbnail: `https://i.ytimg.com/vi/${s.videoId}/hqdefault.jpg`,
+        thumbnail: thumbnailOf(s.videoId),
         tier: s.tier,
     }
 }
 
+const thumbnailOf = (videoId) => `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+
 // GET /api/themes
+// cover = 그 테마 core 점수 1위(국내곡)의 썸네일 — 앱 카드 그림. 앱이 테마별 그림을 들고 있지 않아도
+// 정의 추가(배포 없음)만으로 새 테마 카드가 그려진다. 1위는 수집 갱신 때만 바뀌므로 평소엔 같은 그림
 async function listThemes() {
     const themes = await Theme.find({ active: true }).sort({ order: 1 }).lean()
-    return themes.map((t) => ({
+    const tops = await Promise.all(themes.map((t) => ThemeSong
+        .findOne({ theme: t.key, tier: 'core', foreign: { $ne: true } })
+        .sort({ score: -1 }).select('videoId').lean()))
+    return themes.map((t, i) => ({
         key: t.key,
         name: t.name,
         songCount: t.lastStats ? (t.lastStats.core || 0) + (t.lastStats.explore || 0) : 0,
         updatedAt: t.lastRefreshedAt || null,
+        cover: tops[i] ? thumbnailOf(tops[i].videoId) : null,
     }))
 }
 

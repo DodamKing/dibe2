@@ -94,7 +94,7 @@
 
 | Method | Path | 설명 |
 |--------|------|------|
-| GET | `/` | 활성 테마 목록(order 순). 응답: `{ themes: [{ key, name, songCount, updatedAt }] }` |
+| GET | `/` | 활성 테마 목록(order 순). 응답: `{ themes: [{ key, name, songCount, updatedAt, cover }] }`. `cover` = core 점수 1위 국내곡 썸네일(앱 카드 그림, 없으면 null) |
 | GET | `/:key?seed=` | 테마 곡 50개. 응답: `{ theme: {key, name}, seed, updatedAt, songs: [{ videoId, title, artist, duration, thumbnail, tier }] }`. 없는·비활성 테마는 404 |
 
 - **결과는 유튜브 영상**이라 `Song`과 무관하다(`songId` 없음). 재생은 `videoId` 그대로, 썸네일은 서버가 `i.ytimg.com/vi/{id}/hqdefault.jpg`로 만들어 준다
