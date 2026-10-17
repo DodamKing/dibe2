@@ -139,3 +139,39 @@
 ```
 - 단일 document로 관리 (findOne)
 - `findOneAndUpdate` pre-hook으로 lastUpdated 자동 갱신
+
+## Theme - server/models/Theme.js
+```
+{
+  key: String (unique),      // rain, workout … (URL 식별자)
+  name: String,              // 비 오는 날 …
+  order: Number,
+  active: Boolean,           // 정의에서 빠지면 false (곡 데이터는 남김)
+  lastRefreshedAt: Date,     // 마지막 DB 반영 — 감쇠 계산 기준
+  lastStats: { playlists, core, explore },
+  createdAt, updatedAt (timestamps)
+}
+```
+- **원본은 코드(`server/services/themeDefinitions.js`)**, 이 컬렉션은 그 사본 + 수집 상태. `scripts/refresh-themes.js`가 실행마다 upsert. 검색어는 DB에 안 둔다(수집 스크립트만 쓰므로)
+- 테마 플레이리스트 전체 설계는 `docs/THEME_PLAYLIST.md`
+
+## ThemeSong - server/models/ThemeSong.js
+```
+{
+  theme: String,             // Theme.key
+  songKey: String,           // 같은 곡 판정 키 "본제목|아티스트토큰" — 대표 영상이 바뀌어도 유지
+  videoId: String,           // 대표 영상 (Topic > 공식 > 최다 등장)
+  title, artist: String,
+  duration: Number,          // 초
+  score: Number,             // max(기존 × 감쇠, 이번 점수) — 반감기 45일, 0.05 미만 삭제
+  count: Number,             // 마지막으로 보인 수집에서 등장한 플레이리스트 수
+  share: Number,             // count / 그 수집의 플레이리스트 수 — 테마 특이성 계산용
+  tier: 'core' | 'explore',  // core = 2개+ 리스트, explore = 1회(탐색용)
+  foreign: Boolean,          // 해외곡 (50곡 중 최대 5)
+  lastSeenAt: Date,
+  createdAt, updatedAt (timestamps)
+}
+```
+- 인덱스: `{theme: 1, songKey: 1}` 유니크, `{theme: 1, score: -1}`
+- **`Song`과 무관** — 유튜브 영상 기준이라 벅스에 없는 곡도 있다. `songId` 참조 없음
+- 테마당 수백 행(2026-10-17 기준 core 85~289 + explore 64~292)

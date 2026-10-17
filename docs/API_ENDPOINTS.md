@@ -89,6 +89,20 @@
 
 > APK는 private 저장소 `dibe2-app`의 GitHub Releases 자산으로 배포. `/download`는 private 자산을 octet-stream으로 요청해 GitHub이 주는 단기 서명 URL(약 5분)만 받아 반환(바이트 프록시 X → Netlify 6MB 제한 무관). Netlify env `GITHUB_TOKEN`(dibe2-app contents:read) 필요.
 
+## Themes (`/api/themes`) - server/api/theme.js (테마 플레이리스트, 모바일 앱용)
+설계·알고리즘은 `docs/THEME_PLAYLIST.md`. 로그인 필수(전역 JWT).
+
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | `/` | 활성 테마 목록(order 순). 응답: `{ themes: [{ key, name, songCount, updatedAt }] }` |
+| GET | `/:key?seed=` | 테마 곡 50개. 응답: `{ theme: {key, name}, seed, updatedAt, songs: [{ videoId, title, artist, duration, thumbnail, tier }] }`. 없는·비활성 테마는 404 |
+
+- **결과는 유튜브 영상**이라 `Song`과 무관하다(`songId` 없음). 재생은 `videoId` 그대로, 썸네일은 서버가 `i.ytimg.com/vi/{id}/hqdefault.jpg`로 만들어 준다
+- **`seed`**: 같은 seed면 같은 50곡·같은 순서. 안 보내면 서버가 랜덤으로 정해 응답에 넣는다 → 앱이 "새로고침"은 seed 없이, "아까 그 목록 다시 그리기"는 받은 seed로 요청
+- 구성: 대표곡 15(항상) + 핵심 20(가중 랜덤) + 탐색 15(`tier: 'explore'`, 1개 리스트에만 나온 곡). 해외곡 최대 5
+- API는 DB만 읽는다(유튜브 요청 없음). 풀 갱신은 `scripts/refresh-themes.js`
+- `duration`은 초 단위 숫자(비디오 플레이리스트의 `"3:45"` 문자열과 다르다)
+
 ## 기타
 | Method | Path | 설명 |
 |--------|------|------|

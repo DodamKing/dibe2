@@ -46,6 +46,8 @@ const Playlist = require('./Playlist')
 const VideoPlaylist = require('./VideoPlaylist')
 const Like = require('./Like')
 const PlayEvent = require('./PlayEvent')
+const Theme = require('./Theme')
+const ThemeSong = require('./ThemeSong')
 
 module.exports = {
     connectToMongoDB,
@@ -56,4 +58,6 @@ module.exports = {
     VideoPlaylist,
     Like,
     PlayEvent,
+    Theme,
+    ThemeSong,
 }

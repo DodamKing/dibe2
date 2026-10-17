@@ -15,6 +15,7 @@
 | `docs/AUTH_FLOW.md` | 인증/권한 관련 작업 시 |
 | `docs/CRON_EXTERNAL.md` | 크론잡/외부API 관련 작업 시 |
 | `docs/MOBILE_APP_PLAN.md` | 모바일 앱(Flutter) 관련 작업 시 |
+| `docs/THEME_PLAYLIST.md` | 테마 플레이리스트(상황·분위기 추천) API·수집 스크립트 작업 시 |
 
 ## 핵심 기술 스택
 - **Frontend**: Nuxt 2 (Vue 2, `ssr:false` + `target:static`) + Vuex + TailwindCSS

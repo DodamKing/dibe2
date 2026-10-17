@@ -3,6 +3,7 @@ const videoPlaylistService = require("./videoPlaylistService")
 const userService = require("./userService")
 const adminService = require('./adminService')
 const statsService = require('./statsService')
+const themeService = require('./themeService')
 
 module.exports = {
     songService: require("./songService"),
@@ -10,5 +11,6 @@ module.exports = {
     videoPlaylistService,
     userService,
     adminService,
-    statsService
+    statsService,
+    themeService
 }

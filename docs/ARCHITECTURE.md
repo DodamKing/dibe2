@@ -54,7 +54,8 @@ dibe2/
 │   │   ├── videoPlaylist.js  # /api/video-playlists/*
 │   │   ├── admin.js     # /api/admin/*
 │   │   ├── user.js      # /api/users/* (로그인/OAuth/JWT 발급)
-│   │   └── youtube.js   # /api/youtube/* (비디오 페이지 전용 검색)
+│   │   ├── youtube.js   # /api/youtube/* (비디오 페이지 전용 검색)
+│   │   └── theme.js     # /api/themes/* (테마 플레이리스트 — 모바일 앱용, docs/THEME_PLAYLIST.md)
 │   ├── middleware/
 │   │   ├── auth.js      # JWT 인증 (jwtCheckMiddleware, adminMiddleware, generateToken)
 │   │   └── cors.js
@@ -65,7 +66,9 @@ dibe2/
 │   │   ├── Song.js      # 곡 (title,artist,album,youtubeUrl,lyrics,genre,style,likeCount,playCount)
 │   │   ├── Like.js      # 좋아요 (user+song 유니크). Song.likeCount의 원본
 │   │   ├── PlayEvent.js # 재생 이력 (user,song,source,playedAt) TTL 180일. 추천용 신호 + Song.playCount의 원본
-│   │   └── User.js      # 유저 (email,provider,expiryDate,isAdmin)
+│   │   ├── User.js      # 유저 (email,provider,expiryDate,isAdmin)
+│   │   ├── Theme.js     # 테마 정의 사본 + 수집 상태 (원본은 services/themeDefinitions.js)
+│   │   └── ThemeSong.js # 테마별 후보 곡 풀 (유튜브 영상 기준, Song과 무관)
 │   ├── services/
 │   │   ├── index.js     # 서비스 export hub
 │   │   ├── songService.js    # 차트/곡/유튜브/검색 로직
@@ -73,7 +76,10 @@ dibe2/
 │   │   ├── playlistService.js
 │   │   ├── videoPlaylistService.js
 │   │   ├── adminService.js   # 통계, 접근 기간 설정
-│   │   └── userService.js
+│   │   ├── userService.js
+│   │   ├── themeService.js      # 테마 목록·50곡 구성(buildList)·수집 결과 반영(감쇠)
+│   │   ├── themeCollector.js    # 유튜브 플리 수집·곡 묶기·점수 (DB 모름 — 스크립트/향후 크론 공용)
+│   │   └── themeDefinitions.js  # 테마 9개 + 검색어 (원본)
 │   └── utils/
 │       └── helper.js              # Bugs 크롤링(parseTitleCell/getLyrics/getAlbumGenre), Slack 알림
 │
@@ -81,6 +87,8 @@ dibe2/
 │   │                      # ⚠️ DB 접속은 반드시 server/models의 connectToMongoDB() 사용
 │   ├── lib/bugs.js        # 벅스 공용 HTTP 클라이언트(지터·UA·쿠키) + HTML 파서
 │   ├── backfill-genre.js  # 기존 DB 곡에 장르/스타일 백필 (완료됨)
+│   ├── refresh-themes.js  # 테마 플레이리스트 풀 갱신 (주기 실행 — 지금은 수동, 자동화 예정)
+│   │                      #   --dry-run / --theme rain / --cache <dir>. docs/THEME_PLAYLIST.md
 │   ├── fix-dirty-titles.js   # DB의 오염된 제목([19금]\n곡명) 정리 + adult 이관 (완료됨, dry-run 기본)
 │   ├── clean-collected-titles.js  # 수집본(data/*.jsonl) 제목 정리 + adult 이관 (완료됨, .bak 백업)
 │   │                              #   ⚠️ 배지 판별은 개행 기준 — `[드포즈 극장] …`은 진짜 제목이다

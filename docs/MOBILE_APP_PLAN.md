@@ -75,6 +75,9 @@ dibe2-app/      ← 새 프로젝트 (Flutter 앱)
 - 웹앱 프로젝트와 섞으면 빌드/배포가 복잡해짐
 - 앱에서는 기존 Netlify API를 HTTP로 호출 (백엔드 코드 중복 없음)
 
+## 앱에서 쓸 API
+- **테마 플레이리스트** (2026-10-17 신설, 앱 전용으로 만든 API): `GET /api/themes`, `GET /api/themes/:key?seed=` — "비 오는 날"·"운동" 등 9개 테마 × 50곡, 결과는 유튜브 `videoId`. 연동 방법은 `docs/THEME_PLAYLIST.md` "모바일 앱 연동", 필드는 `docs/API_ENDPOINTS.md` Themes 절
+
 ## 고려사항
 - **CORS**: Netlify API가 앱에서의 요청도 허용하도록 설정 필요할 수 있음
 - ~~**Invidious 스트림 URL 수명**: URL 만료 처리 필요~~ → 위 "해결 방법"의 경고 참조. Invidious 경로 자체가 막혔다
