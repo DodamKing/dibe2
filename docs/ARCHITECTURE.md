@@ -57,10 +57,10 @@ dibe2/
 │   │   ├── youtube.js   # /api/youtube/* (비디오 페이지 전용 검색)
 │   │   └── theme.js     # /api/themes/* (테마 플레이리스트 — 모바일 앱용, docs/THEME_PLAYLIST.md)
 │   ├── middleware/
-│   │   ├── auth.js      # JWT 인증 (jwtCheckMiddleware, adminMiddleware, generateToken)
+│   │   ├── auth.js      # JWT 인증 (jwtCheckMiddleware·만료 재확인, adminMiddleware, generateToken/generateTokenPair) — docs/AUTH_FLOW.md
 │   │   └── cors.js
 │   ├── models/
-│   │   ├── Chart.js     # 차트 (items: [{rank,title,artist,...}])
+│   │   ├── Chart.js     # 차트 (items: [{rank,title,artist,...}]) — Chart(국내) + PopChart(해외, popcharts)
 │   │   ├── Playlist.js  # 플레이리스트 (user ref, songs[])
 │   │   ├── VideoPlaylist.js  # 비디오 플레이리스트 (user ref, videos[] — songId ref 없음, 전부 비정규화)
 │   │   ├── Song.js      # 곡 (title,artist,album,youtubeUrl,lyrics,genre,style,likeCount,playCount)
