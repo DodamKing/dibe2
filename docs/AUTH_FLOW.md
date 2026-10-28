@@ -19,7 +19,7 @@ Payload: {
   expiryDate: Date
 }
 Secret: process.env.JWT_SECRET
-만료: 30일 (웹·옛 앱) / 앱(v1.0.20+)은 아래 "토큰 2방식"
+만료: 30일 (웹·옛 앱) / 앱(v1.1.0+)은 아래 "토큰 2방식"
 ```
 
 ## 토큰 2방식 — 30일 토큰 / 접근+리프레시 (2026-10-28)
@@ -30,7 +30,7 @@ Secret: process.env.JWT_SECRET
 | 클라이언트 | 로그인 응답 | 비고 |
 |---|---|---|
 | 웹, 앱 v1.0.19 이하 | `token`(30일, `typ` 없음) | 기존 그대로. **안 바꾸면 옛 앱이 1시간마다 로그아웃된다** |
-| 앱 v1.0.20+ (본문 `refresh: true`) | `token`(접근, `typ:'access'`, **1시간**) + `refreshToken`(`typ:'refresh'`, **90일**) | 네이티브 `POST /users/google|kakao`만 해당 |
+| 앱 v1.1.0+ (본문 `refresh: true`) | `token`(접근, `typ:'access'`, **1시간**) + `refreshToken`(`typ:'refresh'`, **90일**) | 네이티브 `POST /users/google|kakao`만 해당 |
 
 - **`POST /users/refresh`** `{refreshToken}` → `{token, refreshToken, user}`. 권한(`isAdmin`·`expiryDate`)을 **DB에서 새로** 읽는다
   = 관리자가 바꾼 기간이 반영되는 지점(최대 1시간 지연). 리프레시 토큰도 매번 새로 준다(슬라이딩 90일)

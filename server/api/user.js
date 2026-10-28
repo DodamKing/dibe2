@@ -81,7 +81,7 @@ router.get('/me', async (req, res) => {
     res.json({ user: userWithExpiry })
 })
 
-// 네이티브 앱 로그인 응답. 본문에 refresh:true(앱 v1.0.20+)면 짧은 접근 토큰 + 리프레시 토큰,
+// 네이티브 앱 로그인 응답. 본문에 refresh:true(앱 v1.1.0+)면 짧은 접근 토큰 + 리프레시 토큰,
 // 아니면(옛 앱) 기존 30일 토큰. 옛 앱은 refreshToken 필드를 모르고 token만 저장한다.
 function nativeLoginResponse(req, tokenPayload, user) {
     if (req.body.refresh === true) {
