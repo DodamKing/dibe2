@@ -116,9 +116,10 @@ module.exports = {
     albumIdFromCoverUrl,
     getAlbumGenre,
     parseTitleCell,
-    getBugsChart: async () => {
+    // path: 'day/total'(국내 포함 종합, 기본) | 'day/pop'(해외 전체 장르 — J-POP·OST도 섞인다)
+    getBugsChart: async (path = 'day/total') => {
         try {
-            const url = 'https://music.bugs.co.kr/chart/track/day/total';
+            const url = `https://music.bugs.co.kr/chart/track/${path}`;
             const response = await axios.get(url);
             const html = response.data;
             const $ = cheerio.load(html);

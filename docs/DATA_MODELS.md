@@ -139,6 +139,9 @@
 ```
 - 단일 document로 관리 (findOne)
 - `findOneAndUpdate` pre-hook으로 lastUpdated 자동 갱신
+- **`PopChart`**(컬렉션 `popcharts`, 2026-10-28) — 해외 Top 100. 스키마 동일, 같은 파일에서 export.
+  같은 컬렉션에 `kind`로 넣지 않은 이유: 조건 없는 `Chart.findOne()`(서비스·`scripts/cron-health.js`)이 어느 문서를 집을지 모르게 된다
+- 해외 곡도 `Song`에 같이 쌓인다(`title`+`artist`로 중복 판별). 2026-10-28 첫 적재 100곡 중 83곡이 신곡
 
 ## Theme - server/models/Theme.js
 ```

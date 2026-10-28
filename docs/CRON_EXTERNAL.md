@@ -8,6 +8,7 @@
 | KST 시간 | UTC 스케줄 | 함수 파일 | 작업 |
 |----------|-----------|----------|------|
 | 매일 08:00 | `0 23 * * *` | `cron-chart.js` | Bugs 차트 크롤링 → Song 저장 → **`markCharted()`** → Chart 갱신 |
+| 매일 08:05 | `5 23 * * *` | `cron-chart-pop.js` | Bugs **해외** 차트(`day/pop`) → Song 저장 → `markCharted()` → PopChart 갱신. 국내와 30초 예산을 나눠 쓰지 않게 따로, 채움 크론보다는 앞(그날 신곡이 같은 아침에 처리되게) |
 | 매일 08:10 | `10 23 * * *` | `cron-lyrics.js` | lyrics 없는 곡에 Bugs 상세페이지에서 **가사 + 곡 길이(`duration`)** |
 | 매일 08:20 | `20 23 * * *` | `cron-genre.js` | genre 없는 곡에 Bugs **앨범 페이지**에서 장르/스타일 |
 | 매일 08:30 | `30 23 * * *` | `cron-youtube.js` | youtubeUrl 없는 곡에 YouTube 검색 → URL 저장 (**길이로 후보 판정**) |

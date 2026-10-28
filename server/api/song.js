@@ -2,6 +2,7 @@ const express = require('express')
 const mongoose = require('mongoose')
 const helper = require('../utils/helper')
 const services = require('../services')
+const db = require('../models')
 const { adminMiddleware } = require('../middleware/auth')
 
 const router = express.Router()
@@ -30,6 +31,17 @@ router.get('/chart', async (req, res) => {
         res.json({ chart })
     } catch (err) {
         console.error('차트 가져오는 엔드포인트 에러', err)
+        res.status(500).end()
+    }
+})
+
+// 해외(팝) Top 100. 응답 모양은 /chart와 같다. 아직 수집 전이면 chart: null
+router.get('/chart/pop', async (req, res) => {
+    try {
+        const chart = await services.songService.getChartData(db.PopChart)
+        res.json({ chart })
+    } catch (err) {
+        console.error('해외 차트 가져오는 엔드포인트 에러', err)
         res.status(500).end()
     }
 })

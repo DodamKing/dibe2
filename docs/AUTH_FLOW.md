@@ -19,8 +19,27 @@ Payload: {
   expiryDate: Date
 }
 Secret: process.env.JWT_SECRET
-만료: 30일
+만료: 30일 (웹·옛 앱) / 앱(v1.0.20+)은 아래 "토큰 2방식"
 ```
+
+## 토큰 2방식 — 30일 토큰 / 접근+리프레시 (2026-10-28)
+
+**배경**: 토큰 안의 `expiryDate`·`isAdmin`은 **발급 시점 값**이라, 관리자가 기간을 바꿔도 그 토큰이 사는
+30일 동안 반영되지 않았다 — 연장해도 앱 "다시 확인"이 계속 403(재로그인해야 풀림), 줄이거나 끊어도 최대 30일 계속 사용.
+
+| 클라이언트 | 로그인 응답 | 비고 |
+|---|---|---|
+| 웹, 앱 v1.0.19 이하 | `token`(30일, `typ` 없음) | 기존 그대로. **안 바꾸면 옛 앱이 1시간마다 로그아웃된다** |
+| 앱 v1.0.20+ (본문 `refresh: true`) | `token`(접근, `typ:'access'`, **1시간**) + `refreshToken`(`typ:'refresh'`, **90일**) | 네이티브 `POST /users/google|kakao`만 해당 |
+
+- **`POST /users/refresh`** `{refreshToken}` → `{token, refreshToken, user}`. 권한(`isAdmin`·`expiryDate`)을 **DB에서 새로** 읽는다
+  = 관리자가 바꾼 기간이 반영되는 지점(최대 1시간 지연). 리프레시 토큰도 매번 새로 준다(슬라이딩 90일)
+  - 리프레시 토큰은 **프로필만** 든다(name·picture는 DB에 없고 소셜 로그인 때만 받으므로). 권한은 안 든다
+  - 만료된 사용자도 재발급은 해준다(새 토큰으로 요청하면 403 → 앱 만료 게이트)
+  - 🗑️ **본문에 옛 30일 토큰도 받는다** — 앱 업데이트 직후 로그아웃 없이 넘어오는 1회성 교환.
+    옛 토큰이 다 만료되면(마지막 옛 앱 로그인 + 30일) **이 분기와 아래 "만료 재확인"을 같이 지워도 된다**
+- 리프레시 토큰을 `Authorization` 헤더로 보내면 401 (접근 토큰으로 인정 안 함)
+- `ACCESS_TOKEN_TTL` env는 로컬 검증용(예: `2m`). 운영 env엔 넣지 않는다
 > 🔴 **유저 id 접근은 `req.user.userId` — `req.user._id`가 아니다.** 페이로드 키가 `userId`라
 > `_id`로 읽으면 조용히 `undefined`가 흘러간다(예외가 안 남). Mongoose 문서 습관 때문에 틀리기 쉬움.
 > 로그인 5경로(`server/api/user.js`의 일반/구글웹/카카오웹/구글앱/카카오앱) 전부 `userId: user._id`로 발급하고,
@@ -42,13 +61,16 @@ Secret: process.env.JWT_SECRET
 1. 토큰 없음 → publicPaths만 허용, 나머지 401
 2. 토큰 있음 → jwt.verify() → `req.user`에 디코딩된 페이로드 세팅
 3. 토큰 있음 + publicPaths 접근 → `/` 리다이렉트
-4. 관리자 아님 → expiryDate 체크 → 만료 시 403 (requireSubscription: true)
+4. 관리자 아님 → expiryDate 체크 → **토큰상 만료면 DB를 한 번 더 본다**(만료 재확인) → DB도 만료면 403 (requireSubscription: true)
+   - 정상 사용자는 DB 조회 0회(실측 로컬→Atlas 1회 ≈ 41ms라 매 요청 조회는 안 함)
+   - 웹·옛 앱(30일 토큰)이 연장 후 재로그인 없이 풀리는 유일한 경로
 5. `/users/logout`은 만료여도 허용
 
 ### publicPaths (토큰 없이 접근 가능)
 - `/users/login`, `/users/register`
 - `/users/google`, `/users/google/callback`
 - `/users/kakao`, `/users/kakao/callback`
+- `/users/refresh` (리프레시 토큰은 본문으로)
 - `/send-slack-message`
 
 ### adminMiddleware

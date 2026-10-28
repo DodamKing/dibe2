@@ -6,6 +6,7 @@
 | Method | Path | 설명 |
 |--------|------|------|
 | GET | `/chart` | Bugs Top100 차트 데이터 |
+| GET | `/chart/pop` | 해외(팝) Top100. 응답 모양은 `/chart`와 같음(`{chart}`), 수집 전이면 `chart: null`. 별도 컬렉션 `popcharts` |
 | GET | `/songdata?title=&artist=` | 제목+아티스트로 곡 조회 |
 | POST | `/songsdata` | body: {songs[]} → 복수 곡 조회 |
 | GET | `/search?query=&type=&page=&limit=` | 곡 검색 (type: all/title/artist/lyrics). **all=공백 토큰 AND**(각 토큰이 title∪artist 어디든 매칭) → "아이유 좋은날"처럼 가수+제목 조합도 잡힘. 단일 토큰은 종전과 동일 |
@@ -78,8 +79,9 @@
 | POST | `/login` | 로그인 |
 | POST | `/logout` | 로그아웃 |
 | POST | `/register` | 회원가입 |
-| POST | `/google` | 구글 소셜 로그인 |
-| POST | `/kakao` | 카카오 소셜 로그인 |
+| POST | `/google` | 구글 소셜 로그인. 본문 `refresh: true`면 접근(1h)+리프레시(90d) 토큰 쌍 |
+| POST | `/kakao` | 카카오 소셜 로그인. 〃 |
+| POST | `/refresh` | `{refreshToken}` → `{token, refreshToken, user}`. 권한을 DB에서 새로 읽음. 옛 30일 토큰도 1회 교환. 상세 `AUTH_FLOW.md` |
 
 ## App (`/api/app`) - server/api/app.js (안드로이드 앱 배포/자동 업데이트)
 | Method | Path | 설명 |

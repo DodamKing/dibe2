@@ -40,7 +40,7 @@ function connectToMongoDB() {
 }
 
 const User = require('./User')
-const Chart = require('./Chart')
+const { Chart, PopChart } = require('./Chart')
 const Song = require('./Song')
 const Playlist = require('./Playlist')
 const VideoPlaylist = require('./VideoPlaylist')
@@ -53,6 +53,7 @@ module.exports = {
     connectToMongoDB,
     User,
     Chart,
+    PopChart,
     Song,
     Playlist,
     VideoPlaylist,

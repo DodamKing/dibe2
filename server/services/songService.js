@@ -96,12 +96,13 @@ const createFlexibleRegex = (query) => {
 };
 
 module.exports = {
-    updateChartData: async (newChartData) => {
+    // model: db.Chart(국내 종합, 기본) | db.PopChart(해외)
+    updateChartData: async (newChartData, model = db.Chart) => {
         try {
-            const currentChart = await db.Chart.findOne()
+            const currentChart = await model.findOne()
 
             if (!currentChart) {
-                await db.Chart.create({ items: newChartData })
+                await model.create({ items: newChartData })
                 console.log('차트 초기 데이터 삽입 성공');
                 return
             }
@@ -126,7 +127,7 @@ module.exports = {
             }
 
             if (needsUpdate) {
-                await db.Chart.findOneAndUpdate({}, { $set: { items: newChartData } })
+                await model.findOneAndUpdate({}, { $set: { items: newChartData } })
             }
             else console.log('차트 변경점 없음')
         } catch (err) {
@@ -134,9 +135,9 @@ module.exports = {
         }
     },
 
-    getChartData: async () => {
+    getChartData: async (model = db.Chart) => {
         try {
-            const chartData = await db.Chart.findOne()
+            const chartData = await model.findOne()
             return chartData
         } catch (err) {
             console.error('차트 가져오다가 에러남:', err)
