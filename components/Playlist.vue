@@ -10,9 +10,21 @@
                     <!-- Mobile Header Controls -->
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-semibold text-purple-300">재생 목록 ({{ queue.length }}곡)</h2>
-                        <button class="text-gray-400 hover:text-white transition-colors duration-200" @click="close">
-                            <i class="fas fa-times"></i>
-                        </button>
+                        <div class="flex items-center gap-1">
+                            <!-- 모바일 미니 플레이어엔 자리가 없어 셔플·반복은 여기 둔다(데스크탑은 하단 플레이어에 있음) -->
+                            <button type="button" class="w-11 h-11 rounded-full" aria-label="셔플"
+                                :class="shuffleOn ? 'text-purple-400' : 'text-gray-400'" @click="toggleShuffle">
+                                <i class="fas fa-shuffle"></i>
+                            </button>
+                            <button type="button" class="relative w-11 h-11 rounded-full" aria-label="반복 재생"
+                                :class="repeatMode !== 'off' ? 'text-purple-400' : 'text-gray-400'" @click="toggleRepeat">
+                                <i class="fas fa-repeat"></i>
+                                <span v-if="repeatMode === 'one'" class="absolute top-2 right-2 text-[10px] font-bold leading-none">1</span>
+                            </button>
+                            <button class="w-11 h-11 text-gray-400 hover:text-white transition-colors duration-200" aria-label="닫기" @click="close">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Mobile Current Track Info -->
@@ -225,7 +237,7 @@ export default {
         }
     },
     computed: {
-        ...mapState('player', ['queue', 'currentTrack']),
+        ...mapState('player', ['queue', 'currentTrack', 'shuffleOn', 'repeatMode']),
         localQueue: {
             get() {
                 return this.queue
@@ -284,7 +296,7 @@ export default {
         }
     },
     methods: {
-        ...mapActions('player', ['setCurrentTrack', 'play', 'removeFromQueue', 'fetchCurrentTrackLyrics']),
+        ...mapActions('player', ['setCurrentTrack', 'play', 'removeFromQueue', 'fetchCurrentTrackLyrics', 'toggleShuffle', 'toggleRepeat']),
         ...mapMutations('player', ['SET_QUEUE']),
         close() {
             this.$emit('close')
