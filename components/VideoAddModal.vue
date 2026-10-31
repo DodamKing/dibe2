@@ -3,7 +3,7 @@
         <div v-if="show" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center" @click.self="close">
             <div class="bg-gray-800 rounded-lg p-6 max-w-sm w-full relative">
                 <button @click="close" class="absolute top-2 right-2 text-gray-400 hover:text-white">
-                    <i class="fas fa-times"></i>
+                    <Icon name="x" />
                 </button>
                 <h3 class="text-xl font-semibold mb-4">추가하기</h3>
                 <ul class="space-y-2">
@@ -32,7 +32,7 @@
                                     <button v-else @click="addToPlaylistAndClose(playlist)" :disabled="!!addingPlaylistId"
                                         class="w-full text-left p-2 rounded hover:bg-gray-700 transition-colors duration-200 flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed">
                                         <span>{{ playlist.name }}</span>
-                                        <i v-if="addingPlaylistId === playlist._id" class="fas fa-spinner fa-spin text-xs"></i>
+                                        <Icon name="loader" :size="12" class="animate-spin" v-if="addingPlaylistId === playlist._id" />
                                     </button>
                                 </li>
                                 <li v-if="playlists.length === 0" class="text-gray-400 text-sm p-2">

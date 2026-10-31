@@ -4,10 +4,10 @@
 			<button
 type="button" class="w-10 h-10 rounded-full bg-gray-800 text-gray-200 hover:bg-gray-700" aria-label="뒤로 가기"
 				@click="$router.back()">
-				<i class="fas fa-arrow-left"></i>
+				<Icon name="arrow-left" />
 			</button>
 			<div class="w-12 h-12 rounded-lg bg-purple-600 flex items-center justify-center">
-				<i class="fas fa-heart text-white text-xl"></i>
+				<Icon name="heart" :size="22" filled class="text-white" />
 			</div>
 			<div>
 				<h1 class="text-2xl sm:text-3xl font-bold">좋아요한 곡</h1>
@@ -16,7 +16,7 @@ type="button" class="w-10 h-10 rounded-full bg-gray-800 text-gray-200 hover:bg-g
 			<button
 type="button" :disabled="!songs.length" class="ml-auto flex items-center gap-1.5 h-10 px-4 rounded-full bg-purple-500 hover:bg-purple-600 text-sm font-semibold disabled:opacity-50"
 				@click="playAll">
-				<i class="fas fa-play text-xs"></i>전체 재생
+				<Icon name="play" :size="12" filled />전체 재생
 			</button>
 		</div>
 

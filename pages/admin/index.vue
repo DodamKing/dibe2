@@ -6,14 +6,14 @@
                 <div class="flex items-center">
                     <button @click="toggleSidebar"
                         class="mr-2 p-2 rounded-md text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 md:hidden">
-                        <i class="fas fa-bars"></i>
+                        <Icon name="menu" />
                     </button>
                     <h1 class="text-xl sm:text-2xl font-semibold text-gray-900">관리자 패널</h1>
                 </div>
                 <button
                     @click="exitAdmin"
                     class="p-2 rounded-md text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                    <i class="fas fa-sign-out-alt"></i>
+                    <Icon name="log-out" />
                 </button>
             </div>
         </header>

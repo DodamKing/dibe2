@@ -31,11 +31,16 @@ export default ({ app }, inject) => {
     }
 
     // 비동기 에러 핸들러 (서버 사이드 렌더링 중 발생하는 에러 캐치)
-    app.nuxt.error = (error) => {
-        console.error('Nuxt 에러:', error)
-        sendErrorMessage(`Nuxt 에러: ${error && error.message}`, error)
-        // 기본 Nuxt 에러 페이지로 리다이렉트
-        app.context.error(error)
+    // 원래 함수를 잡아 두고 그걸 부른다. 예전엔 app.context.error 를 불렀는데, 라우트마다 새로 만드는
+    // context.error 가 다시 app.nuxt.error(=이 함수)를 불러 **무한 재귀**였다(Maximum call stack, 2026-11 발견).
+    // Nuxt 는 에러 표시를 지우려고 인자 없이 error() 를 자주 부른다 — 그건 에러가 아니니 알리지 않는다
+    const originalError = app.nuxt.error
+    app.nuxt.error = function (error) {
+        if (error) {
+            console.error('Nuxt 에러:', error)
+            sendErrorMessage(`Nuxt 에러: ${error.message}`, error)
+        }
+        return originalError.call(this, error)
     }
 
     // Promise rejection 핸들러 (클라이언트 측 비동기 에러 캐치)

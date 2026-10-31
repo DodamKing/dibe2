@@ -1,24 +1,24 @@
 <template>
     <transition name="fade">
-        <div v-if="song" class="fixed inset-0 z-[60] bg-black bg-opacity-60 flex items-end" @click.self="$emit('close')">
-            <div class="w-full bg-surface-2 rounded-t-2xl pt-3 pb-6 px-2" role="dialog" :aria-label="`${song.title} 메뉴`">
-                <div class="w-9 h-1 rounded-full bg-gray-600 mx-auto mb-3"></div>
+        <div v-if="song" class="fixed inset-0 z-[60] bg-black bg-opacity-60 flex items-end sm:items-center sm:justify-center" @click.self="$emit('close')">
+            <div class="w-full sm:max-w-sm bg-surface-2 rounded-t-2xl sm:rounded-2xl pt-3 pb-6 sm:pb-3 px-2" role="dialog" :aria-label="`${song.title} 메뉴`">
+                <div class="sm:hidden w-9 h-1 rounded-full bg-gray-600 mx-auto mb-3"></div>
                 <div class="px-3 pb-3">
                     <p class="font-semibold truncate">{{ song.title }}</p>
                     <p class="text-sm text-gray-400 truncate">{{ song.artist }}</p>
                 </div>
                 <button v-if="songId" type="button" class="menu-item" @click="like">
-                    <i :class="[liked ? 'fas' : 'far', 'fa-heart', 'text-purple-400 w-5']"></i>
+                    <Icon name="heart" :filled="liked" class="text-purple-400 w-5" />
                     {{ liked ? '좋아요 취소' : '좋아요' }}
                 </button>
                 <button type="button" class="menu-item" @click="addToQueue(true)">
-                    <i class="fas fa-list w-5 text-gray-300"></i>다음에 재생
+                    <Icon name="list-music" class="w-5 text-gray-300" />다음에 재생
                 </button>
                 <button type="button" class="menu-item" @click="addToQueue(false)">
-                    <i class="fas fa-list w-5 text-gray-300"></i>대기열 맨 뒤에 추가
+                    <Icon name="list-music" class="w-5 text-gray-300" />대기열 맨 뒤에 추가
                 </button>
-                <button type="button" class="menu-item" @click="$emit('add-to-playlist', song)">
-                    <i class="fas fa-plus w-5 text-gray-300"></i>내 플레이리스트에 담기
+                <button v-if="kind === 'song'" type="button" class="menu-item" @click="$emit('add-to-playlist', song)">
+                    <Icon name="plus" class="w-5 text-gray-300" />내 플레이리스트에 담기
                 </button>
             </div>
         </div>
@@ -26,11 +26,13 @@
 </template>
 
 <script>
-// 모바일 곡 메뉴(⋯). 데스크탑은 줄에 하트가 보이므로 이 시트를 쓰지 않는다.
+// 곡 메뉴(⋯). 모바일은 아래에서 올라오는 시트, 데스크탑은 가운데 작은 창.
 export default {
     props: {
         song: { type: Object, default: null },
         songId: { type: String, default: null },
+        // 'video' = 테마(유튜브 곡) — 좋아요·내 플레이리스트 담기는 곡 id가 없어 숨긴다
+        kind: { type: String, default: 'song' },
     },
     computed: {
         liked() {
@@ -43,10 +45,17 @@ export default {
             document.body.style.overflow = v ? 'hidden' : ''
         },
     },
+    mounted() {
+        document.addEventListener('keydown', this.onKey)
+    },
     beforeDestroy() {
         document.body.style.overflow = ''
+        document.removeEventListener('keydown', this.onKey)
     },
     methods: {
+        onKey(e) {
+            if (e.key === 'Escape' && this.song) this.$emit('close')
+        },
         like() {
             this.$store.dispatch('likes/toggle', this.songId)
             this.$emit('close')
@@ -55,7 +64,7 @@ export default {
         // 곡 id 는 songId prop 이 정답이다 — 차트 항목의 _id 는 곡이 아니다
         async addToQueue(front) {
             const song = { ...this.song, _id: this.songId || undefined }
-            const { added } = await this.$store.dispatch('player/addToQueue', { songs: [song], idKey: '_id', front })
+            const { added } = await this.$store.dispatch('player/addToQueue', { songs: [song], idKey: '_id', kind: this.kind, front })
             this.$store.commit('player/SET_NOTICE', !added ? '재생 대기열이 가득 찼어요.' : front ? '다음에 재생할게요.' : '대기열에 추가했어요.')
             this.$emit('close')
         },

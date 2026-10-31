@@ -26,7 +26,7 @@
                         <button @click="showAddModal = true"
                             class="sm:hidden px-4 py-2 min-h-[44px] bg-green-600 text-white rounded-md hover:bg-green-700 whitespace-nowrap"
                             aria-label="새 음원 추가">
-                            <i class="fas fa-plus"></i>
+                            <Icon name="plus" />
                         </button>
                     </div>
                 </div>
@@ -228,7 +228,7 @@
                             <button type="button" @click="searchYoutubeUrl"
                                 :disabled="!currentSong.title || !currentSong.artist"
                                 class="mt-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                                <i class="fab fa-youtube mr-2"></i>검색
+                                <Icon name="youtube" class="mr-2" />검색
                             </button>
                         </div>
 
@@ -263,7 +263,7 @@
                                             -->
                                             <div class="absolute inset-0 bg-black bg-opacity-30 sm:bg-opacity-50 rounded flex items-center justify-center opacity-100 sm:opacity-0 sm:hover:opacity-100 transition-opacity cursor-pointer"
                                                 @click.prevent="previewYoutubeInModal(result, $event)">
-                                                <i class="fas fa-play text-white text-lg drop-shadow"></i>
+                                                <Icon name="play" :size="20" filled class="text-white drop-shadow" />
                                             </div>
                                         </div>
                                         <div class="flex-1 min-w-0 cursor-pointer" @click="selectYoutubeUrl(result)">
@@ -286,11 +286,11 @@
                                         <div class="flex items-center space-x-2">
                                             <button type="button" @click.prevent="togglePreviewPlay"
                                                 class="p-1.5 text-gray-600 hover:text-gray-800">
-                                                <i :class="['fas', isPaused ? 'fa-play' : 'fa-pause']"></i>
+                                                <Icon :name="isPaused ? 'play' : 'pause'" filled />
                                             </button>
                                             <button type="button" @click.prevent="stopPreview"
                                                 class="p-1.5 text-red-600 hover:text-red-800">
-                                                <i class="fas fa-times"></i>
+                                                <Icon name="x" />
                                             </button>
                                         </div>
                                     </div>
@@ -337,11 +337,11 @@
                     <div class="flex items-center space-x-2">
                         <button @click="togglePlay"
                             class="text-blue-600 hover:text-blue-800 focus:outline-none p-2 transition duration-150 ease-in-out">
-                            <i :class="['fas', isPlaying && !isPaused ? 'fa-pause' : 'fa-play']"></i>
+                            <Icon :name="isPlaying && !isPaused ? 'pause' : 'play'" filled />
                         </button>
                         <button @click="stopPlay"
                             class="text-red-600 hover:text-red-800 focus:outline-none p-2 transition duration-150 ease-in-out">
-                            <i class="fas fa-stop"></i>
+                            <Icon name="square" filled />
                         </button>
                     </div>
                 </div>

@@ -4,14 +4,14 @@
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-x-6 sm:gap-y-10">
             <div @click="$emit('create-playlist')"
                 class="relative group cursor-pointer bg-gray-700 rounded-lg flex items-center justify-center aspect-video transition-colors duration-300 hover:bg-gray-600">
-                <i class="fas fa-plus text-3xl text-gray-400 group-hover:text-white transition-colors duration-300"></i>
+                <Icon name="plus" :size="30" class="text-gray-400 group-hover:text-white transition-colors duration-300" />
             </div>
             <div v-for="playlist in playlists" :key="playlist._id" class="relative group cursor-pointer"
                 @click="handleClick(playlist._id)" @touchstart="touchStart(playlist._id, $event)"
                 @touchend="touchEnd(playlist._id, $event)" @touchmove="touchMove(playlist._id, $event)">
                 <div v-if="playlist.videos.length === 0"
                     class="aspect-video w-full flex flex-col items-center justify-center p-4 bg-gray-700 rounded-lg">
-                    <i class="fas fa-video text-3xl text-gray-400 mb-2"></i>
+                    <Icon name="video" :size="30" class="text-gray-400 mb-2" />
                     <p class="text-center text-xs text-gray-300">아직 영상이 없습니다</p>
                 </div>
                 <div v-else class="aspect-video w-full rounded-lg overflow-hidden">

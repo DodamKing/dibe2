@@ -10,7 +10,7 @@ v-if="selectable" type="checkbox" :checked="selected" :aria-label="`${song.title
         <div class="min-w-0 flex-1">
             <p class="flex items-center gap-1 text-sm sm:text-[15px] font-medium leading-tight">
                 <!-- 모바일은 하트 버튼이 없으니 좋아요한 곡을 제목 앞 작은 하트로 표시 -->
-                <i v-if="liked" class="fas fa-heart text-[10px] text-purple-400 sm:hidden" aria-label="좋아요한 곡"></i>
+                <Icon name="heart" :size="10" filled class="text-purple-400 sm:hidden" v-if="liked" aria-label="좋아요한 곡" />
                 <span class="truncate">{{ song.title }}</span>
             </p>
             <p class="text-xs sm:text-[13px] text-gray-400 truncate leading-tight mt-0.5">{{ song.artist }}</p>
@@ -23,13 +23,13 @@ v-if="songId" type="button" class="heart-btn hidden sm:flex items-center justify
             :class="liked ? 'is-on text-purple-400' : 'text-gray-400 hover:text-white'"
             :aria-label="liked ? '좋아요 취소' : '좋아요'" :aria-pressed="liked ? 'true' : 'false'"
             @click.stop="toggleLike">
-            <i :class="[liked ? 'fas' : 'far', 'fa-heart']"></i>
+            <Icon name="heart" :filled="liked" />
         </button>
-        <!-- 모바일: 곡 메뉴 -->
+        <!-- 곡 메뉴(다음에 재생·대기열 추가·담기). 데스크탑은 하트처럼 마우스를 올리면 보인다 -->
         <button
-type="button" class="sm:hidden flex items-center justify-center w-11 h-11 shrink-0 text-gray-400"
+type="button" class="menu-btn flex items-center justify-center w-11 h-11 sm:w-10 sm:h-10 shrink-0 rounded-full text-gray-400 hover:text-white"
             aria-label="곡 메뉴" @click.stop="$emit('menu', song)">
-            <i class="fas fa-ellipsis-v"></i>
+            <Icon name="ellipsis-vertical" />
         </button>
     </div>
 </template>
@@ -69,5 +69,10 @@ export default {
     .heart-btn:not(.is-on) { opacity: 0; }
     .song-row:hover .heart-btn,
     .heart-btn:focus-visible { opacity: 1; }
+}
+@media (hover: hover) and (min-width: 640px) {
+    .menu-btn { opacity: 0; }
+    .song-row:hover .menu-btn,
+    .menu-btn:focus-visible { opacity: 1; }
 }
 </style>

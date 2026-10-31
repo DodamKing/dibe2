@@ -8,7 +8,7 @@
             <div class="flex items-center space-x-4">
                 <NuxtLink to="/" aria-label="음원 모드로" title="음원 모드로"
                     class="text-white hover:text-gray-200 flex items-center">
-                    <i class="fas fa-music text-lg"></i>
+                    <Icon name="music" :size="20" />
                 </NuxtLink>
                 <UserMenu />
             </div>

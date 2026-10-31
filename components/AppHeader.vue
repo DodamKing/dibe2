@@ -1,27 +1,36 @@
 <template>
     <div>
         <div class="header-wrapper">
-            <header class="bg-surface-1 border-b border-white border-opacity-5 px-4 sm:px-8 py-4">
-                <div class="max-w-[1600px] mx-auto">
-                    <div class="flex justify-between items-center">
-                        <h1 class="text-2xl font-bold text-white">DIBE2</h1>
-                        <div class="flex items-center space-x-4">
-                            <button @click="toggleSearch" class="text-white sm:hidden" aria-label="검색">
-                                <i class="fas fa-search"></i>
+            <!-- 2026-11: 메뉴(홈·차트·테마·좋아요) 추가 — 테마 페이지가 생겨 홈에서만 들어가면 찾기 어렵다.
+                 모바일은 자리가 없어 메뉴 없이 검색·영상·사용자만(테마는 홈의 테마 구역으로) -->
+            <header class="bg-surface-1 border-b border-white border-opacity-5 px-4 sm:px-8">
+                <div class="max-w-[1600px] mx-auto h-14 sm:h-16 flex items-center gap-4 lg:gap-8">
+                    <NuxtLink to="/" class="text-xl sm:text-2xl font-bold text-white tracking-tight">DIBE2</NuxtLink>
+                    <nav aria-label="주 메뉴" class="hidden md:flex items-center gap-1">
+                        <NuxtLink v-for="m in menus" :key="m.to" :to="m.to"
+                            class="h-9 px-3.5 rounded-full flex items-center text-sm transition-colors"
+                            :class="isActive(m) ? 'bg-white bg-opacity-10 text-white font-medium' : 'text-gray-400 hover:text-white'">
+                            {{ m.label }}
+                        </NuxtLink>
+                    </nav>
+                    <div class="ml-auto flex items-center gap-1 sm:gap-3">
+                        <button @click="toggleSearch" class="sm:hidden w-11 h-11 flex items-center justify-center text-white" aria-label="검색">
+                            <Icon name="search" />
+                        </button>
+                        <div class="hidden sm:flex items-center gap-2 w-56 lg:w-80 h-10 px-3 rounded-full bg-surface-2 text-gray-400 focus-within:ring-2 focus-within:ring-purple-400">
+                            <button type="button" class="shrink-0 hover:text-white" aria-label="검색" @click="executeSearch">
+                                <Icon name="search" />
                             </button>
-                            <div class="hidden sm:block relative w-64">
-                                <input v-model="localSearchQuery" @keyup.enter="executeSearch" type="text"
-                                    placeholder="노래, 앨범, 아티스트 검색"
-                                    class="w-full bg-white bg-opacity-20 text-white placeholder-gray-300 rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-white focus:bg-opacity-30 pl-4 pr-12">
-                                <i @click="executeSearch"
-                                    class="fas fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-300 cursor-pointer"></i>
-                            </div>
-                            <NuxtLink to="/video" aria-label="유튜브 영상 검색" title="유튜브 영상 검색"
-                                class="text-white hover:text-gray-200 flex items-center">
-                                <i class="fas fa-video text-lg"></i>
-                            </NuxtLink>
-                            <UserMenu />
+                            <input v-model="localSearchQuery" @keyup.enter="executeSearch" type="search" aria-label="검색어"
+                                placeholder="노래, 앨범, 아티스트 검색"
+                                class="flex-1 min-w-0 bg-transparent text-white text-sm placeholder-gray-400 focus:outline-none">
                         </div>
+                        <NuxtLink to="/video" aria-label="유튜브 영상 검색" title="유튜브 영상 검색"
+                            class="flex items-center justify-center gap-2 text-white w-11 h-11 sm:w-auto sm:h-10 sm:px-4 sm:rounded-full sm:border sm:border-white sm:border-opacity-10 sm:hover:bg-white sm:hover:bg-opacity-5">
+                            <Icon name="video" />
+                            <span class="hidden sm:inline text-sm">영상</span>
+                        </NuxtLink>
+                        <UserMenu />
                     </div>
                 </div>
             </header>
@@ -44,11 +53,11 @@
                             class="flex-grow min-w-0 bg-gray-700 text-white placeholder-gray-400 rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-purple-500">
                         <button @click="executeSearch" aria-label="검색"
                             class="p-2 min-w-[44px] min-h-[44px] text-gray-300 hover:text-white flex-shrink-0">
-                            <i class="fas fa-search"></i>
+                            <Icon name="search" />
                         </button>
                         <button @click="toggleSearch" aria-label="검색 닫기"
                             class="p-2 min-w-[44px] min-h-[44px] text-gray-300 hover:text-white flex-shrink-0">
-                            <i class="fas fa-times"></i>
+                            <Icon name="x" />
                         </button>
                     </div>
                 </div>
@@ -76,9 +85,20 @@ export default {
     },
     computed: {
         ...mapState('search', ['searchQuery', 'searchResults', 'showSearch', 'showSearchResults']),
+        menus() {
+            return [
+                { to: '/', label: '홈', exact: true },
+                { to: '/chart', label: '차트' },
+                { to: '/theme', label: '테마' },
+                { to: '/liked', label: '좋아요' },
+            ]
+        },
     },
     methods: {
         ...mapActions('search', ['performSearch', 'closeSearchResults', 'toggleSearch', 'updateSearchQuery']),
+        isActive(m) {
+            return m.exact ? this.$route.path === m.to : this.$route.path.startsWith(m.to)
+        },
         executeSearch() {
             if (this.localSearchQuery.trim() !== '') {
                 this.updateSearchQuery(this.localSearchQuery)

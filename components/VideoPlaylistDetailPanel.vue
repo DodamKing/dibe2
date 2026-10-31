@@ -1,7 +1,7 @@
 <template>
     <div class="bg-gray-800 bg-opacity-70 rounded-lg shadow-lg p-4 sm:p-6 transition-transform duration-300">
         <div v-if="loading" class="flex justify-center items-center py-12">
-            <i class="fas fa-spinner fa-spin text-2xl text-gray-300"></i>
+            <Icon name="loader" :size="24" class="animate-spin text-gray-300" />
         </div>
 
         <div v-else-if="!currentPlaylist" class="flex flex-col items-center justify-center py-12">
@@ -13,14 +13,14 @@
 
         <div v-else>
             <button @click="$emit('back')" class="mb-4 text-gray-400 hover:text-white">
-                <i class="fas fa-arrow-left mr-2"></i>보관함으로
+                <Icon name="arrow-left" class="mr-2" />보관함으로
             </button>
 
             <div class="flex items-center mb-4">
                 <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-lg overflow-hidden mr-4 shrink-0 bg-gray-700 flex items-center justify-center">
                     <img v-if="currentPlaylist.videos[0]" :src="currentPlaylist.videos[0].thumbnail" :alt="currentPlaylist.videos[0].title"
                         class="w-full h-full object-cover">
-                    <i v-else class="fas fa-video text-3xl text-gray-500"></i>
+                    <Icon name="video" :size="30" class="text-gray-500" v-else />
                 </div>
 
                 <div class="flex-1 min-w-0">
@@ -28,17 +28,17 @@
                         <h1 v-if="!isEditing" @click="startEditing"
                             class="text-xl sm:text-2xl md:text-3xl font-bold hover:text-gray-300 cursor-pointer flex items-center truncate">
                             {{ currentPlaylist.name }}
-                            <i class="fas fa-pen text-xs sm:text-sm ml-2 text-gray-400 shrink-0"></i>
+                            <Icon name="pencil" :size="12" class="ml-2 text-gray-400 shrink-0" />
                         </h1>
                         <div v-else class="flex items-center gap-2 w-full sm:w-auto">
                             <input ref="nameInput" v-model="editingName" @keyup.enter="saveName" @keyup.esc="cancelEditing"
                                 class="text-xl sm:text-2xl md:text-3xl font-bold bg-gray-700 text-white rounded px-3 py-1.5 sm:py-1 w-[calc(100%-100px)] sm:w-auto sm:min-w-[300px] sm:max-w-[500px] focus:outline-none focus:ring-2 focus:ring-purple-500" />
                             <div class="flex gap-2 sm:gap-1 shrink-0">
                                 <button @click="saveName" class="text-green-500 hover:text-green-400 p-2.5 sm:p-2 rounded-full hover:bg-gray-700" title="저장">
-                                    <i class="fas fa-check text-lg sm:text-base"></i>
+                                    <Icon name="check" :size="20" />
                                 </button>
                                 <button @click="cancelEditing" class="text-gray-500 hover:text-gray-400 p-2.5 sm:p-2 rounded-full hover:bg-gray-700" title="취소">
-                                    <i class="fas fa-times text-lg sm:text-base"></i>
+                                    <Icon name="x" :size="20" />
                                 </button>
                             </div>
                         </div>
@@ -62,7 +62,7 @@
                         <p class="text-xs sm:text-sm text-gray-300 truncate">{{ video.channelTitle }}</p>
                     </div>
                     <button @click="removeVideo(video)" class="text-red-500 hover:text-red-600 flex-shrink-0">
-                        <i class="fas fa-trash"></i>
+                        <Icon name="trash" />
                     </button>
                 </li>
             </ul>

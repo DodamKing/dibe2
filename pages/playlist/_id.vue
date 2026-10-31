@@ -16,7 +16,7 @@
             <div class="bg-gray-800 bg-opacity-70 rounded-lg shadow-lg p-4 sm:p-6 transition-transform duration-300">
                 <div class="sticky top-0 z-10 pb-4">
                     <button @click="$router.go(-1)" class="mb-4 text-gray-400 hover:text-white">
-                        <i class="fas fa-arrow-left mr-2"></i>뒤로 가기
+                        <Icon name="arrow-left" class="mr-2" />뒤로 가기
                     </button>
                     <div class="flex items-center mb-4">
                         <!-- 커버 이미지 부분 - 기존 크기 유지 -->
@@ -38,7 +38,7 @@
                                 <h1 v-if="!isEditing" @click="startEditing"
                                     class="text-xl sm:text-2xl md:text-3xl font-bold hover:text-gray-300 cursor-pointer flex items-center truncate">
                                     {{ currentPlaylist.name }}
-                                    <i class="fas fa-pen text-xs sm:text-sm ml-2 text-gray-400 shrink-0"></i>
+                                    <Icon name="pencil" :size="12" class="ml-2 text-gray-400 shrink-0" />
                                 </h1>
                                 <div v-else class="flex items-center gap-2 w-full sm:w-auto">
                                     <input ref="nameInput" v-model="editingName" @keyup.enter="saveName"
@@ -49,12 +49,12 @@
                                         <button @click="saveName"
                                             class="text-green-500 hover:text-green-400 p-2.5 sm:p-2 rounded-full hover:bg-gray-700"
                                             title="저장">
-                                            <i class="fas fa-check text-lg sm:text-base"></i>
+                                            <Icon name="check" :size="20" />
                                         </button>
                                         <button @click="cancelEditing"
                                             class="text-gray-500 hover:text-gray-400 p-2.5 sm:p-2 rounded-full hover:bg-gray-700"
                                             title="취소">
-                                            <i class="fas fa-times text-lg sm:text-base"></i>
+                                            <Icon name="x" :size="20" />
                                         </button>
                                     </div>
                                 </div>
@@ -75,7 +75,7 @@
                         <!-- 삭제는 여기서만(홈 카드엔 두지 않는다). 실수 방지로 한 번 더 묻는다 -->
                         <button v-if="!confirmingDelete" type="button" @click="confirmingDelete = true"
                             class="ml-auto text-gray-400 hover:text-red-400 py-2 px-3 rounded text-sm sm:text-base">
-                            <i class="fas fa-trash-alt mr-1"></i>삭제
+                            <Icon name="trash" class="mr-1" />삭제
                         </button>
                         <template v-else>
                             <span class="ml-auto self-center text-sm text-gray-300">정말 삭제할까요?</span>
@@ -102,7 +102,7 @@
                                 <p class="text-xs sm:text-sm text-gray-300 truncate">{{ song.artist }}</p>
                             </div>
                             <button @click.stop="removeSong(song)" aria-label="플레이리스트에서 빼기" class="text-red-500 hover:text-red-600 flex-shrink-0">
-                                <i class="fas fa-trash"></i>
+                                <Icon name="trash" />
                             </button>
                         </li>
                     </ul>

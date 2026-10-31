@@ -15,11 +15,10 @@
                     <input v-model="localQuery" @keyup.enter="executeSearch" type="text"
                         placeholder="검색어 입력"
                         class="w-full bg-gray-600 text-white placeholder-gray-400 rounded-full py-2 px-4 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <i @click="executeSearch"
-                        class="fas fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 cursor-pointer hover:text-white"></i>
+                    <button type="button" aria-label="검색" class="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-white" @click="executeSearch"><Icon name="search" /></button>
                 </div>
                 <button @click="$emit('close')" class="text-gray-300 hover:text-white p-1 flex-shrink-0">
-                    <i class="fas fa-times"></i>
+                    <Icon name="x" />
                 </button>
             </div>
             <div class="p-3 sm:p-4 flex-1 min-w-0 min-h-0 flex flex-col">
@@ -43,13 +42,13 @@
                         <button @click="addSelectedToCurrentPlaylist"
                             class="bg-blue-500 text-white px-3 py-1 sm:px-4 sm:py-2 rounded text-sm sm:text-base"
                             :title="'재생 대기열에 추가'">
-                            <i class="fas fa-play-circle sm:hidden"></i>
+                            <Icon name="circle-play" class="sm:hidden" />
                             <span class="hidden sm:inline">대기열에 추가</span>
                         </button>
                         <button @click="showPlaylistModal = true"
                             class="bg-green-500 text-white px-3 py-1 sm:px-4 sm:py-2 rounded text-sm sm:text-base"
                             :title="'플레이리스트에 추가'">
-                            <i class="fas fa-plus-circle sm:hidden"></i>
+                            <Icon name="circle-plus" class="sm:hidden" />
                             <span class="hidden sm:inline">플레이리스트에 추가</span>
                         </button>
                     </div>
@@ -304,11 +303,6 @@ export default {
     100% {
         transform: rotate(360deg);
     }
-}
-
-/* 폰트어썸 아이콘 크기 조정 */
-.fas {
-    font-size: 1.2rem;
 }
 
 /* 툴팁 스타일 */

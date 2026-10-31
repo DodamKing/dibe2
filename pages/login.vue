@@ -6,7 +6,7 @@
             <div class="pointer-events-none absolute -bottom-24 -right-16 h-80 w-80 rounded-full bg-blue-600/25 blur-3xl"></div>
             <div class="relative z-10 max-w-sm text-center lg:text-left">
                 <div class="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 backdrop-blur lg:mx-0">
-                    <i class="fas fa-music text-2xl text-white"></i>
+                    <Icon name="music" :size="24" class="text-white" />
                 </div>
                 <h1 class="text-4xl font-extrabold tracking-tight text-white sm:text-5xl">DIBE2</h1>
                 <p class="mt-4 text-base text-gray-300 sm:text-lg">

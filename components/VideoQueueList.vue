@@ -2,11 +2,11 @@
     <div class="bg-gray-800 bg-opacity-70 rounded-lg shadow-lg p-4 sm:p-6">
         <div class="flex items-center space-x-4 pb-3 mb-3 border-b border-gray-700">
             <button @click="toggleSelectAll" class="text-gray-400 hover:text-white transition-colors duration-200">
-                <i :class="['fas', allSelected ? 'fa-check-square' : 'fa-square']"></i>
+                <Icon :name="allSelected ? 'square-check' : 'square'" />
             </button>
             <button @click="removeSelected" :disabled="selectedVideos.length === 0"
                 class="text-gray-400 hover:text-red-500 transition-colors duration-200 disabled:opacity-50">
-                <i class="fas fa-trash"></i>
+                <Icon name="trash" />
             </button>
         </div>
 
@@ -33,7 +33,7 @@
                         <div class="relative w-20 h-12 mr-4 flex-shrink-0">
                             <img :src="video.thumbnail" :alt="video.title" class="w-full h-full object-cover rounded-lg shadow-md">
                             <div class="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                <i class="fas fa-play text-white"></i>
+                                <Icon name="play" filled class="text-white" />
                             </div>
                         </div>
                         <div class="flex-grow min-w-0">

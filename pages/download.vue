@@ -4,7 +4,7 @@
             <!-- 브랜드 헤더 -->
             <div class="text-center mb-8">
                 <div class="mx-auto mb-4 w-20 h-20 rounded-3xl bg-gradient-to-br from-pink-500 via-pink-400 to-teal-400 flex items-center justify-center shadow-lg shadow-pink-500/20">
-                    <i class="fas fa-moon text-3xl text-white"></i>
+                    <Icon name="moon" :size="30" class="text-white" />
                 </div>
                 <h1 class="text-2xl font-bold">DIBE2 안드로이드 앱</h1>
                 <p class="text-gray-400 text-sm mt-1">백그라운드 재생 · 잠금화면 컨트롤</p>
@@ -14,19 +14,19 @@
             <div class="bg-gray-800/60 border border-white/10 rounded-2xl p-6">
                 <!-- 로딩 -->
                 <div v-if="loading" class="text-center py-8 text-gray-400">
-                    <i class="fas fa-spinner fa-spin text-2xl"></i>
+                    <Icon name="loader" :size="24" class="animate-spin" />
                     <p class="mt-3 text-sm">버전 정보를 불러오는 중...</p>
                 </div>
 
                 <!-- 아직 릴리스 없음 -->
                 <div v-else-if="notReleased" class="text-center py-8 text-gray-400">
-                    <i class="fas fa-hourglass-half text-2xl"></i>
+                    <Icon name="hourglass" :size="24" />
                     <p class="mt-3 text-sm">아직 배포된 앱이 없습니다.</p>
                 </div>
 
                 <!-- 에러 -->
                 <div v-else-if="error" class="text-center py-8 text-gray-400">
-                    <i class="fas fa-triangle-exclamation text-2xl text-yellow-500"></i>
+                    <Icon name="triangle-alert" :size="24" class="text-yellow-500" />
                     <p class="mt-3 text-sm">{{ error }}</p>
                     <button @click="fetchLatest" class="mt-4 text-pink-400 text-sm hover:underline">다시 시도</button>
                 </div>
@@ -52,7 +52,7 @@
 
                     <button @click="download" :disabled="downloading"
                         class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 transition disabled:opacity-60 flex items-center justify-center gap-2">
-                        <i :class="downloading ? 'fas fa-spinner fa-spin' : 'fas fa-download'"></i>
+                        <Icon :name="downloading ? 'loader' : 'download'" :class="{ 'animate-spin': downloading }" />
                         {{ downloading ? '준비 중...' : 'APK 다운로드' }}
                     </button>
                 </div>

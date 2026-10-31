@@ -19,7 +19,7 @@
                         class="w-full bg-white bg-opacity-10 text-white placeholder-gray-400 rounded-full py-3 pl-5 pr-14 focus:outline-none focus:ring-2 focus:ring-white focus:bg-opacity-20 text-base">
                     <button @click="search" aria-label="검색"
                         class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-gray-300 hover:text-white">
-                        <i class="fas fa-search"></i>
+                        <Icon name="search" />
                     </button>
                 </div>
             </div>
@@ -32,7 +32,7 @@
             <template v-if="activeTab === 'search'">
                 <!-- 로딩 -->
                 <div v-if="loading" class="text-center py-8 text-gray-300">
-                    <i class="fas fa-spinner fa-spin text-2xl"></i>
+                    <Icon name="loader" :size="24" class="animate-spin" />
                 </div>
 
                 <!-- 결과 그리드 (모바일 1열 → sm 2열 → lg 3열 → xl 이상 4열) -->
@@ -56,7 +56,7 @@
                         </button>
                         <button @click.stop="openAddModal(item)" aria-label="추가" title="추가"
                             class="absolute top-2 right-2 z-10 w-8 h-8 flex items-center justify-center bg-black bg-opacity-60 hover:bg-opacity-80 rounded-full text-white">
-                            <i class="fas fa-plus text-sm"></i>
+                            <Icon name="plus" :size="14" />
                         </button>
                     </div>
                 </div>
@@ -91,28 +91,28 @@
                 <div class="flex items-center flex-shrink-0">
                     <button @click="toggleRepeat" aria-label="반복 재생" :title="repeatTitle"
                         class="w-9 h-9 flex items-center justify-center text-gray-200 hover:text-white relative">
-                        <i class="fas fa-repeat text-sm" :class="{ 'text-green-300': repeatMode !== 'off' }"></i>
+                        <Icon :name="repeatMode === 'one' ? 'repeat-1' : 'repeat'" :size="16" :class="{ 'text-green-300': repeatMode !== 'off' }" />
                         <span v-if="repeatMode === 'one'" class="absolute bottom-1 right-1.5 text-[8px] font-bold leading-none text-green-300">1</span>
                     </button>
                     <button @click="playPrevious" :disabled="!hasPreviousVideo" aria-label="이전 영상"
                         class="w-9 h-9 flex items-center justify-center text-gray-200 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed">
-                        <i class="fas fa-step-backward text-sm"></i>
+                        <Icon name="skip-back" :size="14" filled />
                     </button>
                     <button @click="togglePlay" aria-label="재생/일시정지"
                         class="bg-white text-purple-800 rounded-full w-8 h-8 flex items-center justify-center hover:bg-gray-100 focus:outline-none mx-1">
-                        <i :class="['fas', isPlaying ? 'fa-pause' : 'fa-play', isPlaying ? '' : 'ml-0.5']"></i>
+                        <Icon :name="isPlaying ? 'pause' : 'play'" filled :stroke-width="isPlaying ? 0 : 1.75" />
                     </button>
                     <button @click="playNext" :disabled="!hasNextVideo" aria-label="다음 영상"
                         class="w-9 h-9 flex items-center justify-center text-gray-200 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed">
-                        <i class="fas fa-step-forward text-sm"></i>
+                        <Icon name="skip-forward" :size="14" filled />
                     </button>
                     <button @click="toggleShuffle" aria-label="셔플" :title="shuffleOn ? '셔플 끄기' : '셔플 켜기'"
                         class="w-9 h-9 flex items-center justify-center text-gray-200 hover:text-white">
-                        <i class="fas fa-shuffle text-sm" :class="{ 'text-green-300': shuffleOn }"></i>
+                        <Icon name="shuffle" :size="16" :class="{ 'text-green-300': shuffleOn }" />
                     </button>
                     <div class="hidden sm:flex items-center space-x-1 mx-1">
                         <button @click="toggleMute" aria-label="음소거" class="text-gray-200 hover:text-white focus:outline-none">
-                            <i :class="['fas', (muted || volume === 0) ? 'fa-volume-mute' : volume < 50 ? 'fa-volume-down' : 'fa-volume-up']"></i>
+                            <Icon :name="(muted || volume === 0) ? 'volume-x' : volume < 50 ? 'volume-1' : 'volume-2'" />
                         </button>
                         <div class="relative w-16 h-1">
                             <div class="absolute inset-y-0 left-0 bg-gray-600 bg-opacity-50 rounded-full w-full h-1"></div>
@@ -123,7 +123,7 @@
                     </div>
                     <button @click="showNowPlaying = !showNowPlaying" aria-label="재생목록" title="재생목록"
                         class="w-9 h-9 flex items-center justify-center text-gray-200 hover:text-white">
-                        <i class="fas fa-list text-sm"></i>
+                        <Icon name="list-music" :size="14" />
                     </button>
                 </div>
             </div>
@@ -164,14 +164,14 @@
                     <!-- 차단 감지 시 안내 카드. invidious 우회는 yewtu.be의 anti-bot+X-Frame-Options로 안 됨이 확인됨. -->
                     <div v-if="isBlocked"
                         class="absolute inset-0 flex flex-col items-center justify-center text-center px-6 bg-black">
-                        <i class="fas fa-ban text-4xl text-gray-500 mb-3"></i>
+                        <Icon name="ban" :size="36" class="text-gray-500 mb-3" />
                         <p class="text-base sm:text-lg font-semibold mb-2">이 영상은 외부 재생이 차단되어 있어요</p>
                         <p class="text-sm text-gray-400 mb-4 max-w-md">
                             업로더가 다른 사이트 임베드를 막아놓은 영상입니다. YouTube에서 직접 시청해주세요.
                         </p>
                         <a :href="youtubeWatchUrl" target="_blank" rel="noopener"
                             class="inline-flex items-center bg-red-600 hover:bg-red-700 text-white font-medium px-5 py-2.5 rounded-full transition">
-                            <i class="fab fa-youtube mr-2"></i>YouTube에서 보기
+                            <Icon name="youtube" class="mr-2" />YouTube에서 보기
                         </a>
                     </div>
                 </div>
@@ -185,7 +185,7 @@
                         <h3 class="text-sm font-semibold text-gray-400">재생목록 ({{ queue.length }})</h3>
                         <button @click="openAddModal(currentVideo)" aria-label="현재 영상 추가" title="현재 영상 추가"
                             class="w-9 h-9 flex items-center justify-center text-gray-300 hover:text-white">
-                            <i class="fas fa-plus text-sm"></i>
+                            <Icon name="plus" :size="14" />
                         </button>
                     </div>
                     <VideoQueueList />
