@@ -59,11 +59,15 @@ app.use('/youtube', youtubeRoutes)
 app.use('/app', appRoutes)
 app.use('/themes', themeRoutes)
 
+// 로컬 dev 판별. 🔴 netlify dev 는 함수에 NODE_ENV 를 넣어주지 않는다 — NODE_ENV 만 보면 개발 중 에러가
+// 전부 디스코드로 갔다(2026-10-31 확인). netlify dev 가 넣어주는 NETLIFY_DEV 도 본다
+const IS_DEV = process.env.NODE_ENV === 'development' || process.env.NETLIFY_DEV === 'true'
+
 // 클라이언트 에러 → 디스코드
 app.post('/send-error-message', async (req, res) => {
     const { message } = req.body
 
-    if (process.env.NODE_ENV === 'development') {
+    if (IS_DEV) {
         console.error('개발 환경, 디스코드 메시지 생략: ', message)
         return res.json({ success: true })
     }
@@ -77,7 +81,7 @@ app.post('/send-error-message', async (req, res) => {
 app.use(async (err, req, res, _next) => {
     console.error(err)
 
-    if (process.env.NODE_ENV !== 'development') {
+    if (!IS_DEV) {
         await sendErrorToDiscord(err, req, {
             path: req.path,
             method: req.method,

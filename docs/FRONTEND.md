@@ -15,7 +15,9 @@
 ## 페이지
 | 경로 | 파일 | 레이아웃 | 설명 |
 |------|------|----------|------|
-| `/` | `pages/index.vue` | main | 차트 Top100 + 내 플레이리스트 |
+| `/` | `pages/index.vue` | main | 홈 — 내 플레이리스트(첫 칸 "좋아요한 곡" 고정, 커버 큰 정사각 카드) + Top 100 미리보기 10곡(국내/해외 전환, 전체 재생, 전체 보기). 플리 삭제는 홈에 없고 상세 페이지에서 |
+| `/chart` | `pages/chart.vue` | main | Top 100 전체. `?type=pop`이면 해외. 선택 도구줄(전체 선택 → 선택 곡 담기 = 레이아웃의 플리 선택 모달), 전체 재생 |
+| `/liked` | `pages/liked.vue` | main | 좋아요한 곡(`GET /api/songs/liked`, 100곡씩 더 보기). 하트를 취소해도 목록에서 바로 빼지 않는다(실수 되돌리기). 불러오기 실패는 "없음"이 아니라 "다시 시도"로 |
 | `/login` | `pages/login.vue` | auth | 로그인 (구글/카카오 소셜 로그인만 — 아이디/비밀번호 폼 없음). 좌측 브랜드 패널 + 우측 로그인 패널 2단 레이아웃(모바일은 세로 스택). 소셜 버튼(`SocialLoginButton.vue`)은 각 사 공식 버튼 가이드(색상/라벨/radius) 준수, 카카오 말풍선 심볼은 근사치 SVG(공식 에셋 아님) |
 | `/register` | `pages/register.vue` | auth | 회원가입 (현재 막혀있음) |
 | `/subscription-notice` | `pages/subscription-notice.vue` | - | 구독 만료 안내 |
@@ -32,6 +34,7 @@
 | `videoQueue` | `store/videoQueue.js` | 비디오 재생 큐, 현재 영상, 셔플/반복(player.js와 동일 패턴). 볼륨은 페이지 로컬 YT.Player가 직접 관리(스토어에 없음). localStorage 캐싱은 player.js와 동일 패턴 |
 | `videoPlaylist` | `store/videoPlaylist.js` | 내 비디오 플레이리스트 CRUD (`store/playlist.js`와 동일 패턴, `/api/video-playlists`) |
 | `search` | `store/search.js` | 검색 상태 |
+| `likes` | `store/likes.js` | 좋아요 공유 상태(키 = Song._id). 차트·좋아요 목록·하단 플레이어가 같은 값을 본다. 누르면 먼저 바꿔 보여주고 실패하면 되돌림. 채우는 곳: 차트 응답의 `liked`(키는 **`songId`** — 차트 항목 `_id`는 곡이 아님), `/by-ids`(큐 새로고침), 현재 곡을 모르면 `ensure`. 로그아웃 시 RESET |
 
 ### player 스토어 주요 동작
 - `localStorage`에 유저별 큐/현재곡/볼륨/셔플/반복 저장 (`user_{id}_key`)
@@ -45,20 +48,22 @@
 - 차트는 `layouts/main.vue` `fetchPopularChart`에서 `dibe2_chart_cache` 키로 동일한 캐시-즉시-표시 + 백그라운드-refresh 패턴 사용
 - YouTube IFrame API로 재생 (`utils/youtubePlayer.js`)
 - **재생 수 기록**(`tallyPlay`, 2026-10-31~): 앱과 같은 기준 — 이 곡을 실제로 **30초 또는 절반** 들으면 `POST /api/songs/:id/play` 1회(`source: 'unknown'`, 웹은 출처를 추적하지 않음). 1초 폴링 횟수가 아니라 **경과 시간**으로 더한다(좀비 복구로 폴링이 겹쳐도 두 배로 안 세게). 곡이 끝나면(ENDED) 비워서 한 곡 반복도 매번 센다
-- **재생 실패 안내**: `state.errorMessage` → `layouts/main.vue`가 토스트로 띄우고 비운다(예전엔 `SET_ERROR_MESSAGE` mutation이 없어 실패 시 에러만 났다)
+- **화면 아래 알림**: `state.notice`(`SET_NOTICE`) → `layouts/main.vue`가 토스트로 띄우고 비운다. 재생 실패·좋아요 실패·"재생목록에 추가했어요" 등 (예전엔 없는 `SET_ERROR_MESSAGE`를 불러 실패 시 에러만 났다)
+- **목록에서 곡 한 줄 누르기 = `playNow`**: 그 곡만 큐에 넣고(있으면 그 자리) 바로 재생. 큐를 통째로 바꾸는 건 "전체 재생"(`playEntirePlaylist`)뿐
 - 큐 제한: 1000곡
 - 반복 모드: off → all → one
 - **재생 위치 기억** (`user_{id}_position`에 `{trackId, time}`, 비디오 `user_{id}_video_position`과 동일 패턴, 마지막 곡 1개만): `updateTrackProgress`의 1초 polling 중 재생 중일 때 + `pause` 시 저장. 단, 음원 싱글톤 플레이어(`utils/youtubePlayer.js`)는 새로고침 직후엔 곡을 아예 로드 안 하고 실제 `play()` 호출 시에야 `loadVideoById`로 로드되므로, 비디오처럼 재생 전에 진행바로 미리 보여줄 수는 없음 — 대신 `initializeQueue`에서 복원한 값을 `state.resumePosition`(`currentTime`과 별개)에 잠깐 들고 있다가 소비
   - **seek 타이밍 주의**: `play()` 액션의 `loadVideoById` 호출 직후 바로 `seekTo`를 하면 새 영상이 아직 버퍼링 전이라 씹히는 경우가 있음 — 그래서 `resumePosition` 소비(`youtubePlayer.seek()` + `null`로 비움)는 `play()`가 아니라 `initYoutubePlayer`의 `onStateChange`가 실제 `PLAYING`을 보고하는 시점에서 처리
 
 ## 주요 컴포넌트
-- `MusicPlayer.vue`: 하단 고정 플레이어 (재생/정지/이전/다음/볼륨/프로그레스바)
+- `MusicPlayer.vue`: 하단 고정 플레이어 (재생/정지/이전/다음/볼륨/프로그레스바). 제목 옆 하트(모바일은 제목이 숨겨져도 하트는 보임)
+- `SongRow.vue`: 곡 한 줄(차트·좋아요 목록 공용). 데스크탑은 하트가 **마우스를 올리면** 보이고 좋아요한 곡은 항상 보임 — `@media (hover: hover)`로만 숨겨서 터치 태블릿에선 항상 보인다. 모바일(<640)은 하트 대신 ⋯ → `SongMenuSheet`(좋아요 / 재생목록에 추가 / 내 플레이리스트에 담기)
+- **색**: `tailwind.config.js`의 `surface` 0(바탕)·1(헤더·플레이어)·2(카드). 순회색 대신 보라 기운을 살짝. 보라 강조(purple-500/400)는 재생 버튼·좋아요 하트에만 — 다 보라면 아무것도 안 튄다(2026-10-31 개편). 설정을 바꾸면 **dev를 다시 켜야** 새 색 클래스가 생긴다(안 그러면 배경이 하얗게 나옴)
 - `Playlist.vue`: 재생 큐 목록 (드래그 정렬 가능 - vuedraggable)
 - `AppHeader.vue`: 음원 모드 상단 헤더 (로고, 음원 검색, 비디오 진입 아이콘, UserMenu)
 - `VideoHeader.vue`: 비디오 모드 전용 헤더 (← 뒤로가기, DIBE2 비디오 로고, UserMenu) — 단순 헤더, 큐 진입점 없음
 - `UserMenu.vue`: 유저 아바타 + 드롭다운 (프로필/설정/관리자/로그아웃). AppHeader/VideoHeader 공통
 - `SearchResultsModal.vue`: 검색 결과 모달
-- `MyPlaylistSection.vue`: 메인 페이지 내 플레이리스트 섹션
 - `VideoQueueList.vue`: "지금 재생 중" 오버레이 안에 들어가는 재생목록(큐) 콘텐츠 (`Playlist.vue` 축소판 — 모달도 탭도 아닌 인라인, 가사/셔플/반복 없음, 드래그 정렬 + 다중삭제 + 클릭 점프재생)
 - `MyVideoPlaylistSection.vue`: `/video` 보관함 탭 - 저장된 비디오 플레이리스트 그리드 (카드 썸네일은 첫 영상 1장)
 - `VideoPlaylistDetailPanel.vue`: 보관함 탭에서 플레이리스트 클릭 시 인라인 표시(라우트 아님). "전체재생"은 `videoQueue/setQueueAndPlay` 디스패치

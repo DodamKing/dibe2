@@ -1,6 +1,6 @@
 <template>
-    <header class="sticky top-0 z-30 h-16 bg-gradient-to-r from-purple-800 to-blue-700 shadow-lg">
-        <div class="container mx-auto h-full flex justify-between items-center px-4">
+    <header class="sticky top-0 z-30 h-16 bg-surface-1 border-b border-white border-opacity-5">
+        <div class="max-w-[1600px] mx-auto h-full flex justify-between items-center px-4 sm:px-8">
             <div class="flex items-baseline space-x-2 text-white">
                 <span class="text-xl sm:text-2xl font-bold">DIBE2</span>
                 <span class="text-sm sm:text-base text-gray-200">비디오</span>

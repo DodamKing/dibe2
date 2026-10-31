@@ -1,5 +1,5 @@
 <template>
-    <div class="min-h-screen bg-gradient-to-br from-gray-900 to-black text-white flex flex-col">
+    <div class="min-h-screen bg-surface-0 text-white flex flex-col">
         <AppHeader />
         <Nuxt />
 
@@ -103,11 +103,16 @@ export default {
                 toggleSongSelection: this.toggleSongSelection,
                 showCreatePlaylistModal: this._showCreatePlaylistModal,
                 deletePlaylist: this._deletePlaylist,
+                // 곡 몇 개를 골라 "플레이리스트 선택" 모달을 연다(모바일 곡 메뉴의 "담기" 등)
+                openAddModalFor: this.openAddModalFor,
+                setSelectedSongs: (songs) => { this.selectedSongs = [...songs] },
                 // 필요한 다른 메서드들도 여기에 추가
             },
             layoutData: {
                 popularChart: () => this.popularChart,
                 lastChartUpdated: () => this.lastChartUpdated,
+                popChart: () => this.popChart,
+                lastPopUpdated: () => this.lastPopUpdated,
                 playlists: () => this.playlists,
                 selectedSongs: () => this.selectedSongs,
                 allSelected: () => this.allSelected,
@@ -116,10 +121,10 @@ export default {
         }
     },
     watch: {
-        errorMessage(message) {
+        notice(message) {
             if (!message) return
             this.showToast(message)
-            this.$store.commit('player/SET_ERROR_MESSAGE', null)
+            this.$store.commit('player/SET_NOTICE', null)
         },
         isAdding(newValue) {
             if (newValue) {
@@ -144,7 +149,7 @@ export default {
         }
     },
     computed: {
-        ...mapState('player', ['queue', 'currentTrack', 'errorMessage']),
+        ...mapState('player', ['queue', 'currentTrack', 'notice']),
         ...mapState('playlist', ['playlists']),
         ...mapState('search', ['showSearchResults']),
         allSelected() {
@@ -157,6 +162,8 @@ export default {
             showQueue: false,
             popularChart: [],
             lastChartUpdated: '',
+            popChart: [],
+            lastPopUpdated: '',
             selectedSongs: [],
             showPlaylistSelectionModal: false,
             currentSongForPlaylist: null,
@@ -178,17 +185,18 @@ export default {
         toggleQueue() {
             this.showQueue = !this.showQueue;
         },
-        async fetchPopularChart() {
-            const CACHE_KEY = 'dibe2_chart_cache'
+        // 국내(/chart)·해외(/chart/pop) 공통. 캐시를 먼저 보여주고 백그라운드로 새로 받는다.
+        async fetchChart({ url, cacheKey, itemsKey, updatedKey }) {
+            const fmt = d => dayjs(d).locale('ko').format('M월 D일 A h시')
 
             // 1) 캐시 즉시 표시
             try {
-                const cached = localStorage.getItem(CACHE_KEY)
+                const cached = localStorage.getItem(cacheKey)
                 if (cached) {
                     const { items, lastUpdated } = JSON.parse(cached)
                     if (items && Array.isArray(items)) {
-                        this.popularChart = items
-                        this.lastChartUpdated = dayjs(lastUpdated).locale('ko').format('M월 D일 A h시')
+                        this[itemsKey] = items
+                        this[updatedKey] = fmt(lastUpdated)
                     }
                 }
             } catch (err) {
@@ -197,12 +205,15 @@ export default {
 
             // 2) 백그라운드 fresh 갱신
             try {
-                const { chart } = await this.$axios.$get('/api/songs/chart')
-                this.popularChart = chart.items
-                this.lastChartUpdated = dayjs(chart.lastUpdated).locale('ko').format('M월 D일 A h시')
+                const { chart } = await this.$axios.$get(url)
+                if (!chart) return // 해외 차트는 수집 전이면 null
+                this[itemsKey] = chart.items
+                this[updatedKey] = fmt(chart.lastUpdated)
+                // 차트 응답의 liked 를 공유 좋아요 상태에 반영(키는 songId — 항목 _id 는 곡이 아님)
+                this.$store.dispatch('likes/seed', chart.items.map(i => ({ id: i.songId, liked: i.liked })))
                 try {
                     // liked 는 사용자마다 다른데 이 캐시는 사용자 구분이 없다 → 빼고 저장(계정을 바꾸면 남의 하트가 보인다)
-                    localStorage.setItem(CACHE_KEY, JSON.stringify({
+                    localStorage.setItem(cacheKey, JSON.stringify({
                         items: chart.items.map(({ liked, ...item }) => item),
                         lastUpdated: chart.lastUpdated,
                     }))
@@ -212,6 +223,16 @@ export default {
             } catch (err) {
                 // 네트워크 에러 시 캐시 데이터 유지
             }
+        },
+        fetchPopularChart() {
+            return this.fetchChart({ url: '/api/songs/chart', cacheKey: 'dibe2_chart_cache', itemsKey: 'popularChart', updatedKey: 'lastChartUpdated' })
+        },
+        fetchPopChart() {
+            return this.fetchChart({ url: '/api/songs/chart/pop', cacheKey: 'dibe2_pop_chart_cache', itemsKey: 'popChart', updatedKey: 'lastPopUpdated' })
+        },
+        openAddModalFor(songs) {
+            this.selectedSongs = [...songs]
+            this.showAddToPlaylistModal = true
         },
         handleKeyDown(e) {
             if (e.key === 'Escape' && this.showQueue) {
@@ -364,6 +385,8 @@ export default {
     },
     mounted() {
         this.fetchPopularChart()
+        this.fetchPopChart()
+        this.$store.dispatch('likes/fetchTotal')
         document.addEventListener('keydown', this.handleKeyDown)
         this.fetchPlaylists()
         this.$store.dispatch('player/initializeAudioSystem')

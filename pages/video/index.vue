@@ -81,7 +81,7 @@
         <!-- 지금 재생 중 미니플레이어: 음원 MusicPlayer.vue와 동일하게 하단 고정. 탭과 무관하게 항상 떠 있음
              (검색/보관함 탭 콘텐츠와는 완전히 분리되어 있고, 탭을 눌러도 사라지지 않음 — 영상은 계속 재생됨).
              "지금 재생 중" 패널보다 z-index가 높아야 패널이 열려 있어도 재생목록 토글 버튼을 계속 누를 수 있음 -->
-        <div v-if="currentVideo" class="fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-r from-purple-800 to-blue-700 shadow-lg">
+        <div v-if="currentVideo" class="fixed bottom-0 left-0 right-0 z-40 bg-surface-1 border-t border-white border-opacity-5">
             <div class="max-w-7xl mx-auto px-4 py-2 flex items-center gap-2">
                 <button @click="toggleTrackInfo" class="flex items-center gap-2 flex-grow min-w-0 text-left">
                     <img :src="currentVideo.thumbnail" :alt="currentVideo.title"

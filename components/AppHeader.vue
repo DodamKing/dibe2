@@ -1,8 +1,8 @@
 <template>
     <div>
         <div class="header-wrapper">
-            <header class="bg-gradient-to-r from-purple-800 to-blue-700 shadow-lg p-4">
-                <div class="container mx-auto">
+            <header class="bg-surface-1 border-b border-white border-opacity-5 px-4 sm:px-8 py-4">
+                <div class="max-w-[1600px] mx-auto">
                     <div class="flex justify-between items-center">
                         <h1 class="text-2xl font-bold text-white">DIBE2</h1>
                         <div class="flex items-center space-x-4">

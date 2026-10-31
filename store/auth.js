@@ -41,6 +41,8 @@ export const actions = {
             localStorage.removeItem('dibe2_token')
             this.$axios.setToken(false)
             commit('setUser', null)
+            // 좋아요는 사용자별 값이라 다음 로그인 사용자에게 남기지 않는다
+            commit('likes/RESET', null, { root: true })
         }
     },
 

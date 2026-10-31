@@ -72,6 +72,18 @@
                             class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-3 rounded text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed">
                             랜덤 재생
                         </button>
+                        <!-- 삭제는 여기서만(홈 카드엔 두지 않는다). 실수 방지로 한 번 더 묻는다 -->
+                        <button v-if="!confirmingDelete" type="button" @click="confirmingDelete = true"
+                            class="ml-auto text-gray-400 hover:text-red-400 py-2 px-3 rounded text-sm sm:text-base">
+                            <i class="fas fa-trash-alt mr-1"></i>삭제
+                        </button>
+                        <template v-else>
+                            <span class="ml-auto self-center text-sm text-gray-300">정말 삭제할까요?</span>
+                            <button type="button" @click="removePlaylist"
+                                class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 rounded text-sm sm:text-base">삭제</button>
+                            <button type="button" @click="confirmingDelete = false"
+                                class="text-gray-300 py-2 px-3 rounded text-sm sm:text-base">취소</button>
+                        </template>
                     </div>
                 </div>
 
@@ -114,6 +126,7 @@ export default {
             error: null,
             isEditing: false,
             editingName: '',
+            confirmingDelete: false,
         }
     },
     computed: {
@@ -132,7 +145,12 @@ export default {
     },
     methods: {
         ...mapActions('player', ['playEntirePlaylist', 'playShuffledPlaylist']),
-        ...mapActions('playlist', ['fetchPlaylistDetail', 'updatePlaylistName', 'removeSongsFromPlaylist']),
+        ...mapActions('playlist', ['fetchPlaylistDetail', 'updatePlaylistName', 'removeSongsFromPlaylist', 'deletePlaylist']),
+        async removePlaylist() {
+            await this.deletePlaylist(this.currentPlaylist._id)
+            this.$toast.success('플레이리스트를 삭제했습니다.')
+            this.$router.replace('/')
+        },
         async playAll() {
             if (this.currentPlaylist.songs.length) {
                 await this.playEntirePlaylist(this.currentPlaylist)

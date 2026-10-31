@@ -31,8 +31,8 @@ export const state = () => ({
     isQueueEnded: false,
     // 새로고침 복원 시 기억해둔 위치 — 다음 play()에서 한 번만 seek하고 비움(currentTime과는 별개)
     resumePosition: null,
-    // 재생 실패 안내(레이아웃이 토스트로 띄우고 비운다)
-    errorMessage: null,
+    // 화면 아래 알림(재생 실패·좋아요 실패·담기 완료 등). 레이아웃이 토스트로 띄우고 비운다
+    notice: null,
     // 재생 수 기록용 — 이 곡을 실제로 들은 시간. 앱과 같은 기준(30초 또는 절반)에 닿으면 1회 기록
     playTally: { trackId: null, seconds: 0, counted: false, lastTick: 0 },
 })
@@ -87,8 +87,8 @@ export const mutations = {
     SET_RESUME_POSITION(state, position) {
         state.resumePosition = position
     },
-    SET_ERROR_MESSAGE(state, message) {
-        state.errorMessage = message
+    SET_NOTICE(state, message) {
+        state.notice = message
     },
     SET_PLAY_TALLY(state, tally) {
         state.playTally = tally
@@ -232,6 +232,25 @@ export const actions = {
         }
     },
 
+    // 목록에서 한 곡을 눌렀을 때 — 그 곡만 재생목록에 넣고(이미 있으면 그 자리) 바로 재생한다.
+    // 지금 재생목록은 지우지 않는다(큐를 통째로 바꾸는 건 "전체 재생"뿐).
+    // song 은 차트 항목이어도 된다 — title+artist 로 곡을 찾는다(차트 항목의 `_id`는 곡이 아님)
+    async playNow({ commit, dispatch, state }, song) {
+        let track = state.queue.find(q => q.title === song.title && q.artist === song.artist)
+        if (!track) {
+            const { songData } = await this.$axios.$get('/api/songs/songdata', { params: { title: song.title, artist: song.artist } })
+            if (!songData) {
+                commit('SET_NOTICE', '이 곡을 찾지 못했어요.')
+                return
+            }
+            commit('ADD_TO_QUEUE', songData)
+            await dispatch('saveQueue')
+            track = songData
+        }
+        await dispatch('setCurrentTrack', track)
+        dispatch('play')
+    },
+
     async addMultipleToPlaylist({ commit, state, dispatch }, songs) {
         try {
             const QUEUE_LIMIT = 1000;
@@ -300,6 +319,8 @@ export const actions = {
             if (!songs || songs.length === 0) return
 
             const freshMap = new Map(songs.map(s => [s._id, s]))
+            // by-ids 가 liked 를 실어준다 — 하단 플레이어 하트용으로 공유 상태에 반영
+            dispatch('likes/seed', songs.map(s => ({ id: s._id, liked: !!s.liked })), { root: true })
 
             // 큐 순서 유지하면서 fresh 데이터로 교체 (DB에서 사라진 곡은 기존 항목 유지)
             const updatedQueue = state.queue.map(item => freshMap.get(item._id) || item)
@@ -358,7 +379,7 @@ export const actions = {
                 // 아직 youtubeUrl이 없는 곡. loadVideoById(null)은 예외 없이 조용히 넘어가서
                 // 재생 중 표시만 남고 소리는 안 나므로 여기서 끊는다.
                 if (!youtubeId) {
-                    commit('SET_ERROR_MESSAGE', '아직 재생할 수 없는 곡이에요. 잠시 후 다시 시도해 주세요.')
+                    commit('SET_NOTICE', '아직 재생할 수 없는 곡이에요. 잠시 후 다시 시도해 주세요.')
                     commit('SET_IS_PLAYING', false)
                     return
                 }
@@ -370,7 +391,7 @@ export const actions = {
                 commit('SET_QUEUE_ENDED', false) // 재생이 시작되면 큐 종료 상태 해제
             } catch (error) {
                 console.error('Failed to play track:', error)
-                commit('SET_ERROR_MESSAGE', '곡을 재생하지 못했어요. 다시 시도해 주세요.')
+                commit('SET_NOTICE', '곡을 재생하지 못했어요. 다시 시도해 주세요.')
             } finally {
                 commit('SET_IS_LOADING', false)
             }
@@ -545,7 +566,7 @@ export const actions = {
         if (repeatModeKey) localStorage.setItem(repeatModeKey, nextMode)
     },
 
-    async playEntirePlaylist({ commit, dispatch }, playlist) {
+    async playEntirePlaylist({ commit, dispatch, state }, playlist) {
         if (playlist && playlist.songs && playlist.songs.length > 0) {
             const { songDatas } = await this.$axios.$post('/api/songs/songsdata', { songs: playlist.songs })
             commit('SET_QUEUE', songDatas)
@@ -557,7 +578,7 @@ export const actions = {
         }
     },
 
-    async playShuffledPlaylist({ commit, dispatch }, playlist) {
+    async playShuffledPlaylist({ commit, dispatch, state }, playlist) {
         if (playlist && playlist.songs && playlist.songs.length > 0) {
             const { songDatas } = await this.$axios.$post('/api/songs/songsdata', { songs: playlist.songs })
             const shuffledSongs = [...songDatas].sort(() => Math.random() - 0.5)
