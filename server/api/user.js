@@ -1,5 +1,5 @@
 const express = require('express')
-const bcrypt = require('bcrypt')
+const bcrypt = require('bcryptjs')
 const db = require('../models')
 const jwt = require('jsonwebtoken')
 const { adminMiddleware, generateToken, generateTokenPair, profileOf, generateStateToken, verifyStateToken, JWT_SECRET } = require('../middleware/auth')

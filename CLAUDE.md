@@ -29,6 +29,7 @@
 ## 개발 모드 실행
 - **`npm run dev`** = `netlify dev` (포트 3000) — Functions 라우팅(`/api/*` → `/.netlify/functions/api/*`)까지 같이 잡아줌. 내부적으로 3333번 nuxt dev 프록시
 - nuxt만 단독으로 띄우면 `/api/*` 라우팅이 안 먹음. 항상 `npm run dev` 사용
+- 🔴 **`bcrypt`(네이티브 모듈) 다시 넣지 말 것 — `bcryptjs`를 쓴다.** 네이티브 모듈은 한 프로세스에서 다시 못 읽어서, 서버 파일을 고칠 때마다 netlify dev가 `api` 함수 리로드에서 멈추고 3000번 전체가 응답을 끊었다(2026-10-31 재현·수정, netlify-cli 24.8.1·27.16.1 둘 다 동일)
 - `netlify.toml`의 `/_nuxt/*`·`/_loading/*`·`/__webpack_hmr/*` 통과 규칙을 지우지 말 것 — 없으면 SPA 폴백이 JS까지 index.html로 바꿔 dev 화면이 "Loading..."에서 멈춘다
 
 ## 작업 규칙
