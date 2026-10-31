@@ -22,6 +22,25 @@
   to = "/.netlify/functions/api/:splat"
   status = 200
 
+# dev 전용 경로는 SPA 폴백에 먹히지 않게 그대로 통과시킨다. `netlify dev`는 파일 존재 여부를
+# nuxt dev 서버가 아니라 `dist/`로 판단해서, 이게 없으면 `/_nuxt/app.js`까지 index.html로 바뀌어
+# 화면이 "Loading..."에서 멈춘다(콘솔 `Unexpected token '<'`). 로딩 화면(`/_loading`)·HMR도 같은 병.
+# 운영에선 `/_nuxt/*` 파일이 실제로 있어 이 규칙과 무관하게 그대로 서빙된다.
+[[redirects]]
+  from = "/_nuxt/*"
+  to = "/_nuxt/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/_loading/*"
+  to = "/_loading/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/__webpack_hmr/*"
+  to = "/__webpack_hmr/:splat"
+  status = 200
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
