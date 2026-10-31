@@ -52,6 +52,8 @@
 | DELETE | `/:id/songs` | 플레이리스트에서 곡 제거 |
 | PUT | `/:id/name` | 플레이리스트 이름 변경 |
 
+- 🔴 **`/:id` 계열은 전부 내 플리만** 다룬다(서비스 쿼리가 `{ _id, user: userId }`). 남의 플리 id는 "없음"과 똑같이 응답한다(조회 400 / 이름 변경 404 / 추가·제거 500 — 기존 응답 코드 유지). 2026-10-31 전엔 id만 알면 남의 플리를 읽고·고치고·지울 수 있었다. 비디오 플레이리스트도 같다
+
 ## Video Playlists (`/api/video-playlists`) - server/api/videoPlaylist.js
 음원 `Playlist`와 동일 패턴이나 DB에 저장된 문서가 없는 YouTube 검색 결과(영상)를 다룸 — `songId` ref 대신 `videoId`(YouTube 비디오 ID)로 중복 판별.
 | Method | Path | 설명 |

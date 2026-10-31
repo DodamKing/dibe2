@@ -1,5 +1,7 @@
 const db = require('../models')
 
+// 🔴 플리 하나를 다루는 모든 쿼리는 `{ _id, user: userId }`로 **내 것만** 집는다(2026-10-31 전엔 id만 알면
+// 남의 플리를 읽고·고치고·지울 수 있었다). 남의 것은 "없음"과 똑같이 응답 — 존재 여부도 알려주지 않는다.
 module.exports = {
     createPlaylist: async (name, userId) => {
         try {
@@ -28,7 +30,7 @@ module.exports = {
 
     deletePlaylist: async (playlistId, userId) => {
         try {
-            await db.VideoPlaylist.findByIdAndDelete(playlistId)
+            await db.VideoPlaylist.deleteOne({ _id: playlistId, user: userId })
             const updatedPlaylists = await db.VideoPlaylist.find({ user: userId })
             return updatedPlaylists
         } catch (err) {
@@ -36,9 +38,9 @@ module.exports = {
         }
     },
 
-    addToPlaylist: async (playlistId, videos) => {
+    addToPlaylist: async (playlistId, userId, videos) => {
         try {
-            const playlist = await db.VideoPlaylist.findById(playlistId)
+            const playlist = await db.VideoPlaylist.findOne({ _id: playlistId, user: userId })
             if (!playlist) return { success: false, error: 'Playlist not found' }
 
             const newVideos = videos.map(video => ({
@@ -63,10 +65,10 @@ module.exports = {
         }
     },
 
-    removeVideosFromPlaylist: async (playlistId, videoIds) => {
+    removeVideosFromPlaylist: async (playlistId, userId, videoIds) => {
         try {
             const playlist = await db.VideoPlaylist.findOneAndUpdate(
-                { _id: playlistId },
+                { _id: playlistId, user: userId },
                 { $pull: { videos: { videoId: { $in: videoIds } } } },
                 { new: true, projection: { videos: 1 } } // 업데이트된 문서를 반환하고, videos 필드만 가져옴
             )
@@ -84,9 +86,9 @@ module.exports = {
         }
     },
 
-    readPlaylist: async (playlistId) => {
+    readPlaylist: async (playlistId, userId) => {
         try {
-            const playlist = await db.VideoPlaylist.findById(playlistId)
+            const playlist = await db.VideoPlaylist.findOne({ _id: playlistId, user: userId })
             return { success: true, playlist }
         } catch (err) {
             console.error('비디오 플레이리스트 불러오기 서비스 에러:', err)
@@ -94,9 +96,9 @@ module.exports = {
         }
     },
 
-    rename: async (id, name) => {
+    rename: async (id, userId, name) => {
         try {
-            const playlist = await db.VideoPlaylist.findByIdAndUpdate(id, { name }, { new: true })
+            const playlist = await db.VideoPlaylist.findOneAndUpdate({ _id: id, user: userId }, { name }, { new: true })
             return { success: true, playlist }
         } catch (err) {
             console.error('비디오 플레이리스트 이름 수정 서비스 에러:', err)

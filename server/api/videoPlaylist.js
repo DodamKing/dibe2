@@ -45,7 +45,7 @@ router.post('/:id/videos', async (req, res) => {
     const { videos } = req.body
 
     try {
-        const result = await videoPlaylistService.addToPlaylist(id, videos)
+        const result = await videoPlaylistService.addToPlaylist(id, req.user.userId, videos)
         if (!result.success) throw new Error(result.error)
         res.json(result)
     } catch (err) {
@@ -59,7 +59,7 @@ router.delete('/:id/videos', async (req, res) => {
     const { videoIds } = req.body
 
     try {
-        const result = await videoPlaylistService.removeVideosFromPlaylist(id, videoIds)
+        const result = await videoPlaylistService.removeVideosFromPlaylist(id, req.user.userId, videoIds)
         if (!result.success) throw new Error(result.error)
         res.json(result)
     } catch (err) {
@@ -72,7 +72,7 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params
 
     try {
-        const { success, playlist } = await videoPlaylistService.readPlaylist(id)
+        const { success, playlist } = await videoPlaylistService.readPlaylist(id, req.user.userId)
         if (!playlist) return res.status(400).json({ success: false, message: '플레이리스트를 찾을 수 없습니다.' })
         res.json({ success, playlist })
     } catch (err) {
@@ -86,7 +86,8 @@ router.put('/:id/name', async (req, res) => {
     const { name } = req.body
 
     try {
-        const { success, playlist } = await videoPlaylistService.rename(id, name)
+        const { success, playlist } = await videoPlaylistService.rename(id, req.user.userId, name)
+        if (!playlist) return res.status(404).json({ success: false, message: '플레이리스트를 찾을 수 없습니다.' })
         res.json({ success, name: playlist.name })
     } catch (err) {
         console.error('비디오 플레이리스트 이름 수정 api 오류:', err)
