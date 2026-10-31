@@ -73,7 +73,7 @@ v-for="(song, i) in chart.slice(0, 10)" :key="`${i}-${song.title}-${song.artist}
 
 		<SongMenuSheet
 :song="menuSong" :song-id="menuSong && menuSong.songId" @close="menuSong = null"
-			@added="toast('재생목록에 추가했어요.')" @add-to-playlist="addToMyPlaylist" />
+			@add-to-playlist="addToMyPlaylist" />
 	</main>
 </template>
 
@@ -111,11 +111,20 @@ export default {
 		bigCover(song) {
 			return (song.coverUrl || '').replace('/50/', '/200/')
 		},
+		// 줄 클릭 = 차트 100곡 전체를 그 곡부터(화면엔 10줄만 보여도 목록은 100곡)
 		playNow(song) {
-			this.$store.dispatch('player/playNow', song)
+			this.playFrom(Math.max(0, this.chart.indexOf(song)))
 		},
 		playAll() {
-			this.$store.dispatch('player/playEntirePlaylist', { songs: this.chart })
+			this.playFrom(0)
+		},
+		playFrom(index) {
+			this.$store.dispatch('player/playList', {
+				source: { type: 'chart', id: this.isPop ? 'pop' : 'kr', name: this.isPop ? '해외 Top 100' : 'Top 100 국내' },
+				songs: this.chart,
+				idKey: 'songId',
+				index,
+			})
 		},
 		showCreatePlaylistModal() {
 			this.layoutMethods.showCreatePlaylistModal()

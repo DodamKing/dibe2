@@ -15,6 +15,7 @@
 | `docs/AUTH_FLOW.md` | 인증/권한 관련 작업 시 |
 | `docs/CRON_EXTERNAL.md` | 크론잡/외부API 관련 작업 시 |
 | `docs/MOBILE_APP_PLAN.md` | 모바일 앱 설계 이력(2026-03~07). **앱의 현재 상태는 `d:\projects\dibe2-app\CLAUDE.md`가 기준** |
+| `docs/PLAYER_V2_PLAN.md` | 웹 2단계(큐 재설계·재생 화면·테마 페이지) 작업 시 |
 | `docs/THEME_PLAYLIST.md` | 테마 플레이리스트(상황·분위기 추천) API·수집 스크립트 작업 시 |
 
 ## 핵심 기술 스택

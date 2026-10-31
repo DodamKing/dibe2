@@ -90,7 +90,8 @@
                 <div class="overflow-y-auto pr-2 custom-scrollbar mt-4" style="height: calc(100vh - 480px);">
                     <ul v-if="currentPlaylist.songs.length" class="space-y-3">
                         <li v-for="(song, index) in currentPlaylist.songs" :key="song._id"
-                            class="flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors duration-200">
+                            class="flex items-center p-2 rounded-lg hover:bg-gray-700 transition-colors duration-200 cursor-pointer"
+                            @click="playFrom(index)">
                             <span class="mr-2 text-lg font-bold text-purple-400 w-6">
                                 {{ index + 1 }}
                             </span>
@@ -100,7 +101,7 @@
                                 <p class="font-medium text-sm sm:text-base truncate">{{ song.title }}</p>
                                 <p class="text-xs sm:text-sm text-gray-300 truncate">{{ song.artist }}</p>
                             </div>
-                            <button @click="removeSong(song)" class="text-red-500 hover:text-red-600 flex-shrink-0">
+                            <button @click.stop="removeSong(song)" aria-label="플레이리스트에서 빼기" class="text-red-500 hover:text-red-600 flex-shrink-0">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </li>
@@ -144,22 +145,29 @@ export default {
         }
     },
     methods: {
-        ...mapActions('player', ['playEntirePlaylist', 'playShuffledPlaylist']),
         ...mapActions('playlist', ['fetchPlaylistDetail', 'updatePlaylistName', 'removeSongsFromPlaylist', 'deletePlaylist']),
         async removePlaylist() {
             await this.deletePlaylist(this.currentPlaylist._id)
             this.$toast.success('플레이리스트를 삭제했습니다.')
             this.$router.replace('/')
         },
-        async playAll() {
-            if (this.currentPlaylist.songs.length) {
-                await this.playEntirePlaylist(this.currentPlaylist)
-            }
+        // 줄 클릭 = 이 플레이리스트를 그 곡부터 / 전체 재생 / 랜덤 재생(셔플을 켜고 시작)
+        playFrom(index, shuffle = false) {
+            const pl = this.currentPlaylist
+            if (!pl.songs.length) return
+            this.$store.dispatch('player/playList', {
+                source: { type: 'playlist', id: pl._id, name: pl.name },
+                songs: pl.songs,
+                idKey: 'songId',
+                index: shuffle ? null : index,
+                shuffle,
+            })
         },
-        async shufflePlay() {
-            if (this.currentPlaylist.songs.length) {
-                await this.playShuffledPlaylist(this.currentPlaylist)
-            }
+        playAll() {
+            this.playFrom(0)
+        },
+        shufflePlay() {
+            this.playFrom(null, true)
         },
         async removeSong(song) {
             try {

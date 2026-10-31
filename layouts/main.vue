@@ -3,8 +3,12 @@
         <AppHeader />
         <Nuxt />
 
-        <Playlist :show="showQueue" @close="toggleQueue" class="z-40" />
-        <MusicPlayer :current-track="currentTrack" @toggle-queue="toggleQueue" class="z-50" />
+        <!-- 겹치는 순서: 데스크탑은 미니 플레이어(50) > 대기열 서랍(46) > 지금 재생 중(45).
+             모바일은 지금 재생 중이 미니 플레이어까지 덮고(55), 거기서 여는 대기열이 그 위(60) -->
+        <NowPlaying :show="showNowPlaying" class="z-[55] sm:z-[45]" @close="showNowPlaying = false" @open-queue="showQueue = true" />
+        <QueuePanel :show="showQueue" class="z-[60] sm:z-[46]" @close="showQueue = false" />
+        <MusicPlayer :queue-open="showQueue" :now-playing-open="showNowPlaying" class="z-50"
+            @toggle-queue="toggleQueue" @open-now-playing="showNowPlaying = true" />
 
         <CreatePlaylistModal :show="showCreatePlaylistModal" @close="showCreatePlaylistModal = false"
             @create="handleCreatePlaylist" @show-toast="showToast" />
@@ -53,7 +57,7 @@
                         <li>
                             <button @click="addToCurrentPlaylist"
                                 class="w-full text-left p-2 rounded hover:bg-gray-700 transition-colors duration-200">
-                                현재 재생 목록에 추가
+                                재생 대기열에 추가
                             </button>
                         </li>
                         <li>
@@ -90,7 +94,8 @@ import 'dayjs/locale/ko'
 import { mapState, mapActions } from 'vuex'
 import MusicPlayer from '~/components/MusicPlayer.vue'
 import AppHeader from '~/components/AppHeader.vue'
-import Playlist from '~/components/Playlist.vue'
+import QueuePanel from '~/components/QueuePanel.vue'
+import NowPlaying from '~/components/NowPlaying.vue'
 import CreatePlaylistModal from '~/components/CreatePlaylistModal.vue'
 
 export default {
@@ -137,7 +142,8 @@ export default {
     components: {
         MusicPlayer,
         AppHeader,
-        Playlist,
+        QueuePanel,
+        NowPlaying,
         CreatePlaylistModal,
     },
     head() {
@@ -149,7 +155,7 @@ export default {
         }
     },
     computed: {
-        ...mapState('player', ['queue', 'currentTrack', 'notice']),
+        ...mapState('player', ['currentTrack', 'notice']),
         ...mapState('playlist', ['playlists']),
         ...mapState('search', ['showSearchResults']),
         allSelected() {
@@ -160,6 +166,7 @@ export default {
         return {
             searchQuery: '',
             showQueue: false,
+            showNowPlaying: false,
             popularChart: [],
             lastChartUpdated: '',
             popChart: [],
@@ -179,7 +186,7 @@ export default {
         }
     },
     methods: {
-        ...mapActions('player', ['addToPlaylist', 'setCurrentTrack', 'addMultipleToPlaylist', 'initializeQueue']),
+        ...mapActions('player', ['addToQueue']),
         ...mapActions('playlist', ['fetchPlaylists', 'createPlaylist', 'deletePlaylist', 'addSongsToPlaylist']),
         ...mapActions('search', ['closeSearchResults']),
         toggleQueue() {
@@ -235,8 +242,11 @@ export default {
             this.showAddToPlaylistModal = true
         },
         handleKeyDown(e) {
+            // 위에 떠 있는 것부터 하나씩 닫는다
             if (e.key === 'Escape' && this.showQueue) {
                 this.toggleQueue()
+            } else if (e.key === 'Escape' && this.showNowPlaying) {
+                this.showNowPlaying = false
             }
 
             if (e.key === 'Escape' && this.showAddToPlaylistModal) {
@@ -275,32 +285,18 @@ export default {
         async addToCurrentPlaylist() {
             if (this.isAdding) return
 
-            const TOAST_MESSAGES = {
-                QUEUE_FULL: '재생목록이 가득 찼습니다. 일부 곡을 제거해주세요.',
-                QUEUE_LIMIT_EXCEEDED: (remaining) => `재생목록에 ${remaining}곡만 더 추가할 수 있습니다.`,
-                ALL_DUPLICATES: '선택한 모든 곡이 이미 재생목록에 있습니다.',
-                SUCCESS: (added, duplicates) => {
-                    const duplicateMsg = duplicates ? ` (중복 ${duplicates}곡 제외)` : ''
-                    return `${added}곡이 현재 재생목록에 추가되었습니다.${duplicateMsg}`
-                },
-                ERROR: '곡을 현재 재생목록에 추가하는 데 실패했습니다.'
-            }
-
             this.isAdding = true
             try {
-                const result = await this.addMultipleToPlaylist(this.selectedSongs)
-                const message = result.message === 'QUEUE_LIMIT_EXCEEDED' ? TOAST_MESSAGES[result.message](result.remaining)
-                    : result.message === 'SUCCESS' ? TOAST_MESSAGES[result.message](result.added, result.duplicates)
-                        : TOAST_MESSAGES[result.message] || TOAST_MESSAGES.ERROR
-
-                this.showToast(message)
-
-                if (result.message === 'SUCCESS') {
-                    this.selectedSongs = []
-                }
+                // 차트 항목이면 곡 id 는 `songId`(항목 _id 는 곡이 아님), DB 곡이면 `_id`
+                const songs = this.selectedSongs.map(s => ({ ...s, _id: 'songId' in s ? s.songId : s._id }))
+                const { added, full } = await this.addToQueue({ songs, idKey: '_id' })
+                this.showToast(!added ? '재생 대기열이 가득 찼어요. (최대 1000곡)'
+                    : full ? `대기열에 ${added}곡만 추가했어요. (최대 1000곡)`
+                        : `${added}곡을 대기열에 추가했어요.`)
+                if (added) this.selectedSongs = []
             } catch (err) {
-                console.error('Failed to add songs to current playlist:', err)
-                this.showToast(TOAST_MESSAGES.ERROR)
+                console.error('Failed to add songs to queue:', err)
+                this.showToast('대기열에 추가하지 못했어요.')
             } finally {
                 this.isAdding = false
                 this.closeAddToPlaylistModal()
@@ -331,9 +327,6 @@ export default {
             setTimeout(() => {
                 this.toastVisible = false
             }, 3000)
-        },
-        playSong(song) {
-            this.setCurrentTrack(song)
         },
         startProgress() {
             this.progressPercentage = 0

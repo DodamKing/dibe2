@@ -42,9 +42,9 @@
                     <div class="flex gap-2">
                         <button @click="addSelectedToCurrentPlaylist"
                             class="bg-blue-500 text-white px-3 py-1 sm:px-4 sm:py-2 rounded text-sm sm:text-base"
-                            :title="'현재 재생목록에 추가'">
+                            :title="'재생 대기열에 추가'">
                             <i class="fas fa-play-circle sm:hidden"></i>
-                            <span class="hidden sm:inline">현재 재생목록에 추가</span>
+                            <span class="hidden sm:inline">대기열에 추가</span>
                         </button>
                         <button @click="showPlaylistModal = true"
                             class="bg-green-500 text-white px-3 py-1 sm:px-4 sm:py-2 rounded text-sm sm:text-base"
@@ -144,7 +144,7 @@ export default {
             changeActiveTab: 'search/changeActiveTab',
             performSearch: 'search/performSearch',
             updateSearchQuery: 'search/updateSearchQuery',
-            addMultipleToPlaylist: 'player/addMultipleToPlaylist',
+            addToQueue: 'player/addToQueue',
             addSongsToPlaylist: 'playlist/addSongsToPlaylist',
         }),
         executeSearch() {
@@ -182,20 +182,11 @@ export default {
         async addSelectedToCurrentPlaylist() {
             if (this.selectedSongs.length > 0) {
                 try {
-                    const result = await this.addMultipleToPlaylist(this.selectedSongs)
-                    if (result.message === 'SUCCESS') {
-                        let msg = `${result.added}곡이 현재 재생목록에 추가되었습니다.`
-                        if (result.duplicates > 0) {
-                            msg += ` (중복 ${result.duplicates}곡 제외)`
-                        }
-                        this.$toast.success(msg)
-                    } else if (result.message === 'ALL_DUPLICATES') {
-                        this.$toast.info('이미 재생목록에 있는 곡입니다.')
-                    } else if (result.message === 'QUEUE_FULL') {
-                        this.$toast.error('재생목록이 가득 찼습니다. (최대 1000곡)')
-                    } else if (result.message === 'QUEUE_LIMIT_EXCEEDED') {
-                        this.$toast.error(`재생목록 공간이 부족합니다. (남은 자리: ${result.remaining}곡)`)
-                    }
+                    // 검색 결과는 DB 곡(_id = 곡 id). 같은 곡이 이미 있어도 넣는다(업계 공통)
+                    const { added, full } = await this.addToQueue({ songs: this.selectedSongs, idKey: '_id' })
+                    if (!added) this.$toast.error('재생 대기열이 가득 찼어요. (최대 1000곡)')
+                    else if (full) this.$toast.info(`대기열에 ${added}곡만 추가했어요. (최대 1000곡)`)
+                    else this.$toast.success(`${added}곡을 대기열에 추가했어요.`)
                     this.selectedSongs = []
                     this.selectAll = false
                 } catch (error) {

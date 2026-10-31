@@ -46,7 +46,7 @@ v-for="(song, i) in chart" :key="`${i}-${song.title}-${song.artist}`"
 
 		<SongMenuSheet
 :song="menuSong" :song-id="menuSong && menuSong.songId" @close="menuSong = null"
-			@added="$store.commit('player/SET_NOTICE', '재생목록에 추가했어요.')" @add-to-playlist="addToMyPlaylist" />
+			@add-to-playlist="addToMyPlaylist" />
 	</main>
 </template>
 
@@ -100,11 +100,20 @@ export default {
 		toggleAll() {
 			this.layoutMethods.setSelectedSongs(this.allSelected ? [] : this.chart)
 		},
+		// 줄 클릭 = 차트 전체를 그 곡부터(스포티파이·애플뮤직 방식). "다음에 재생"에 넣은 곡은 지켜진다
 		playNow(song) {
-			this.$store.dispatch('player/playNow', song)
+			this.playFrom(Math.max(0, this.chart.indexOf(song)))
 		},
 		playAll() {
-			this.$store.dispatch('player/playEntirePlaylist', { songs: this.chart })
+			this.playFrom(0)
+		},
+		playFrom(index) {
+			this.$store.dispatch('player/playList', {
+				source: { type: 'chart', id: this.isPop ? 'pop' : 'kr', name: this.isPop ? '해외 Top 100' : 'Top 100 국내' },
+				songs: this.chart,
+				idKey: 'songId',
+				index,
+			})
 		},
 		addToMyPlaylist(song) {
 			this.menuSong = null

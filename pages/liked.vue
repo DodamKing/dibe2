@@ -43,7 +43,7 @@ v-if="hasMore" type="button" :disabled="loading" class="self-center h-10 px-5 ro
 
 		<SongMenuSheet
 :song="menuSong" :song-id="menuSong && menuSong._id" @close="menuSong = null"
-			@added="$store.commit('player/SET_NOTICE', '재생목록에 추가했어요.')" @add-to-playlist="addToMyPlaylist" />
+			@add-to-playlist="addToMyPlaylist" />
 	</main>
 </template>
 
@@ -88,13 +88,16 @@ export default {
 				this.loading = false
 			}
 		},
+		// 줄 클릭 = 좋아요 목록을 그 곡부터. 하트를 취소한 곡은 빼고 튼다(누른 곡은 취소했어도 튼다)
 		playNow(song) {
-			this.$store.dispatch('player/playNow', song)
+			const songs = this.songs.filter(s => s === song || this.$store.getters['likes/isLiked'](s._id))
+			this.playFrom(songs, Math.max(0, songs.indexOf(song)))
 		},
 		playAll() {
-			// 하트를 취소한 곡은 빼고 튼다
-			const songs = this.songs.filter(s => this.$store.getters['likes/isLiked'](s._id))
-			this.$store.dispatch('player/playEntirePlaylist', { songs })
+			this.playFrom(this.songs.filter(s => this.$store.getters['likes/isLiked'](s._id)), 0)
+		},
+		playFrom(songs, index) {
+			this.$store.dispatch('player/playList', { source: { type: 'liked', id: null, name: '좋아요한 곡' }, songs, idKey: '_id', index })
 		},
 		addToMyPlaylist(song) {
 			this.menuSong = null

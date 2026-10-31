@@ -97,3 +97,6 @@ deno.lock
 
 # 크롤링 산출물 (로컬 전용, 수십 MB)
 /data
+
+# Playwright 검증 스크린샷
+scripts/e2e/out/

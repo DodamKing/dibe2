@@ -11,8 +11,11 @@
                     <i :class="[liked ? 'fas' : 'far', 'fa-heart', 'text-purple-400 w-5']"></i>
                     {{ liked ? '좋아요 취소' : '좋아요' }}
                 </button>
-                <button type="button" class="menu-item" @click="addToQueue">
-                    <i class="fas fa-list w-5 text-gray-300"></i>재생목록에 추가
+                <button type="button" class="menu-item" @click="addToQueue(true)">
+                    <i class="fas fa-list w-5 text-gray-300"></i>다음에 재생
+                </button>
+                <button type="button" class="menu-item" @click="addToQueue(false)">
+                    <i class="fas fa-list w-5 text-gray-300"></i>대기열 맨 뒤에 추가
                 </button>
                 <button type="button" class="menu-item" @click="$emit('add-to-playlist', song)">
                     <i class="fas fa-plus w-5 text-gray-300"></i>내 플레이리스트에 담기
@@ -48,9 +51,12 @@ export default {
             this.$store.dispatch('likes/toggle', this.songId)
             this.$emit('close')
         },
-        async addToQueue() {
-            await this.$store.dispatch('player/addToPlaylist', this.song)
-            this.$emit('added')
+        // front=true "다음에 재생"(맨 앞) / false "대기열 맨 뒤에 추가".
+        // 곡 id 는 songId prop 이 정답이다 — 차트 항목의 _id 는 곡이 아니다
+        async addToQueue(front) {
+            const song = { ...this.song, _id: this.songId || undefined }
+            const { added } = await this.$store.dispatch('player/addToQueue', { songs: [song], idKey: '_id', front })
+            this.$store.commit('player/SET_NOTICE', !added ? '재생 대기열이 가득 찼어요.' : front ? '다음에 재생할게요.' : '대기열에 추가했어요.')
             this.$emit('close')
         },
     },
