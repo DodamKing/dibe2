@@ -102,6 +102,7 @@
 }
 ```
 - songs 배열에 곡 정보 비정규화 저장 (빠른 조회용)
+- 곡 추가(`addToPlaylist`)는 받은 `_id`가 실제 Song이 아니면 title+artist로 찾아 잇고, 없으면 넣지 않는다(2026-10-31 — 차트 항목 id가 섞여 들어오던 버그 방어)
 
 ## VideoPlaylist - server/models/VideoPlaylist.js
 ```
@@ -133,11 +134,14 @@
     coverUrl: String,
     detailLink: String,
     lyrics: String,
-    updateAt: Date
+    updateAt: Date,
+    songId: ObjectId (ref: Song)   // 2026-10-31~. 크론(saveSongData)이 붙인다
   }]
 }
 ```
 - 단일 document로 관리 (findOne)
+- 🔴 **항목의 `_id`(서브문서 id)는 곡 id가 아니다.** `$set items` 때마다 새로 생기는 값. 곡을 가리키는 건 `songId`뿐 — 웹이 `_id`를 곡 id로 플리에 넣어 82곡 중 27곡이 깨져 있었다(2026-10-31, `scripts/fix-song-refs.js`로 복구)
+- `updateChartData`는 내용이 바뀔 때만 다시 쓰는데, 비교 항목에 `songId`가 들어 있어 비어 있던 차트도 다음 크론에서 채워진다
 - `findOneAndUpdate` pre-hook으로 lastUpdated 자동 갱신
 - **`PopChart`**(컬렉션 `popcharts`, 2026-10-28) — 해외 Top 100. 스키마 동일, 같은 파일에서 export.
   같은 컬렉션에 `kind`로 넣지 않은 이유: 조건 없는 `Chart.findOne()`(서비스·`scripts/cron-health.js`)이 어느 문서를 집을지 모르게 된다

@@ -122,6 +122,20 @@ module.exports = {
         return { playCount: updated.playCount, counted: true }
     },
 
+    // 차트 항목에 현재 사용자의 liked 를 붙인다. Like 쿼리 1회.
+    // attachLikedFlags 를 안 쓰는 이유: 그건 `_id`(차트에선 항목 id라 틀림)를 키로 쓰고
+    // likeCount/playCount 를 0으로 채워 넣는다(차트 항목엔 그 값이 없어 거짓 0이 나간다).
+    // songId 없는 항목(크론이 아직 못 채운 것)은 liked:false — 클라이언트는 songId 없으면 하트를 숨긴다.
+    attachChartLikes: async (userId, items) => {
+        requireUserId(userId)
+        const ids = items.map(item => item.songId).filter(Boolean)
+        const likes = ids.length
+            ? await db.Like.find({ user: userId, song: { $in: ids } }).select('song').lean()
+            : []
+        const likedIds = new Set(likes.map(like => like.song.toString()))
+        return items.map(item => ({ ...item, liked: !!item.songId && likedIds.has(item.songId.toString()) }))
+    },
+
     // 곡 목록에 현재 사용자의 liked 여부 + 카운터를 붙인다. 목록당 Like 쿼리 1회.
     attachLikedFlags: async (userId, songs) => {
         if (!userId || !songs.length) {

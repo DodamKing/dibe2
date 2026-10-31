@@ -8,7 +8,10 @@ const chartItemSchema  = new mongoose.Schema({
     coverUrl: { type: String, trim: true },
     detailLink: { type: String, trim: true },
     lyrics: { type: String, trim: true },
-    updateAt: Date
+    updateAt: Date,
+    // Song._id. 차트 크론(saveSongData)이 붙인다. 🔴 항목 자체의 `_id`(서브문서 id)와 헷갈리지 말 것 —
+    // 그건 `$set items` 때마다 새로 생기는 값이라 곡을 가리키지 않는다(웹이 그걸 곡 id로 플리에 넣던 버그, 2026-10-31)
+    songId: { type: mongoose.Schema.Types.ObjectId, ref: 'Song' },
 })
 
 const chartSchema = new mongoose.Schema({

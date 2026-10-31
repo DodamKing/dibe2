@@ -44,6 +44,8 @@
   - `/by-ids` 응답엔 2026-07-15부터 `liked`/`likeCount`/`playCount`가 **추가로** 실려 온다(앱 하트 UI용). 기존 4필드는 그대로라 웹은 무영향이고, `stripForCache`가 표시 최소 필드만 남기므로 **localStorage엔 안 들어간다**(메모리 큐엔 실려 있음) — 웹에서 하트를 쓸 거면 이미 받아둔 값이라 추가 요청 불필요
 - 차트는 `layouts/main.vue` `fetchPopularChart`에서 `dibe2_chart_cache` 키로 동일한 캐시-즉시-표시 + 백그라운드-refresh 패턴 사용
 - YouTube IFrame API로 재생 (`utils/youtubePlayer.js`)
+- **재생 수 기록**(`tallyPlay`, 2026-10-31~): 앱과 같은 기준 — 이 곡을 실제로 **30초 또는 절반** 들으면 `POST /api/songs/:id/play` 1회(`source: 'unknown'`, 웹은 출처를 추적하지 않음). 1초 폴링 횟수가 아니라 **경과 시간**으로 더한다(좀비 복구로 폴링이 겹쳐도 두 배로 안 세게). 곡이 끝나면(ENDED) 비워서 한 곡 반복도 매번 센다
+- **재생 실패 안내**: `state.errorMessage` → `layouts/main.vue`가 토스트로 띄우고 비운다(예전엔 `SET_ERROR_MESSAGE` mutation이 없어 실패 시 에러만 났다)
 - 큐 제한: 1000곡
 - 반복 모드: off → all → one
 - **재생 위치 기억** (`user_{id}_position`에 `{trackId, time}`, 비디오 `user_{id}_video_position`과 동일 패턴, 마지막 곡 1개만): `updateTrackProgress`의 1초 polling 중 재생 중일 때 + `pause` 시 저장. 단, 음원 싱글톤 플레이어(`utils/youtubePlayer.js`)는 새로고침 직후엔 곡을 아예 로드 안 하고 실제 `play()` 호출 시에야 `loadVideoById`로 로드되므로, 비디오처럼 재생 전에 진행바로 미리 보여줄 수는 없음 — 대신 `initializeQueue`에서 복원한 값을 `state.resumePosition`(`currentTime`과 별개)에 잠깐 들고 있다가 소비

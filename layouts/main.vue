@@ -116,6 +116,11 @@ export default {
         }
     },
     watch: {
+        errorMessage(message) {
+            if (!message) return
+            this.showToast(message)
+            this.$store.commit('player/SET_ERROR_MESSAGE', null)
+        },
         isAdding(newValue) {
             if (newValue) {
                 this.startProgress()
@@ -139,7 +144,7 @@ export default {
         }
     },
     computed: {
-        ...mapState('player', ['queue', 'currentTrack']),
+        ...mapState('player', ['queue', 'currentTrack', 'errorMessage']),
         ...mapState('playlist', ['playlists']),
         ...mapState('search', ['showSearchResults']),
         allSelected() {
@@ -196,8 +201,9 @@ export default {
                 this.popularChart = chart.items
                 this.lastChartUpdated = dayjs(chart.lastUpdated).locale('ko').format('M월 D일 A h시')
                 try {
+                    // liked 는 사용자마다 다른데 이 캐시는 사용자 구분이 없다 → 빼고 저장(계정을 바꾸면 남의 하트가 보인다)
                     localStorage.setItem(CACHE_KEY, JSON.stringify({
-                        items: chart.items,
+                        items: chart.items.map(({ liked, ...item }) => item),
                         lastUpdated: chart.lastUpdated,
                     }))
                 } catch (err) {
@@ -284,7 +290,9 @@ export default {
 
             this.isAdding = true
             try {
-                const { success, addedSongs } = await this.addSongsToPlaylist({ playlistId, songs: this.selectedSongs })
+                // 차트 항목의 `_id`는 곡이 아니라 차트 항목 id다 — 곡 id 는 `songId`
+                const songs = this.selectedSongs.map(s => ({ ...s, _id: s.songId || s._id }))
+                const { success, addedSongs } = await this.addSongsToPlaylist({ playlistId, songs })
                 if (success) this.showToast(`${addedSongs}곡이 선택한 플레이리스트에 추가되었습니다.`)
                 else this.showToast('예기치 못한 에러 발생으로 곡 추가에 실패했습니다.')
                 this.selectedSongs = []

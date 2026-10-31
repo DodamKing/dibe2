@@ -25,10 +25,17 @@ router.get('/test', async (req, res) => {
     }
 })
 
+// 차트 항목마다 `songId`(Song._id, 크론이 저장) + `liked`(요청한 사용자 기준)를 싣는다.
+// liked 는 사용자마다 다르니 클라이언트는 차트를 로컬 캐시할 때 빼고 저장할 것
+async function sendChart(req, res, model) {
+    const chart = await services.songService.getChartData(model)
+    if (chart) chart.items = await services.statsService.attachChartLikes(req.user.userId, chart.items)
+    res.json({ chart })
+}
+
 router.get('/chart', async (req, res) => {
     try {
-        const chart = await services.songService.getChartData()
-        res.json({ chart })
+        await sendChart(req, res, db.Chart)
     } catch (err) {
         console.error('차트 가져오는 엔드포인트 에러', err)
         res.status(500).end()
@@ -38,8 +45,7 @@ router.get('/chart', async (req, res) => {
 // 해외(팝) Top 100. 응답 모양은 /chart와 같다. 아직 수집 전이면 chart: null
 router.get('/chart/pop', async (req, res) => {
     try {
-        const chart = await services.songService.getChartData(db.PopChart)
-        res.json({ chart })
+        await sendChart(req, res, db.PopChart)
     } catch (err) {
         console.error('해외 차트 가져오는 엔드포인트 에러', err)
         res.status(500).end()

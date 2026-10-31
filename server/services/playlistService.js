@@ -1,3 +1,4 @@
+const mongoose = require('mongoose')
 const db = require('../models')
 
 module.exports = {
@@ -41,15 +42,28 @@ module.exports = {
             const playlist = await db.Playlist.findById(playlistId)
             if (!playlist) return { success: false, error: 'Playlist not found' }
             
-            const newSongs = songs.map(song => ({
-                songId: song._id,
-                title: song.title,
-                artist: song.artist,
-                coverUrl: song.coverUrl
-            }))
+            // 받은 `_id`를 그대로 믿지 않는다. 웹이 차트 항목(서브문서 `_id` = 곡이 아님)을 그대로 보내
+            // 어떤 Song 도 가리키지 않는 songId 가 쌓여 왔다(2026-10-31 발견, 82곡 중 27곡).
+            // 실제 Song 이 아니면 title+artist 로 찾아 잇고, 그래도 없으면 넣지 않는다.
+            const validIds = songs.map(song => song._id).filter(id => mongoose.Types.ObjectId.isValid(id))
+            const existing = new Set(
+                (await db.Song.find({ _id: { $in: validIds } }).select('_id').lean()).map(s => s._id.toString())
+            )
 
-            const uniqueNewSongs = newSongs.filter(newSong => 
-                !playlist.songs.some(existingSongs => existingSongs.songId.toString() === newSong.songId.toString())
+            const newSongs = []
+            for (const song of songs) {
+                let songId = song._id && existing.has(String(song._id)) ? song._id : null
+                if (!songId) {
+                    const found = await db.Song.findOne({ title: song.title, artist: song.artist }).select('_id').lean()
+                    if (!found) continue
+                    songId = found._id
+                }
+                newSongs.push({ songId, title: song.title, artist: song.artist, coverUrl: song.coverUrl })
+            }
+
+            const uniqueNewSongs = newSongs.filter((newSong, i) =>
+                !playlist.songs.some(existingSongs => existingSongs.songId.toString() === newSong.songId.toString()) &&
+                newSongs.findIndex(s => s.songId.toString() === newSong.songId.toString()) === i
             )
 
             playlist.songs.push(...uniqueNewSongs)

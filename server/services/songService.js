@@ -104,7 +104,9 @@ module.exports = {
                 const currentItem = currentChart.items[i]
                 const newItem = newChartData[i]
 
+                // songId 도 비교한다 — 안 그러면 순위가 그대로인 날엔 songId 가 영영 안 채워진다
                 if (
+                    String(currentItem.songId) !== String(newItem.songId) ||
                     currentItem.rank.toString() !== newItem.rank ||
                     currentItem.title !== newItem.title ||
                     currentItem.artist !== newItem.artist ||
@@ -128,19 +130,24 @@ module.exports = {
 
     getChartData: async (model = db.Chart) => {
         try {
-            const chartData = await model.findOne()
+            const chartData = await model.findOne().lean()
             return chartData
         } catch (err) {
             console.error('차트 가져오다가 에러남:', err)
         }
     },
 
+    // 차트 항목마다 `songId`(Song._id)를 **제자리에서** 붙인다 → 뒤이은 updateChartData 가 그대로 저장.
+    // 찾거나 만드는 김에 얻는 값이라 추가 쿼리가 없다.
     saveSongData: async (chartData) => {
         try {
             for (const song of chartData) {
-                const existingSong = await db.Song.findOne({ title: song.title, artist: song.artist })
-                if (!existingSong) {
-                    await db.Song.create(song)
+                const existingSong = await db.Song.findOne({ title: song.title, artist: song.artist }).select('_id')
+                if (existingSong) {
+                    song.songId = existingSong._id
+                } else {
+                    const created = await db.Song.create(song)
+                    song.songId = created._id
                     console.log(`새로운 곡 저장: ${song.title} by ${song.artist}`)
                 }
             }

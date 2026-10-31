@@ -31,6 +31,10 @@ export const state = () => ({
     isQueueEnded: false,
     // 새로고침 복원 시 기억해둔 위치 — 다음 play()에서 한 번만 seek하고 비움(currentTime과는 별개)
     resumePosition: null,
+    // 재생 실패 안내(레이아웃이 토스트로 띄우고 비운다)
+    errorMessage: null,
+    // 재생 수 기록용 — 이 곡을 실제로 들은 시간. 앱과 같은 기준(30초 또는 절반)에 닿으면 1회 기록
+    playTally: { trackId: null, seconds: 0, counted: false, lastTick: 0 },
 })
 
 export const mutations = {
@@ -82,6 +86,12 @@ export const mutations = {
     },
     SET_RESUME_POSITION(state, position) {
         state.resumePosition = position
+    },
+    SET_ERROR_MESSAGE(state, message) {
+        state.errorMessage = message
+    },
+    SET_PLAY_TALLY(state, tally) {
+        state.playTally = tally
     },
     SHUFFLE_QUEUE(state) {
         if (state.currentTrack) {
@@ -348,7 +358,7 @@ export const actions = {
                 // 아직 youtubeUrl이 없는 곡. loadVideoById(null)은 예외 없이 조용히 넘어가서
                 // 재생 중 표시만 남고 소리는 안 나므로 여기서 끊는다.
                 if (!youtubeId) {
-                    commit('SET_ERROR_MESSAGE', 'This track is not playable yet. Please try again later.')
+                    commit('SET_ERROR_MESSAGE', '아직 재생할 수 없는 곡이에요. 잠시 후 다시 시도해 주세요.')
                     commit('SET_IS_PLAYING', false)
                     return
                 }
@@ -360,7 +370,7 @@ export const actions = {
                 commit('SET_QUEUE_ENDED', false) // 재생이 시작되면 큐 종료 상태 해제
             } catch (error) {
                 console.error('Failed to play track:', error)
-                commit('SET_ERROR_MESSAGE', 'Failed to play the track. Please try again.')
+                commit('SET_ERROR_MESSAGE', '곡을 재생하지 못했어요. 다시 시도해 주세요.')
             } finally {
                 commit('SET_IS_LOADING', false)
             }
@@ -439,6 +449,8 @@ export const actions = {
             // onStateChange callback
             (event) => {
                 if (event.data === YT.PlayerState.ENDED) {
+                    // 한 곡 반복이면 같은 곡이 다시 시작된다 — 그것도 새 재생으로 세도록 비운다
+                    commit('SET_PLAY_TALLY', { trackId: null, seconds: 0, counted: false, lastTick: 0 })
                     dispatch('playNext')
                 } else if (event.data === YT.PlayerState.PLAYING) {
                     commit('SET_IS_PLAYING', true)
@@ -473,9 +485,35 @@ export const actions = {
             if (currentTime !== undefined && duration !== undefined) {
                 commit('SET_CURRENT_TIME', currentTime)
                 commit('SET_DURATION', duration)
-                if (state.isPlaying) dispatch('savePosition')
+                if (state.isPlaying) {
+                    dispatch('savePosition')
+                    dispatch('tallyPlay', duration)
+                }
             }
         }
+    },
+
+    // 재생 수 기록 — 앱과 같은 기준: 이 곡을 **실제로 30초 또는 절반** 들으면 1회(넘긴 곡은 안 셈).
+    // 폴링 횟수가 아니라 경과 시간으로 더한다(좀비 복구로 폴링이 겹쳐도 두 배로 세지 않게, 한 틱 최대 2초).
+    // 서버는 같은 곡 20초 내 재발사를 무시하므로 중복 걱정은 없다.
+    tallyPlay({ state, commit }, duration) {
+        const track = state.currentTrack
+        if (!track || !track._id) return
+        const now = Date.now()
+        let { trackId, seconds, counted, lastTick } = state.playTally
+        if (trackId !== track._id) {
+            trackId = track._id
+            seconds = 0
+            counted = false
+            lastTick = now
+        }
+        seconds += Math.min((now - lastTick) / 1000, 2)
+        if (!counted && (seconds >= 30 || (duration > 0 && seconds >= duration / 2))) {
+            counted = true
+            // 웹은 "어디서 틀었나"를 추적하지 않는다 → unknown
+            this.$axios.$post(`/api/songs/${trackId}/play`, { source: 'unknown' }).catch(() => {})
+        }
+        commit('SET_PLAY_TALLY', { trackId, seconds, counted, lastTick: now })
     },
 
     toggleShuffle({ commit, rootState, state, dispatch }) {

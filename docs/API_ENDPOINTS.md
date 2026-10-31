@@ -5,8 +5,12 @@
 ## Songs (`/api/songs`) - server/api/song.js
 | Method | Path | 설명 |
 |--------|------|------|
-| GET | `/chart` | Bugs Top100 차트 데이터 |
+| GET | `/chart` | Bugs Top100 차트 데이터. 항목마다 `songId`(Song._id) + `liked`(요청한 사용자 기준) |
 | GET | `/chart/pop` | 해외(팝) Top100. 응답 모양은 `/chart`와 같음(`{chart}`), 수집 전이면 `chart: null`. 별도 컬렉션 `popcharts` |
+
+- **차트 항목의 `_id`는 곡 id가 아니다**(차트 안 서브문서 id). 곡 id는 `songId` — 좋아요·플리 추가·재생 기록엔 이걸 쓸 것
+- `songId`가 없는 항목(크론이 아직 못 채움)은 `liked: false`. 하트를 숨길 것
+- `liked`는 사용자마다 다르므로 **차트를 로컬 캐시할 땐 빼고 저장**(웹 `dibe2_chart_cache`가 그렇게 한다)
 | GET | `/songdata?title=&artist=` | 제목+아티스트로 곡 조회 |
 | POST | `/songsdata` | body: {songs[]} → 복수 곡 조회 |
 | GET | `/search?query=&type=&page=&limit=` | 곡 검색 (type: all/title/artist/lyrics). **all=공백 토큰 AND**(각 토큰이 title∪artist 어디든 매칭) → "아이유 좋은날"처럼 가수+제목 조합도 잡힘. 단일 토큰은 종전과 동일 |
