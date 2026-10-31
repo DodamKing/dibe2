@@ -268,6 +268,65 @@ const scenarios = {
         await context.close()
     },
 
+    async theme(browser) {
+        const { context, page } = await newPage(browser, { width: 1440, height: 900 })
+        await gotoHome(page)
+        await page.goto(BASE + '/theme', { waitUntil: 'domcontentloaded' })
+        await page.waitForSelector('a.theme-card', { timeout: 20000 })
+        const cards = await page.locator('a.theme-card').count()
+        check('테마 목록 카드', cards >= 5, `${cards}개`)
+        await page.waitForTimeout(800)
+        await page.screenshot({ path: join(OUT, 'theme-list.png') })
+        await page.locator('a.theme-card').first().click()
+        await page.waitForSelector('main .song-row', { timeout: 20000 })
+        const rows = page.locator('main .song-row')
+        check('테마 상세 50곡', (await rows.count()) >= 40, `${await rows.count()}곡`)
+        const t2 = (await rows.nth(1).locator('p').first().textContent()).trim()
+        await rows.nth(1).click()
+        let s = await waitFor(page, s => s.title === t2, { label: '테마 2번째 곡' })
+        check('테마 줄 클릭 → 그 곡부터, 유튜브 곡', s.kind === 'video' && s.ctxLen >= 40 && s.pos === 1, s.ctxName)
+        check('테마 곡 실제 재생', await audible(page, '테마 상세'))
+        const t5 = (await rows.nth(4).locator('p').first().textContent()).trim()
+        await rows.nth(4).hover()
+        await rows.nth(4).getByRole('button', { name: '곡 메뉴' }).click()
+        const menu = page.getByRole('dialog', { name: /메뉴/ })
+        check('유튜브 곡 메뉴: 좋아요·담기 없음', (await menu.getByRole('button', { name: /좋아요|담기/ }).count()) === 0)
+        await page.screenshot({ path: join(OUT, 'theme-menu.png') })
+        await menu.getByRole('button', { name: '다음에 재생' }).click()
+        s = await P(page)
+        check('테마 곡 ⋯ → 다음에 재생', s.upNext[0] === t5)
+        await page.waitForTimeout(500)
+        await page.screenshot({ path: join(OUT, 'theme-detail.png') })
+        await context.close()
+    },
+
+    async pages(browser) {
+        const { context, page } = await newPage(browser, { width: 1440, height: 900 })
+        await gotoHome(page)
+        await page.waitForTimeout(1000)
+        await page.screenshot({ path: join(OUT, 'page-home.png') })
+        await page.getByRole('button', { name: '사용자 메뉴' }).click()
+        await page.waitForTimeout(300)
+        await page.screenshot({ path: join(OUT, 'page-usermenu.png') })
+        await page.getByRole('button', { name: '사용자 메뉴' }).click()
+        // 데스크탑 곡 메뉴
+        const row = page.locator('.song-row').first()
+        await row.hover()
+        await row.getByRole('button', { name: '곡 메뉴' }).click()
+        await page.waitForTimeout(300)
+        await page.screenshot({ path: join(OUT, 'page-songmenu-desktop.png') })
+        await page.keyboard.press('Escape')
+        await page.mouse.click(5, 5)
+        for (const [path, name] of [['/chart', 'chart'], ['/liked', 'liked'], ['/video', 'video'], ['/download', 'download'], ['/admin', 'admin']]) {
+            await page.goto(BASE + path, { waitUntil: 'domcontentloaded' })
+            await page.waitForTimeout(2500)
+            await page.screenshot({ path: join(OUT, `page-${name}.png`) })
+        }
+        const broken = await page.evaluate(() => [...document.querySelectorAll('i[class*="fa-"]')].length)
+        check('Font Awesome 아이콘 남은 것 없음(관리자 화면)', broken === 0)
+        await context.close()
+    },
+
     async tablet(browser) {
         const { context, page } = await newPage(browser, { width: 820, height: 1180 })
         await gotoHome(page)

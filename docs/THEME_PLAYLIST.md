@@ -96,6 +96,11 @@ node scripts/refresh-themes.js                      # 전 테마 수집 → DB �
 - `GET /api/themes/:key?seed=` → `{ theme: {key, name}, seed, updatedAt, songs: [{ videoId, title, artist, duration, thumbnail, tier }] }` (50곡)
 - 썸네일은 `i.ytimg.com/vi/{videoId}/hqdefault.jpg`로 만든다(저장 안 함)
 
+## 웹 (2026-11)
+- `/theme`(목록), `/theme/:key`(50곡), 홈 테마 구역. 곡은 음원 플레이어 대기열에 `kind:'video'`로 들어가 `videoId`를 바로 재생한다 — 하트·가사·재생수 없음
+- `hqdefault` 썸네일엔 위아래 검은 띠가 박혀 있어 `components/CoverImg.vue`(`video`)가 잘라낸다
+- 막힌 영상은 플레이어 onError → 알리고 다음 곡(`store/player.js` `playFailed`)
+
 ## 모바일 앱 연동 (`dibe2-app`)
 앱 개발자가 알아야 할 것. 엔드포인트 표·응답 필드는 `docs/API_ENDPOINTS.md` Themes 절.
 1. **인증**: 다른 API와 같이 `Authorization: Bearer <JWT>` 필수(없으면 401). 앱은 이미 로그인 토큰을 쓰고 있으니 같은 토큰으로 호출

@@ -8,7 +8,7 @@
 				<button
 type="button" class="flex items-center gap-1.5 h-9 px-4 rounded-full border border-gray-600 text-sm text-gray-200 hover:bg-white hover:bg-opacity-5"
 					@click="showCreatePlaylistModal">
-					<i class="fas fa-plus text-xs"></i>새로 만들기
+					<Icon name="plus" :size="12" />새로 만들기
 				</button>
 			</div>
 			<!-- 커버를 크게 — 화면의 색은 대부분 앨범 아트에서 나온다(스포티파이식 정사각 카드).
@@ -16,7 +16,7 @@ type="button" class="flex items-center gap-1.5 h-9 px-4 rounded-full border bord
 			<div class="playlist-grid -mx-2 sm:mx-0">
 				<nuxt-link to="/liked" class="playlist-card group">
 					<div class="aspect-square rounded-lg bg-gradient-to-br from-purple-600 to-indigo-700 flex items-center justify-center shadow-lg">
-						<i class="fas fa-heart text-white text-3xl sm:text-4xl"></i>
+						<Icon name="heart" :size="30" filled class="text-white" />
 					</div>
 					<p class="mt-2 font-semibold truncate">좋아요한 곡</p>
 					<p class="text-sm text-gray-400">{{ likedTotal === null ? '' : `${likedTotal}곡` }}</p>
@@ -30,11 +30,25 @@ type="button" class="flex items-center gap-1.5 h-9 px-4 rounded-full border bord
 						</div>
 						<img v-else-if="playlist.songs.length" :src="bigCover(playlist.songs[0])" alt="" class="w-full h-full object-cover" loading="lazy" />
 						<div v-else class="w-full h-full flex items-center justify-center">
-							<i class="fas fa-music text-gray-500 text-2xl"></i>
+							<Icon name="music" :size="24" class="text-gray-500" />
 						</div>
 					</div>
 					<p class="mt-2 font-semibold truncate">{{ playlist.name }}</p>
 					<p class="text-sm text-gray-400">{{ playlist.songs.length }}곡</p>
+				</nuxt-link>
+			</div>
+		</section>
+
+		<!-- 테마(상황·분위기 추천, 유튜브 곡) — 모바일은 헤더 메뉴가 없어 여기가 들어가는 길이다 -->
+		<section v-if="themes.length" class="flex flex-col gap-3">
+			<div class="flex items-center justify-between">
+				<h2 class="text-xl sm:text-2xl font-bold">테마</h2>
+				<nuxt-link to="/theme" class="h-9 px-3 flex items-center text-sm text-gray-400 hover:text-white">전체 보기</nuxt-link>
+			</div>
+			<div class="playlist-grid -mx-2 sm:mx-0">
+				<nuxt-link v-for="t in themes" :key="t.key" :to="`/theme/${t.key}`" class="playlist-card group">
+					<CoverImg :src="t.cover" video lazy class="aspect-square rounded-lg shadow-lg" />
+					<p class="mt-2 font-semibold truncate">{{ t.name }}</p>
 				</nuxt-link>
 			</div>
 		</section>
@@ -52,7 +66,7 @@ type="button" class="flex items-center gap-1.5 h-9 px-4 rounded-full border bord
 					<button
 type="button" :disabled="!chart.length" class="flex items-center gap-1.5 h-10 px-4 rounded-full bg-purple-500 hover:bg-purple-600 text-sm font-semibold disabled:opacity-50"
 						@click="playAll">
-						<i class="fas fa-play text-xs"></i>전체 재생
+						<Icon name="play" :size="12" filled />전체 재생
 					</button>
 					<nuxt-link
 :to="isPop ? '/chart?type=pop' : '/chart'"
@@ -103,6 +117,12 @@ export default {
 		playlists() {
 			return this.layoutData.playlists()
 		},
+		themes() {
+			return this.$store.state.themes.list
+		},
+	},
+	mounted() {
+		this.$store.dispatch('themes/fetchList')
 	},
 	methods: {
 		tabClass(active) {
