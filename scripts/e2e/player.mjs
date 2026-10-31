@@ -345,6 +345,13 @@ const scenarios = {
             }
             await page.waitForTimeout(3000)
             await shot('search-results')
+            const res = page.locator('[aria-label="검색 결과"] .song-row')
+            const t0 = (await res.nth(1).locator('p span.truncate').first().textContent()).trim()
+            await res.nth(1).click()
+            const sr = await waitFor(page, s => s.title === t0, { label: '검색 결과 줄 클릭' })
+            check(`[${vp.tag}] 검색 결과 줄 클릭 → 검색 결과를 그 곡부터`, /검색 결과/.test(sr.ctxName) && sr.pos === 1, sr.ctxName)
+            await res.nth(2).locator('input[type=checkbox]').check()
+            await shot('search-selected')
             await page.keyboard.press('Escape')
             // 차트 선택 + 담기
             await page.goto(BASE + '/chart', { waitUntil: 'domcontentloaded' })

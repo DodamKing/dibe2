@@ -14,6 +14,8 @@ v-if="selectable" type="checkbox" :checked="selected" :aria-label="`${song.title
                 <span class="truncate">{{ song.title }}</span>
             </p>
             <p class="text-xs sm:text-[13px] text-gray-400 truncate leading-tight mt-0.5">{{ song.artist }}</p>
+            <!-- 줄 아래 덧붙일 내용(검색의 가사 일부 등) -->
+            <slot name="below" />
         </div>
         <span v-if="showAlbum" class="hidden md:block w-56 text-[13px] text-gray-400 truncate shrink-0">{{ song.album }}</span>
 

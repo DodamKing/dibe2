@@ -85,7 +85,7 @@
 - **검증**: `npm test`(대기열 계산) + `scripts/e2e/player.mjs`(Playwright — `npm run dev` 위에서 실제 재생·대기열·옛 큐 변환·테마·화면 폭별 스크린샷. 로그인은 `scripts/e2e/make-token.js`, 운영 DB 쓰기 요청은 가로채 막는다)
 - `VideoHeader.vue`: 비디오 모드 전용 헤더 (← 뒤로가기, DIBE2 비디오 로고, UserMenu) — 단순 헤더, 큐 진입점 없음
 - `UserMenu.vue`: 유저 아바타 + 드롭다운 (프로필/설정/관리자/로그아웃). AppHeader/VideoHeader 공통
-- `SearchResultsModal.vue`: 검색 결과 모달
+- `SearchResultsModal.vue`: 검색 결과(2026-11 새로 — 데스크탑 가운데 창·모바일 전체 화면). 줄은 `SongRow`(하트·⋯), **줄 클릭 = 검색 결과를 그 곡부터**(source `search`), 체크 → 대기열에 추가 / 담기(레이아웃의 담기 시트를 같이 씀). 가사 탭은 `SongRow`의 `below` 칸에 가사 일부(외부 글이라 이스케이프 후 강조). 모바일 검색 팝업은 헤더 자리를 덮는 위쪽 막대(`AppHeader.vue`)
 - `VideoQueueList.vue`: "지금 재생 중" 오버레이 안에 들어가는 재생목록(큐) 콘텐츠 (예전 음원 `Playlist.vue` 축소판 — 음원은 2026-11에 `QueuePanel.vue`로 교체 — 모달도 탭도 아닌 인라인, 가사/셔플/반복 없음, 드래그 정렬 + 다중삭제 + 클릭 점프재생)
 - `MyVideoPlaylistSection.vue`: `/video` 보관함 탭 - 저장된 비디오 플레이리스트 그리드 (카드 썸네일은 첫 영상 1장)
 - `VideoPlaylistDetailPanel.vue`: 보관함 탭에서 플레이리스트 클릭 시 인라인 표시(라우트 아님). "전체재생"은 `videoQueue/setQueueAndPlay` 디스패치

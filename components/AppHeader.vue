@@ -37,30 +37,22 @@
         </div>
         <transition name="fade">
             <!--
-                헤더의 돋보기에서 열리는 검색창.
-                - `items-start`: 화면 정중앙에 띄우면 어디서 나온 팝업인지 연결이 안 된다.
-                  헤더 바로 아래(pt-20)에 붙여서 돋보기에서 내려온 것처럼 보이게 한다.
-                - 색: 앱이 다크 테마인데 여기만 `bg-white` + `bg-gray-100` 이라 심하게 튀었다.
-                  데스크탑 검색창(헤더 안 반투명)·SearchResultsModal(bg-gray-800)과 톤을 맞춘다.
+                모바일: 헤더의 돋보기에서 열리는 검색창(2026-11). 헤더 자리를 그대로 덮는 위쪽 막대 —
+                돋보기에서 바로 내려온 것처럼 보이고, 아래는 어둡게 깔려 누르면 닫힌다.
+                입력칸은 데스크탑 헤더·검색 결과 창과 같은 알약 모양
             -->
-            <div v-if="showSearch"
-                class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center p-4 pt-20"
-                @click="closeSearchOnOutsideClick">
-                <div class="bg-gray-800 w-full max-w-md rounded-lg shadow-lg" @click.stop>
-                    <div class="p-3 flex items-center gap-1">
-                        <input ref="mobileSearchInput" v-model="localSearchQuery" @keyup.enter="executeSearch"
-                            type="text" placeholder="노래, 앨범, 아티스트 검색" autofocus
-                            class="flex-grow min-w-0 bg-gray-700 text-white placeholder-gray-400 rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-purple-500">
-                        <button @click="executeSearch" aria-label="검색"
-                            class="p-2 min-w-[44px] min-h-[44px] text-gray-300 hover:text-white flex-shrink-0">
-                            <Icon name="search" />
-                        </button>
-                        <button @click="toggleSearch" aria-label="검색 닫기"
-                            class="p-2 min-w-[44px] min-h-[44px] text-gray-300 hover:text-white flex-shrink-0">
-                            <Icon name="x" />
-                        </button>
+            <div v-if="showSearch" class="fixed inset-0 z-50 bg-black bg-opacity-60" @click="closeSearchOnOutsideClick">
+                <form class="bg-surface-1 border-b border-white border-opacity-5 h-14 px-2 flex items-center gap-1" role="search" @click.stop @submit.prevent="executeSearch">
+                    <button type="button" class="w-11 h-11 flex items-center justify-center text-gray-300 shrink-0" aria-label="검색 닫기" @click="toggleSearch">
+                        <Icon name="arrow-left" :size="22" />
+                    </button>
+                    <div class="flex-1 min-w-0 flex items-center gap-2 h-10 px-3 rounded-full bg-surface-2 text-gray-400 focus-within:ring-2 focus-within:ring-purple-400">
+                        <Icon name="search" :size="18" />
+                        <input ref="mobileSearchInput" v-model="localSearchQuery" type="search" aria-label="검색어" enterkeyhint="search"
+                            placeholder="노래, 앨범, 아티스트 검색" class="flex-1 min-w-0 bg-transparent text-white placeholder-gray-400 focus:outline-none">
                     </div>
-                </div>
+                    <button type="submit" class="h-10 px-3 text-sm font-semibold text-purple-300 shrink-0">검색</button>
+                </form>
             </div>
         </transition>
 
