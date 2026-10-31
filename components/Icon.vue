@@ -58,6 +58,8 @@ const ICONS = {
 }
 
 export default {
+    // 태그로는 <Icon> 이 짧고 읽기 좋다(사이트 전체에서 수백 번 쓴다)
+    // eslint-disable-next-line vue/multi-word-component-names
     name: 'Icon',
     props: {
         name: { type: String, required: true },

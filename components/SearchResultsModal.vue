@@ -1,7 +1,7 @@
 <template>
     <!--
         검색 결과(2026-11 새 디자인). 데스크탑: 가운데 어두운 창 / 모바일: 전체 화면.
-        줄 클릭 = 검색 결과를 그 곡부터 재생(다른 목록과 같은 규칙), 체크해서 여러 곡을 대기열·플리에 담는다.
+        줄 클릭 = **그 곡 하나만** 재생(검색 결과 전체를 대기열에 넣지 않는다 — 업계·앱과 같음), 체크해서 여러 곡을 대기열·플리에 담는다.
         z-index: MusicPlayer(z-50)보다 위여야 결과 마지막 줄을 안 덮는다. 담기 시트·알림(레이아웃)은 DOM 상 뒤라 같은 z 여도 위로 온다
     -->
     <transition name="fade">
@@ -48,9 +48,9 @@
                 </div>
 
                 <div ref="scrollContainer" class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-1 sm:px-3 py-2 custom-scrollbar" @scroll="handleScroll">
-                    <SongRow v-for="(song, i) in searchResults" :key="song._id" :song="song" :song-id="String(song._id)"
+                    <SongRow v-for="song in searchResults" :key="song._id" :song="song" :song-id="String(song._id)"
                         selectable :selected="isSelected(song)" :show-album="activeTab === 'album'"
-                        @toggle-select="toggleSongSelection" @play="playFrom(i)" @menu="menuSong = $event">
+                        @toggle-select="toggleSongSelection" @play="playOne(song)" @menu="menuSong = $event">
                         <template v-if="activeTab === 'lyrics'" #below>
                             <p class="text-[13px] text-gray-300 mt-1 lyrics-clamp" v-html="highlightLyrics(song.lyrics)"></p>
                         </template>
@@ -157,13 +157,15 @@ export default {
         toggleSelectAll() {
             this.selectedSongs = this.selectAll ? [...this.searchResults] : []
         },
-        // 줄 클릭 = 지금까지 받은 검색 결과를 그 곡부터
-        playFrom(index) {
+        // 줄 클릭 = 그 곡 하나만 재생. 검색 결과는 사용자가 고른 목록이 아니라 우연히 걸린 곡들이라
+        // 차트처럼 "목록을 그 곡부터"로 하면 수십 곡이 대기열에 들어간다(2026-11-01 사용자 지적).
+        // 스포티파이·애플뮤직·앱(dibe2-app 피드백 #3)도 검색에선 그 곡만. "다음에 재생"에 넣어 둔 곡은 지켜진다
+        playOne(song) {
             this.$store.dispatch('player/playList', {
-                source: { type: 'search', id: `${this.activeTab}:${this.searchQuery}`, name: `"${this.searchQuery}" 검색 결과` },
-                songs: this.searchResults,
+                source: { type: 'search', id: String(song._id), name: `"${this.searchQuery}" 검색` },
+                songs: [song],
                 idKey: '_id',
-                index,
+                index: 0,
             })
         },
         async addSelectedToQueue() {

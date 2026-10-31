@@ -349,7 +349,7 @@ const scenarios = {
             const t0 = (await res.nth(1).locator('p span.truncate').first().textContent()).trim()
             await res.nth(1).click()
             const sr = await waitFor(page, s => s.title === t0, { label: '검색 결과 줄 클릭' })
-            check(`[${vp.tag}] 검색 결과 줄 클릭 → 검색 결과를 그 곡부터`, /검색 결과/.test(sr.ctxName) && sr.pos === 1, sr.ctxName)
+            check(`[${vp.tag}] 검색 결과 줄 클릭 → 그 곡 하나만(검색 결과 전체를 넣지 않음)`, /검색/.test(sr.ctxName) && sr.ctxLen === 1 && sr.upcoming.length === 0, `${sr.ctxName}, 목록 ${sr.ctxLen}곡`)
             await res.nth(2).locator('input[type=checkbox]').check()
             await shot('search-selected')
             await page.keyboard.press('Escape')
@@ -427,7 +427,8 @@ try {
         try {
             await run(browser)
         } catch (err) {
-            check(`${name} 실행`, false, err.message.split('\n')[0])
+            // 실패 원인(가로막은 요소 등)은 Playwright 로그 몇 줄에 있다
+            check(`${name} 실행`, false, err.message.split('\n').slice(0, 10).join(' | '))
         }
     }
 } finally {
