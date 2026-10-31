@@ -31,7 +31,7 @@
         <div class="relative flex items-center gap-2 sm:gap-4 px-3 sm:px-6 py-2 sm:py-3">
 
             <!-- Track Info -->
-            <div class="flex items-center gap-3 min-w-0 flex-1 sm:flex-none sm:w-[25%]">
+            <div class="flex items-center gap-3 min-w-0 flex-1 lg:flex-none lg:w-[25%]">
                 <template v-if="currentTrack">
                     <div class="relative w-11 h-11 sm:w-14 sm:h-14 shrink-0" @click="toggleTrackInfo">
                         <img :src="currentTrack.coverUrl" :alt="currentTrack.title"
@@ -58,24 +58,24 @@
             </div>
 
             <!-- 가운데: 컨트롤 -->
-            <div class="flex items-center justify-center sm:flex-1 min-w-0">
+            <div class="flex items-center justify-center lg:flex-1 shrink-0">
                 <div class="flex items-center gap-1 sm:gap-3">
                     <button class="ctrl desktop-only" aria-label="셔플" :title="shuffleOn ? '셔플 끄기' : '셔플 켜기'"
                         :class="shuffleOn ? 'text-purple-400' : 'text-gray-400 hover:text-white'" @click="toggleShuffle">
                         <i class="fas fa-shuffle"></i>
                     </button>
                     <button class="ctrl text-gray-200 hover:text-white" aria-label="이전 곡"
-                        :disabled="!hasPreviousTrack" @click="playPrevious">
-                        <i class="fas fa-step-backward text-lg" :class="{ 'opacity-40': !hasPreviousTrack }"></i>
+                        :disabled="!currentTrack || !hasPreviousTrack" @click="playPrevious">
+                        <i class="fas fa-step-backward text-lg" :class="{ 'opacity-40': !currentTrack || !hasPreviousTrack }"></i>
                     </button>
                     <button
-                        class="bg-white text-gray-900 rounded-full w-10 h-10 flex items-center justify-center hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
-                        aria-label="재생/일시정지" :disabled="isLoading" @click="togglePlay">
+                        class="bg-white text-gray-900 rounded-full w-10 h-10 flex items-center justify-center hover:scale-105 disabled:opacity-40 disabled:hover:scale-100 transition-transform focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50"
+                        aria-label="재생/일시정지" :disabled="isLoading || !currentTrack" @click="togglePlay">
                         <i :class="['fas', isPlaying ? 'fa-pause' : 'fa-play', isPlaying ? '' : 'ml-0.5']"></i>
                     </button>
                     <button class="ctrl text-gray-200 hover:text-white" aria-label="다음 곡"
-                        :disabled="!hasNextTrack" @click="playNext">
-                        <i class="fas fa-step-forward text-lg" :class="{ 'opacity-40': !hasNextTrack }"></i>
+                        :disabled="!currentTrack || !hasNextTrack" @click="playNext">
+                        <i class="fas fa-step-forward text-lg" :class="{ 'opacity-40': !currentTrack || !hasNextTrack }"></i>
                     </button>
                     <button class="ctrl desktop-only relative" aria-label="반복 재생" :title="getRepeatTitle"
                         :class="repeatMode !== 'off' ? 'text-purple-400' : 'text-gray-400 hover:text-white'" @click="toggleRepeat">
@@ -86,8 +86,8 @@
             </div>
 
             <!-- 오른쪽: 시간·볼륨·재생목록 -->
-            <div class="flex items-center justify-end gap-2 sm:w-[25%]">
-                <span v-if="currentTrack" class="hidden sm:inline text-xs text-gray-400 tabular-nums whitespace-nowrap mr-1">
+            <div class="flex items-center justify-end gap-2 shrink-0 lg:w-[25%]">
+                <span v-if="currentTrack && duration > 0" class="hidden lg:inline text-xs text-gray-400 tabular-nums whitespace-nowrap mr-1">
                     {{ formatTime(currentTime) }} / {{ formatTime(duration) }}
                 </span>
                 <div class="hidden md:flex items-center gap-2">
