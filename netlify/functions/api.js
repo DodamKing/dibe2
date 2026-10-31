@@ -5,8 +5,7 @@ const express = require('express')
 const { connectToMongoDB } = require('../../server/models')
 const corsMiddleware = require('../../server/middleware/cors')
 const { jwtCheckMiddleware, adminMiddleware } = require('../../server/middleware/auth')
-const { sendErrorToSlack } = require('../../server/utils/helper')
-const axios = require('axios')
+const { sendErrorToDiscord, sendDiscordMessage } = require('../../server/utils/helper')
 
 const userRoutes = require('../../server/api/user')
 const songRoutes = require('../../server/api/song')
@@ -60,32 +59,26 @@ app.use('/youtube', youtubeRoutes)
 app.use('/app', appRoutes)
 app.use('/themes', themeRoutes)
 
-// Slack 메시지
-const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL
-
-app.post('/send-slack-message', async (req, res) => {
+// 클라이언트 에러 → 디스코드
+app.post('/send-error-message', async (req, res) => {
     const { message } = req.body
 
     if (process.env.NODE_ENV === 'development') {
-        console.error('개발 환경, 슬랙 메시지 생략: ', message)
+        console.error('개발 환경, 디스코드 메시지 생략: ', message)
         return res.json({ success: true })
     }
 
-    try {
-        await axios.post(slackWebhookUrl, { text: message })
-        res.json({ success: true })
-    } catch (err) {
-        console.error('Slack 메시지 전송 오류:', err)
-        res.status(500).json({ success: false })
-    }
+    await sendDiscordMessage(`🖥️ 클라이언트 에러\n${message}`)
+    res.json({ success: true })
 })
 
 // 에러 핸들러
-app.use((err, req, res, _next) => {
+// 응답 전에 알림을 await — 응답이 나가면 함수가 얼어붙어 알림이 사라진다
+app.use(async (err, req, res, _next) => {
     console.error(err)
 
     if (process.env.NODE_ENV !== 'development') {
-        sendErrorToSlack(err, req, {
+        await sendErrorToDiscord(err, req, {
             path: req.path,
             method: req.method,
             body: JSON.stringify(req.body),

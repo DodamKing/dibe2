@@ -50,19 +50,6 @@ const CRON_BUDGET_MS = 22000
 
 const overBudget = startedAt => Date.now() - startedAt > CRON_BUDGET_MS
 
-// per-song catch(및 null·빈결과 같은 조용한 실패)가 에러를 삼키면, 한 곡도 못 채워도
-// outer try 는 성공해 200을 반환한다 → 슬랙 없이 "초록불인데 죽음". 한 실행이 전멸
-// (진행 0 + 실패 있음)이면 알려서 조용한 죽음을 관측 가능한 신호로 바꾼다.
-const alertIfWiped = (jobName, progressed, failed) => {
-    if (progressed === 0 && failed > 0) {
-        console.error(`⚠️ ${jobName}: ${failed}곡 시도 전부 실패, 진행 0 — 크론이 조용히 죽었을 수 있음`)
-        helper.sendErrorToSlack(
-            new Error(`${jobName} 전멸: ${failed}곡 시도, 진행 0`),
-            null, { context: 'Cron', jobName },
-        )
-    }
-}
-
 /**
  * 크론 처리 순서 — **차트에 최근 오른 곡부터, 같은 시각이면 인기 있는 곡부터**.
  *
@@ -169,11 +156,12 @@ module.exports = {
             })
                 .sort(CRON_ORDER)
                 .limit(40)
-            let filled = 0, closed = 0, failed = 0
+            let filled = 0, closed = 0, failed = 0, budgetHit = false
 
             for (const song of songs) {
                 if (overBudget(startedAt)) {
                     console.log(`시간 예산 도달 — ${filled + closed}곡 처리하고 중단(나머지는 다음 실행에서)`)
+                    budgetHit = true
                     break
                 }
                 try {
@@ -226,9 +214,10 @@ module.exports = {
                 }
             }
             console.log(`YouTube URL 업데이트: ${filled}곡 채움 | ${closed}곡 없음확정 | ${failed}곡 실패`)
-            alertIfWiped('updateYoutubeUrls', filled + closed, failed)
+            return { target: songs.length, filled, closed, failed, budgetHit }
         } catch (err) {
             console.error('YouTube URL 업데이트 중 오류 발생:', err)
+            throw err // 삼키면 크론 기록이 ok 로 남는다
         }
     },
 
@@ -489,11 +478,12 @@ module.exports = {
             const songs = await db.Song.find(LYRICS_PENDING)
                 .sort(CRON_ORDER)
                 .limit(120)
-            let processed = 0, closed = 0, failed = 0
+            let processed = 0, closed = 0, failed = 0, budgetHit = false
 
             for (const song of songs) {
                 if (overBudget(startedAt)) {
                     console.log(`시간 예산 도달 — ${processed}곡 처리하고 중단(나머지는 다음 실행에서)`)
+                    budgetHit = true
                     break
                 }
                 try {
@@ -522,9 +512,10 @@ module.exports = {
                 }
             }
             console.log(`가사 업데이트: ${processed}곡 채움 | ${closed}곡 "가사 없음"으로 닫음 | ${failed}곡 실패`)
-            alertIfWiped('updateLyrics', processed + closed, failed)
+            return { target: songs.length, filled: processed, closed, failed, budgetHit }
         } catch (err) {
             console.error('가사 업데이트 중 에러: ', err)
+            throw err
         }
     },
 
@@ -540,7 +531,7 @@ module.exports = {
             const songs = await db.Song.find({ genre: { $exists: false }, coverUrl: { $ne: null } })
                 .sort(CRON_ORDER)
                 .limit(120)
-            let processed = 0, failed = 0
+            let processed = 0, failed = 0, budgetHit = false
 
             // 같은 앨범 곡은 값이 같다. 한 번의 실행 안에서만이라도 캐시하면 요청이 준다.
             const cache = new Map()
@@ -548,6 +539,7 @@ module.exports = {
             for (const song of songs) {
                 if (overBudget(startedAt)) {
                     console.log(`시간 예산 도달 — ${processed}곡 처리하고 중단(나머지는 다음 실행에서)`)
+                    budgetHit = true
                     break
                 }
                 try {
@@ -570,9 +562,10 @@ module.exports = {
                 }
             }
             console.log(`장르 업데이트: ${processed}곡 처리 | ${failed}곡 실패 (앨범 요청 ${cache.size}회)`)
-            alertIfWiped('updateGenres', processed, failed)
+            return { target: songs.length, filled: processed, failed, budgetHit }
         } catch (err) {
             console.error('장르 업데이트 중 에러: ', err)
+            throw err
         }
     },
 

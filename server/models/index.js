@@ -48,6 +48,7 @@ const Like = require('./Like')
 const PlayEvent = require('./PlayEvent')
 const Theme = require('./Theme')
 const ThemeSong = require('./ThemeSong')
+const CronRun = require('./CronRun')
 
 module.exports = {
     connectToMongoDB,
@@ -61,4 +62,5 @@ module.exports = {
     PlayEvent,
     Theme,
     ThemeSong,
+    CronRun,
 }

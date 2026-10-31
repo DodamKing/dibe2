@@ -61,7 +61,7 @@ function isExpiredAt(date) {
 }
 
 const jwtCheckMiddleware = async (req, res, next) => {
-    const publicPaths = ['/users/login', '/users/register', '/users/google', '/users/google/callback', '/users/kakao', '/users/kakao/callback', '/users/refresh', '/send-slack-message']
+    const publicPaths = ['/users/login', '/users/register', '/users/google', '/users/google/callback', '/users/kakao', '/users/kakao/callback', '/users/refresh', '/send-error-message']
 
     const token = extractToken(req)
 

@@ -178,3 +178,19 @@
 - 인덱스: `{theme: 1, songKey: 1}` 유니크, `{theme: 1, score: -1}`
 - **`Song`과 무관** — 유튜브 영상 기준이라 벅스에 없는 곡도 있다. `songId` 참조 없음
 - 테마당 수백 행(2026-10-17 기준 core 85~289 + explore 64~292)
+
+## CronRun - server/models/CronRun.js
+크론 실행 기록. 한 실행 = 한 문서. `server/utils/runCron.js`만 쓴다 (2026-10-31~)
+```
+{
+  job: String,               // updateChartData | updatePopChartData | updateLyrics | updateGenres | updateYoutubeUrls
+  status: 'running' | 'ok' | 'wiped' | 'error',
+  startedAt: Date,           // 시작 시점에 먼저 기록
+  finishedAt: Date, durationMs: Number,
+  stats: { target, filled, closed, failed, budgetHit },   // 차트 크론은 target 만
+  error: String
+}
+```
+- **`running`으로 남은 문서 = 30초 제한에 강제 종료**(끝 처리가 못 돎). 그날 문서가 없음 = 실행 안 됨. `wiped` = 진행 0 + 실패>0
+- 인덱스 `{job, startedAt:-1}`, **TTL 1년**(`startedAt`). 한 건 ~300B × 하루 6건
+- 조회: `node scripts/cron-health.js` 맨 위 "최근 7일 실행 기록"

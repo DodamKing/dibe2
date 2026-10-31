@@ -3,7 +3,9 @@
 ## 크론잡 (Netlify Scheduled Functions)
 `netlify/functions/cron-*.js` — Netlify Scheduled Functions 사용. 스케줄은 UTC 기준.
 
-모두 차트 크론(08:00) **뒤에** 돈다 — 곡이 저장돼야 필드를 채울 수 있기 때문. 크론마다 30초를 따로 받으므로 분리할수록 하루 처리량이 는다.
+모든 크론은 **`server/utils/runCron.js`로 감싼다** — 실행마다 `cronruns`에 기록(시작 시 `running` → 끝에 `ok`/`wiped`/`error`)하고, `wiped`·`error`면 디스코드 알림. 상세는 `DATA_MODELS.md`의 CronRun. 서비스 함수(`updateYoutubeUrls` 등)는 `{ target, filled, closed, failed, budgetHit }`를 돌려주고 바깥 에러는 다시 던진다(삼키면 기록이 `ok`로 남는다).
+
+채움 크론은 차트 크론(08:00) **뒤에** 돈다 — 곡이 저장돼야 필드를 채울 수 있기 때문. 크론마다 30초를 따로 받으므로 분리할수록 하루 처리량이 는다.
 
 | KST 시간 | UTC 스케줄 | 함수 파일 | 작업 |
 |----------|-----------|----------|------|
@@ -32,17 +34,17 @@
 ```
 
 ### ⚠️ 스케줄 함수는 30초 제한 (설정으로 못 늘림)
-Netlify 기본값 — 동기 60초 / **스케줄 30초** / 백그라운드 15분. 실행 제한은 **설정 불가**. 타임아웃은 강제 종료라 `catch`가 안 돌아 **슬랙 알림 없이 조용히 죽는다**.
+Netlify 기본값 — 동기 60초 / **스케줄 30초** / 백그라운드 15분. 실행 제한은 **설정 불가**. 타임아웃은 강제 종료라 `catch`가 안 돌아 **알림 없이 조용히 죽는다**. → 2026-10-31부터는 `cronruns`에 **`running`으로 남은 문서**로 보인다(알림은 아직 없음 — 다른 크론이 대신 감시하는 건 미정).
 
 ### ⚠️ 조용한 죽음의 두 번째 경로 — per-song catch가 에러를 삼킨다
-채움 크론(youtube/lyrics/genre)은 곡마다 `try/catch`로 감싸 한 곡이 터져도 다음 곡으로 넘어간다. 문제는 **전 곡이 실패해도 바깥 `try`는 성공**해 `200`을 반환하고, 바깥 `catch`의 슬랙 알림이 **안 뜬다**는 것. 즉 "초록불인데 실제론 아무것도 못 채운" 상태가 가능하다(예: 대상 사이트가 IP를 차단한 날).
+채움 크론(youtube/lyrics/genre)은 곡마다 `try/catch`로 감싸 한 곡이 터져도 다음 곡으로 넘어간다. 문제는 **전 곡이 실패해도 바깥 `try`는 성공**해 `200`을 반환하고, 바깥 `catch`의 알림이 **안 뜬다**는 것. 즉 "초록불인데 실제론 아무것도 못 채운" 상태가 가능하다(예: 대상 사이트가 IP를 차단한 날).
 
-**그래서 각 크론은 한 실행이 전멸하면(`진행 0 + 실패>0`) `alertIfWiped()`로 슬랙을 쏜다.** `failed` 카운터는 throw뿐 아니라 **조용한 실패**(가사 `null`, 유튜브 빈결과, 앨범 fetch 실패)도 센다. 요약 로그(`N곡 채움 | M곡 닫음 | K곡 실패`)로 부분 실패도 보인다.
+**그래서 한 실행이 전멸하면(`진행 0 + 실패>0`) `runCron`이 상태를 `wiped`로 기록하고 디스코드를 쏜다**(예전엔 서비스 안의 `alertIfWiped()` — await 없이 불러 실제로 안 나갔을 수 있다). `failed` 카운터는 throw뿐 아니라 **조용한 실패**(가사 `null`, 유튜브 빈결과, 앨범 fetch 실패)도 센다. 요약 로그(`N곡 채움 | M곡 닫음 | K곡 실패`)로 부분 실패도 보인다.
 
 ### ✅ 조용한 죽음의 세 번째 경로 — DB 연결 실패 (2026-08-22 막음)
-`connectToMongoDB()`가 실패를 **`catch`에서 삼키고 정상 리턴**하던 시절엔, 크론이 연결 없이 작업으로 진입해 mongoose가 쿼리를 버퍼링하며 매달리다 **30초 타임아웃 = 강제 종료 = 슬랙 없음**으로 끝났다. Atlas가 흔들린 날 크론이 통째로 조용히 죽는 경로였다.
+`connectToMongoDB()`가 실패를 **`catch`에서 삼키고 정상 리턴**하던 시절엔, 크론이 연결 없이 작업으로 진입해 mongoose가 쿼리를 버퍼링하며 매달리다 **30초 타임아웃 = 강제 종료 = 알림 없음**으로 끝났다. Atlas가 흔들린 날 크론이 통째로 조용히 죽는 경로였다.
 
-**이제는 연결 실패가 `throw`된다** → 크론 바깥 `try/catch`가 잡아 `sendErrorToSlack`이 정상적으로 울린다. 각 크론이 이미 `try/catch`로 감싸고 있어 별도 수정은 없었다.
+**이제는 연결 실패가 `throw`된다** → 크론 바깥 `try/catch`가 잡아 `sendErrorToDiscord`(당시 `sendErrorToSlack`)가 정상적으로 울린다. 각 크론이 이미 `try/catch`로 감싸고 있어 별도 수정은 없었다.
 
 - 🔴 **유튜브 빈결과는 마커를 찍지 않는다.** 유튜브는 예외 대신 **빈 결과를 조용히 돌려주는** 식으로 막을 수 있는데(`fill-youtube.js` 주석 참고), 그때 `youtubeCheckedAt` 마커를 찍으면 멀쩡한 곡을 "영상 없음"으로 **영구 오염**시킨다. 그래서 **"아이템은 왔는데 2~6분짜리가 없음"일 때만 닫고**, 아이템 0개면 `failed`로 세어 다음 실행에서 재시도한다.
 
@@ -130,9 +132,11 @@ Netlify 기본값 — 동기 60초 / **스케줄 30초** / 백그라운드 15분
 - URL 형식: `https://www.youtube.com/watch?v={id}`
 - 재생은 클라이언트의 YouTube IFrame API로 처리 (서버 프록시 없음)
 
-### Slack (server/utils/helper.js)
-- `sendErrorToSlack()`: 에러 발생 시 Slack webhook으로 알림
-- 프로덕션에서만 전송
+### Discord (server/utils/helper.js)
+- `sendErrorToDiscord(err, req, info)`: 에러를 embed로 알림 / `sendDiscordMessage(text|payload)`: 일반 메시지
+- 환경변수 `DISCORD_WEBHOOK_URL` (없으면 경고만 찍고 생략). 2026-10-31 슬랙에서 전환 — 슬랙은 안 쓰고 있었다
+- 🔴 **호출부에서 반드시 `await`** — 서버리스는 응답/리턴 순간 얼어붙어 안 기다린 요청은 사라진다. 전환 전엔 크론·`alertIfWiped`가 await 없이 불러 **알림이 실제로 안 나갔을 수 있다**
+- 디스코드 제한(필드 값 1024자 등)을 넘으면 요청 자체가 400 → 헬퍼가 잘라서 보낸다
 
 ### Google OAuth
 - Client ID/Secret: `.env`

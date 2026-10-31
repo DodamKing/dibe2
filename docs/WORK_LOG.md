@@ -3,7 +3,9 @@
 > 완료된 작업은 **최신순(위에서부터 최근)**으로 정렬. 새 항목은 맨 위에 추가.
 
 ## 예정 작업
-- **테마 플레이리스트 수집 자동화 — Netlify 크론 쪼개기 + 슬랙 알림**: 지금은 `scripts/refresh-themes.js` 수동 실행. 30초 제한 때문에 `cron-themes.js`가 20분마다 "갱신 시점이 된 테마 하나"를 몇 회에 나눠 처리(1회차 검색 → 할 일 목록 저장 → 회차마다 플리 25초씩 → 마지막 회차 집계·반영). 진행 상태용 컬렉션 추가, **"N일째 갱신 안 됨" 슬랙 알림**. 수집 로직은 `themeCollector.js`가 DB를 몰라서 그대로 재사용된다. 상세는 `docs/THEME_PLAYLIST.md` "예정: 자동화"
+- **(보류) 알림에서 민감 필드 가리기**: API 공통 에러 핸들러가 `req.body` 전체를 디스코드에 싣는다. 지금은 비밀번호가 실린 라우트(로그인·가입)가 자체 처리라 안 오고, 채널도 혼자 보는 비공개라 보류. **다른 사람을 초대하거나 비밀번호 변경 같은 라우트가 `next(err)`를 타게 되면** `password`·`token`을 `***`로 가릴 것
+- **(미정) 타임아웃·미실행 알림**: `cronruns`에 `running`으로 남거나 문서가 없는 날을 **다른 크론이 대신 보고** 디스코드로 알리기. 기록이 쌓이는 걸 보고 결정
+- **테마 플레이리스트 수집 자동화 — Netlify 크론 쪼개기 + 디스코드 알림**: 지금은 `scripts/refresh-themes.js` 수동 실행. 30초 제한 때문에 `cron-themes.js`가 20분마다 "갱신 시점이 된 테마 하나"를 몇 회에 나눠 처리(1회차 검색 → 할 일 목록 저장 → 회차마다 플리 25초씩 → 마지막 회차 집계·반영). 진행 상태용 컬렉션 추가, **"N일째 갱신 안 됨" 디스코드 알림**. 수집 로직은 `themeCollector.js`가 DB를 몰라서 그대로 재사용된다. 상세는 `docs/THEME_PLAYLIST.md` "예정: 자동화"
 - **테마 플레이리스트 — 써보면서 정할 것**: 50곡 비율·새로고침 유지율(검증 40%)·반감기 / 드라이브↔여행, 잔잔한↔가을 겹침 / 계절 테마(봄·여름·겨울) 추가 / videoId 단위 피드백으로 개인화
 - **(보류) 모바일 앱 콜드 스타트 가리기 — 앱 시작 시 선행 핑**: API 콜드 스타트가 3.4초라(2026-08-22 실측) 앱에서 첫 요청이 눈에 띄게 느리다. **A안(WebView 하이브리드)이면 앱 실행 → WebView가 사이트 로딩(1~2초) → Vue 부팅 → API 호출 순서**라, Flutter가 앱 시작 즉시 **WebView 로딩과 병렬로** 핑을 쏘면 그 로딩 시간이 공짜 가림막이 된다. 서버 웜업 핑과 달리 **계정 할당량을 사실상 안 먹는다**(그 사용자는 어차피 곧 API를 부른다).
   - 🔴 **함정: 핑과 첫 실제 요청이 동시에 나가면 Lambda가 컨테이너를 2개 띄우고 둘 다 콜드다.** 핑은 호출만 하나 더 쓰고 아무것도 못 데운 게 된다. **핑과 첫 요청 사이에 진짜 유휴 시간이 있을 때만** 값을 한다 — WebView 로딩 구간이 그 유휴다. 반대로 웹 브라우저에서 SPA가 부팅하자마자 API를 부르는 경로는 유휴가 거의 없어 효과가 적다
@@ -16,6 +18,30 @@
 - **비디오 검색 결과 무한 스크롤**: 현재 `/api/youtube/search`가 `limit=20` 고정. `youtube-search-api`의 `NextPage(token)` 메서드로 서버 pagination 지원 + 클라이언트는 IntersectionObserver로 그리드 끝 감지 시 다음 페이지 append. 작업량 ~1-2시간
 
 ## 완료된 작업
+
+### 2026-10-31 - 알림 슬랙 → 디스코드 전환(+ await 누락 수정), dev 화면 안 뜨던 문제
+
+**발단**: 해외 차트(`cron-chart-pop`)는 정상인데 **유튜브 URL 크론이 며칠째 일을 안 한다**(10/29~31 신곡 URL 0, `youtubeCheckedAt` 최신이 10/18). 알림이 왔어야 하는데 안 왔다 → 알림 경로부터 확인.
+
+**알림이 안 오던 이유 두 가지**
+- 웹훅이 **슬랙**이었는데 슬랙은 안 쓰고 있었다 → 디스코드로 전환
+- `sendErrorToSlack`을 크론·`alertIfWiped`·API 에러 핸들러가 **await 없이** 불렀다. 서버리스는 리턴 순간 얼어붙으므로 요청이 안 나갔을 수 있다 → 전부 await
+
+**바뀐 것**
+- `helper.sendErrorToDiscord`(embed) / `sendDiscordMessage`(일반). 환경변수 `DISCORD_WEBHOOK_URL`(없으면 경고 후 생략). 디스코드 필드 1024자 제한에 맞춰 잘라 보냄
+- 클라이언트 에러 엔드포인트 `/send-slack-message` → `/send-error-message`(앱은 안 씀, 웹은 같이 배포되므로 호환 분기 없음)
+- 레거시 `modules/cron.js`(nuxt.config에서 주석 처리됨)도 이름만 맞춤
+
+**dev 화면이 "Loading..."에서 멈추던 문제** — `/* → /index.html` 폴백이 dev에서 `/_nuxt/app.js`까지 index.html로 바꿔 콘솔 `Unexpected token '<'`. `netlify dev`가 파일 존재를 nuxt dev 서버가 아니라 `dist/`로 판단하기 때문. `/_nuxt/*`·`/_loading/*`·`/__webpack_hmr/*` 통과 규칙을 폴백 앞에 추가(운영 무관). 예전엔 됐던 걸로 보아 전역 netlify-cli(24.8.1) 업데이트로 동작이 바뀐 것으로 추정. 같은 날 "port 3333 타임아웃"으로 아예 안 켜진 적도 있는데(nuxt 출력 0줄) 재발 시 `netstat -ano | findstr :3333`부터
+
+**크론 실행 기록(`cronruns`)** — "실행 안 됨 / 타임아웃 / 돌았는데 0곡"을 DB로 구분하려고
+- `server/utils/runCron.js`로 크론 6개를 감쌈: 시작 시 `running` 문서 생성 → 끝에 `ok`/`wiped`/`error`. **`running`으로 남으면 강제 종료**(끝 처리가 못 돎), 문서가 없으면 미실행
+- 서비스 3개가 `{ target, filled, closed, failed, budgetHit }`를 반환, 바깥 에러는 rethrow(삼키면 `ok`로 남음). `alertIfWiped`는 `runCron`으로 흡수
+- 차트 크론은 0곡이면 throw — 전엔 하위 함수들이 에러를 삼켜 "성공"으로 끝났다
+- TTL 1년(용량 1MB/년 미만). `cron-health.js` 맨 위에 최근 7일 기록
+- 검증(로컬): 가짜 작업 ok/wiped/error 3건 + 실제 `cron-genre` 핸들러 → 상태·통계·TTL 인덱스 확인 후 테스트 문서 삭제. 디스코드 알림 도착 확인
+
+**남은 것**: Netlify 환경변수 `DISCORD_WEBHOOK_URL` 등록 → 배포 → `cron-youtube` 수동 실행 → `cron-health.js` + 디스코드로 원인 확인
 
 ### 2026-10-28 - 사용기간 변경 즉시 반영(만료 재확인 + 토큰 2방식), 해외 Top 100
 

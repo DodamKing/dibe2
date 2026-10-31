@@ -71,7 +71,7 @@ Secret: process.env.JWT_SECRET
 - `/users/google`, `/users/google/callback`
 - `/users/kakao`, `/users/kakao/callback`
 - `/users/refresh` (리프레시 토큰은 본문으로)
-- `/send-slack-message`
+- `/send-error-message`
 
 ### adminMiddleware
 - `req.user.isAdmin === true` 확인

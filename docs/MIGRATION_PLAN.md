@@ -145,7 +145,7 @@ export const handler = schedule("0 8 * * *", async () => { ... })
 - `SESSION_SECRET`
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
 - `KAKAO_CLIENT_ID`
-- `SLACK_WEBHOOK_URL`
+- `SLACK_WEBHOOK_URL` (→ 2026-10-31 `DISCORD_WEBHOOK_URL`로 교체)
 
 ### 4-3. OAuth 콜백 URL 업데이트
 - Google Console: redirect URI를 Netlify 도메인으로 변경

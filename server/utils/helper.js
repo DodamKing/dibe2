@@ -58,6 +58,8 @@ const formatter = new Intl.DateTimeFormat('ko-KR', {
     hour12: false,
 });
 
+const clip = (s, max) => (s && s.length > max ? s.slice(0, max - 1) + '…' : s)
+
 /**
  * 앨범 ID는 coverUrl 경로에 그대로 들어있다.
  *   .../album/images/50/206680/20668087.jpg → 20668087
@@ -170,73 +172,52 @@ module.exports = {
         }
     },
 
-    sendErrorToSlack: async (err, req = null, additionalInfo = {}) => {
-        const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL;
+    // 디스코드 웹훅으로 보낸다. 서버리스 함수는 응답을 돌려주는 순간 멈추므로
+    // **호출하는 쪽에서 반드시 await** 할 것 — 안 그러면 요청이 나가기 전에 얼어붙어 알림이 사라진다.
+    sendDiscordMessage: async (payload) => {
+        const webhookUrl = process.env.DISCORD_WEBHOOK_URL
+        if (!webhookUrl) {
+            console.warn('DISCORD_WEBHOOK_URL 없음 — 알림 생략')
+            return
+        }
+        try {
+            await axios.post(webhookUrl, typeof payload === 'string' ? { content: clip(payload, 2000) } : payload)
+        } catch (error) {
+            console.error('디스코드 알림 전송 오류:', error.response ? error.response.data : error.message)
+        }
+    },
 
-        const message = {
-            text: '🚨 DIBE2 에러 발생',
-            attachments: [
-                {
-                    color: '#FF0000',
-                    fields: [
-                        {
-                            title: 'Error Message',
-                            value: err.message,
-                            short: false,
-                        },
-                        {
-                            title: 'Time (KST)',
-                            value: formatter.format(err.occurredAt),
-                            short: false,
-                        },
-                    ],
-                },
-            ],
-        };
+    sendErrorToDiscord: async (err, req = null, additionalInfo = {}) => {
+        const fields = [
+            { name: 'Time (KST)', value: formatter.format(err.occurredAt) },
+        ]
 
-        // req 객체가 제공된 경우 관련 정보 추가
         if (req) {
-            message.attachments[0].fields.push(
-                {
-                    title: 'Request URL',
-                    value: req.originalUrl || 'N/A',
-                    short: false,
-                },
-                {
-                    title: 'Request Method',
-                    value: req.method || 'N/A',
-                    short: false,
-                },
-                {
-                    title: 'User Agent',
-                    value: req.headers['user-agent'] || 'N/A',
-                    short: false,
-                }
-            );
+            fields.push(
+                { name: 'Request URL', value: req.originalUrl || 'N/A' },
+                { name: 'Request Method', value: req.method || 'N/A' },
+                { name: 'User Agent', value: req.headers['user-agent'] || 'N/A' },
+            )
         }
 
-        // 추가 정보 필드 추가
         for (const [key, value] of Object.entries(additionalInfo)) {
-            message.attachments[0].fields.push({
-                title: key,
-                value: String(value),
-                short: false,
-            });
+            fields.push({ name: key, value: String(value) })
         }
 
         if (err.stack) {
-            message.attachments[0].fields.push({
-                title: 'Stack Trace',
-                value: err.stack.split('\n').slice(0, 5).join('\n'), // 첫 5줄만 포함
-                short: false,
-            });
+            const stack = err.stack.split('\n').slice(0, 5).join('\n') // 첫 5줄만 포함
+            fields.push({ name: 'Stack Trace', value: '```\n' + clip(stack, 1000) + '\n```' })
         }
 
-        try {
-            await axios.post(slackWebhookUrl, message);
-        } catch (error) {
-            console.error('Error sending message to Slack:', error);
-        }
+        // 디스코드 제한: 필드 값 1024자, 설명 4096자, 빈 값 불가 → 넘치면 요청 자체가 400으로 거절된다
+        await module.exports.sendDiscordMessage({
+            embeds: [{
+                title: '🚨 DIBE2 에러 발생',
+                description: clip(err.message || String(err), 4000),
+                color: 0xFF0000,
+                fields: fields.map(f => ({ name: f.name, value: clip(f.value, 1024) || 'N/A' })),
+            }],
+        })
     },
 
     searchBugsMusic: async (query) => {

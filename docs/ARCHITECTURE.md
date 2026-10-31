@@ -61,6 +61,7 @@ dibe2/
 │   │   └── cors.js
 │   ├── models/
 │   │   ├── Chart.js     # 차트 (items: [{rank,title,artist,...}]) — Chart(국내) + PopChart(해외, popcharts)
+│   │   ├── CronRun.js   # 크론 실행 기록 (running/ok/wiped/error, TTL 1년)
 │   │   ├── Playlist.js  # 플레이리스트 (user ref, songs[])
 │   │   ├── VideoPlaylist.js  # 비디오 플레이리스트 (user ref, videos[] — songId ref 없음, 전부 비정규화)
 │   │   ├── Song.js      # 곡 (title,artist,album,youtubeUrl,lyrics,genre,style,likeCount,playCount)
@@ -81,7 +82,8 @@ dibe2/
 │   │   ├── themeCollector.js    # 유튜브 플리 수집·곡 묶기·점수 (DB 모름 — 스크립트/향후 크론 공용)
 │   │   └── themeDefinitions.js  # 테마 9개 + 검색어 (원본)
 │   └── utils/
-│       └── helper.js              # Bugs 크롤링(parseTitleCell/getLyrics/getAlbumGenre), Slack 알림
+│       ├── helper.js              # Bugs 크롤링(parseTitleCell/getLyrics/getAlbumGenre), 디스코드 알림
+│       └── runCron.js             # 크론 공통 래퍼 — cronruns 기록 + 전멸·에러 디스코드 알림
 │
 ├── scripts/             # 로컬 실행 일회성/백필 스크립트 (배포 안 됨)
 │   │                      # ⚠️ DB 접속은 반드시 server/models의 connectToMongoDB() 사용

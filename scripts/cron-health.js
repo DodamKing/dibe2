@@ -11,7 +11,7 @@
 require('dotenv').config()
 
 const mongoose = require('mongoose')
-const { connectToMongoDB, Song, Chart } = require('../server/models')
+const { connectToMongoDB, Song, Chart, CronRun } = require('../server/models')
 
 const DAY = 86400e3
 const KST = d => d ? new Date(d.getTime() + 9 * 3600e3).toISOString().replace('T', ' ').slice(0, 19) + ' KST' : '(없음)'
@@ -29,6 +29,27 @@ async function main() {
 
     const total = await Song.countDocuments()
     console.log(`\n=== 전체 곡 ${n(total)}개 ===\n`)
+
+    // ── 0) 실행 기록(cronruns) — 2026-10-31부터 쌓임. 아래 "흔적" 추정보다 이게 1차 근거다 ──
+    // running 으로 남은 건 = 30초 제한에 강제 종료. 그날 행이 아예 없으면 = 실행 안 됨.
+    const JOBS = ['updateChartData', 'updatePopChartData', 'updateLyrics', 'updateGenres', 'updateYoutubeUrls']
+    const since = new Date(Date.now() - 7 * DAY)
+    const runs = await CronRun.find({ startedAt: { $gte: since } }).sort({ startedAt: -1 }).lean()
+    const fmtStats = st => !st ? '' : [
+        st.target != null && `대상 ${st.target}`, st.filled != null && `채움 ${st.filled}`,
+        st.closed != null && `닫음 ${st.closed}`, st.failed != null && `실패 ${st.failed}`,
+        st.budgetHit && '예산초과',
+    ].filter(Boolean).join(' · ')
+    console.log('■ 최근 7일 실행 기록 (running=타임아웃 강제종료 / 행 없음=실행 안 됨)')
+    for (const job of JOBS) {
+        const mine = runs.filter(r => r.job === job)
+        console.log(`  ${job} — ${mine.length}회`)
+        for (const r of mine.slice(0, 3)) {
+            const dur = r.durationMs != null ? `${(r.durationMs / 1000).toFixed(1)}s` : '-'
+            console.log(`    ${KST(r.startedAt)}  ${r.status.padEnd(7)} ${dur.padStart(6)}  ${fmtStats(r.stats)}${r.error ? '  ' + r.error : ''}`)
+        }
+    }
+    console.log('')
 
     // ── 1) 각 크론이 마지막으로 "일한" 시각. 오늘 날짜면 정상 ──────────────
     console.log('■ 크론 최근 실행 흔적 (오늘 날짜면 정상)')

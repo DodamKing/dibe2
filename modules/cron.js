@@ -17,7 +17,7 @@ function setupCronJob(schedule, jobName, task) {
                     console.log(`${jobName} 완료: ${new Date().toISOString()}`);
                 } catch (error) {
                     console.error(`${jobName} 실행 중 오류 발생:`, error);
-                    helper.sendErrorToSlack(error, null, {
+                    await helper.sendErrorToDiscord(error, null, {
                         context: 'Cron Job',
                         jobName,
                         schedule,

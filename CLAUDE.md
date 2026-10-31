@@ -29,6 +29,7 @@
 ## 개발 모드 실행
 - **`npm run dev`** = `netlify dev` (포트 3000) — Functions 라우팅(`/api/*` → `/.netlify/functions/api/*`)까지 같이 잡아줌. 내부적으로 3333번 nuxt dev 프록시
 - nuxt만 단독으로 띄우면 `/api/*` 라우팅이 안 먹음. 항상 `npm run dev` 사용
+- `netlify.toml`의 `/_nuxt/*`·`/_loading/*`·`/__webpack_hmr/*` 통과 규칙을 지우지 말 것 — 없으면 SPA 폴백이 JS까지 index.html로 바꿔 dev 화면이 "Loading..."에서 멈춘다
 
 ## 작업 규칙
 - **토큰 절약**: 전체 코드를 읽지 말 것. CLAUDE.md → 필요한 docs/ 문서 → 수정 대상 파일만 읽기
@@ -45,7 +46,8 @@
 ## 주의사항
 - `.env`에 실제 시크릿 있음 (커밋 금지)
 - 🔴 **DB 접속은 반드시 `server/models`의 `connectToMongoDB()`를 쓸 것.** `.env`의 `MONGODB_URI`엔 **DB 이름 경로가 없고**, 실제 DB 지정은 이 함수의 `dbName: 'dibe2'` 옵션이 한다. 스크립트에서 `mongoose.connect(process.env.MONGODB_URI)`를 직접 부르면 **조용히 `test` DB(2024년 방치된 유령 DB)에 붙는다.** 같은 클러스터에 `dibe`/`test`/`dibe2`가 공존하며 **운영은 `dibe2`**
-- **Netlify 스케줄 함수는 30초 제한**(설정 불가). 크론은 대량 백로그를 못 삼키고 타임아웃 시 슬랙 알림 없이 조용히 죽음 → 대량 작업은 `scripts/`의 로컬 스크립트로. 상세는 `docs/CRON_EXTERNAL.md`
+- **Netlify 스케줄 함수는 30초 제한**(설정 불가). 크론은 대량 백로그를 못 삼키고 타임아웃 시 알림 없이 조용히 죽음(`cronruns`에 `running`으로 남는다) → 대량 작업은 `scripts/`의 로컬 스크립트로. 상세는 `docs/CRON_EXTERNAL.md`
+- **크론 상태 확인은 `node scripts/cron-health.js`** — 맨 위가 실행 기록(`cronruns`). 에러·전멸은 디스코드(`DISCORD_WEBHOOK_URL`)로 온다. 새 크론은 반드시 `server/utils/runCron.js`로 감쌀 것
 - **`Song.youtubeUrl`은 곡 저장보다 늦게 채워짐**(08:00 저장 → 08:10 채움). 항상 있다고 가정하지 말 것
 - 크론잡은 프로덕션에서만 실행됨
 - 오디오/비디오 재생은 youtube-nocookie.com 도메인 사용 (사용자 계정 컨텍스트 분리)
