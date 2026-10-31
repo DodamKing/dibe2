@@ -13,72 +13,58 @@
         <CreatePlaylistModal :show="showCreatePlaylistModal" @close="showCreatePlaylistModal = false"
             @create="handleCreatePlaylist" @show-toast="showToast" />
 
-        <!-- Toast Message -->
+        <!-- 화면 아래 알림 — 미니 플레이어 바로 위 가운데, 어두운 알약(2026-11. 예전 초록 상자) -->
         <transition name="fade">
-            <div v-if="toastVisible"
-                class="fixed bottom-24 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg">
+            <div v-if="toastVisible" role="status"
+                class="fixed left-1/2 transform -translate-x-1/2 bottom-[84px] sm:bottom-24 z-[70] max-w-[90vw] px-4 py-2.5 rounded-full bg-white text-gray-900 text-sm font-medium shadow-2xl text-center">
                 {{ toastMessage }}
             </div>
         </transition>
 
-        <!-- Loading Overlay -->
-        <div v-if="isAdding" class="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center">
-            <div class="bg-gray-800 rounded-lg p-6 max-w-sm w-full text-center">
-                <svg class="animate-spin h-10 w-10 text-blue-500 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg"
-                    fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                    </path>
-                </svg>
-                <p class="text-lg font-semibold mb-2">곡 추가 중...</p>
-                <div class="w-full bg-gray-700 rounded-full h-2.5 dark:bg-gray-700 mt-4">
-                    <div class="bg-blue-600 h-2.5 rounded-full" :style="{ width: `${progressPercentage}%` }"></div>
+        <!-- 여러 곡을 담는 중 -->
+        <div v-if="isAdding" class="fixed inset-0 bg-black bg-opacity-60 z-[70] flex items-center justify-center p-4">
+            <div class="bg-surface-2 rounded-2xl p-6 w-full max-w-xs text-center" role="status">
+                <Icon name="loader" :size="36" class="animate-spin text-purple-400 mx-auto mb-3" />
+                <p class="font-semibold">곡을 담는 중이에요</p>
+                <div class="w-full bg-white bg-opacity-10 rounded-full h-1.5 mt-4 overflow-hidden">
+                    <div class="bg-purple-400 h-full rounded-full transition-all" :style="{ width: `${progressPercentage}%` }"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Add to Playlist Modal -->
+        <!-- 선택한 곡 담기(차트에서 선택 → "선택 곡 담기", 곡 메뉴의 "내 플레이리스트에 담기") — 2026-11 새 디자인.
+             모바일은 아래 시트, 데스크탑은 가운데 창 -->
         <transition name="fade">
             <div v-if="showAddToPlaylistModal"
-                class="modal fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
+                class="fixed inset-0 bg-black bg-opacity-60 z-[60] flex items-end sm:items-center justify-center"
                 @click.self="closeAddToPlaylistModal">
-                <div class="bg-gray-800 rounded-lg p-6 max-w-sm w-full relative">
-                    <button @click="closeAddToPlaylistModal"
-                        class="absolute top-2 right-2 text-gray-400 hover:text-white">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
+                <div class="w-full sm:max-w-sm max-h-[80vh] flex flex-col bg-surface-2 rounded-t-2xl sm:rounded-2xl pt-4 pb-3 px-2" role="dialog" aria-label="담기">
+                    <div class="flex items-center justify-between pl-3 pr-1 pb-2">
+                        <div class="min-w-0">
+                            <h3 class="text-lg font-bold">담기</h3>
+                            <p class="text-[13px] text-gray-400">{{ selectedSongs.length }}곡 선택됨</p>
+                        </div>
+                        <button type="button" class="w-11 h-11 flex items-center justify-center rounded-full text-gray-400 hover:text-white" aria-label="닫기" @click="closeAddToPlaylistModal">
+                            <Icon name="x" />
+                        </button>
+                    </div>
+                    <button type="button" class="sheet-item" @click="addToCurrentPlaylist">
+                        <Icon name="list-music" class="text-gray-300" />재생 대기열에 추가
                     </button>
-                    <h3 class="text-xl font-semibold mb-4">플레이리스트 선택</h3>
-                    <ul class="space-y-2 mb-4">
-                        <li>
-                            <button @click="addToCurrentPlaylist"
-                                class="w-full text-left p-2 rounded hover:bg-gray-700 transition-colors duration-200">
-                                재생 대기열에 추가
-                            </button>
-                        </li>
-                        <li>
-                            <button @click="toggleMyPlaylists"
-                                class="w-full text-left p-2 rounded hover:bg-gray-700 transition-colors duration-200 flex justify-between items-center">
-                                <span>내 플레이리스트에 추가</span>
-                                <span class="transform transition-transform duration-200"
-                                    :class="{ 'rotate-180': showMyPlaylists }">▼</span>
-                            </button>
-                            <transition name="fade">
-                                <ul v-if="showMyPlaylists" class="mt-2 ml-4 space-y-2">
-                                    <li v-for="playlist in playlists" :key="playlist._id">
-                                        <button @click="addToSelectedPlaylist(playlist._id)"
-                                            class="w-full text-left p-2 rounded hover:bg-gray-700 transition-colors duration-200">
-                                            {{ playlist.name }}
-                                        </button>
-                                    </li>
-                                </ul>
-                            </transition>
-                        </li>
-                    </ul>
+                    <p class="px-3 pt-3 pb-1 text-xs font-medium text-gray-400">내 플레이리스트</p>
+                    <div class="overflow-y-auto overscroll-contain">
+                        <button type="button" class="sheet-item" @click="closeAddToPlaylistModal(); _showCreatePlaylistModal()">
+                            <span class="w-9 h-9 rounded-md border border-dashed border-white border-opacity-30 flex items-center justify-center shrink-0"><Icon name="plus" :size="16" /></span>
+                            새 플레이리스트
+                        </button>
+                        <button v-for="playlist in playlists" :key="playlist._id" type="button" class="sheet-item" @click="addToSelectedPlaylist(playlist._id)">
+                            <CoverImg :src="playlist.songs && playlist.songs[0] ? playlist.songs[0].coverUrl : ''" class="w-9 h-9 rounded-md" />
+                            <span class="min-w-0 flex-1 text-left">
+                                <span class="block truncate">{{ playlist.name }}</span>
+                                <span class="block text-xs text-gray-400">{{ playlist.songs ? playlist.songs.length : 0 }}곡</span>
+                            </span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </transition>
@@ -182,7 +168,6 @@ export default {
             showCreatePlaylistModal: false,
             showDropdown: false,
             showAddToPlaylistModal: false,
-            showMyPlaylists: false,
         }
     },
     methods: {
@@ -280,7 +265,6 @@ export default {
         },
         closeAddToPlaylistModal() {
             this.showAddToPlaylistModal = false
-            this.showMyPlaylists = false
         },
         async addToCurrentPlaylist() {
             if (this.isAdding) return
@@ -372,9 +356,6 @@ export default {
         _showCreatePlaylistModal() {
             this.showCreatePlaylistModal = true
         },
-        toggleMyPlaylists() {
-            this.showMyPlaylists = !this.showMyPlaylists;
-        },
     },
     mounted() {
         this.fetchPopularChart()
@@ -391,6 +372,20 @@ export default {
 </script>
 
 <style>
+/* 담기 시트의 줄 */
+.sheet-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 52px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    font-size: 15px;
+    text-align: left;
+}
+.sheet-item:hover { background: rgba(255, 255, 255, 0.06); }
+
 .slide-up-enter-active,
 .slide-up-leave-active {
     transition: all 0.3s ease-out;

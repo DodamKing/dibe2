@@ -1,11 +1,7 @@
 <template>
 	<main class="w-full max-w-[1600px] mx-auto px-4 sm:px-8 py-6 sm:py-8 flex-grow pb-28 sm:pb-36 flex flex-col gap-4">
 		<div class="flex items-center gap-3 flex-wrap">
-			<button
-type="button" class="w-10 h-10 rounded-full bg-gray-800 text-gray-200 hover:bg-gray-700" aria-label="뒤로 가기"
-				@click="$router.back()">
-				<Icon name="arrow-left" />
-			</button>
+			<BackButton />
 			<div class="w-12 h-12 rounded-lg bg-purple-600 flex items-center justify-center">
 				<Icon name="heart" :size="22" filled class="text-white" />
 			</div>

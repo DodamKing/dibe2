@@ -4,7 +4,7 @@ class="song-row group flex items-center gap-3 px-2 sm:px-3 py-2 rounded-lg hover
         @click="$emit('play', song)">
         <input
 v-if="selectable" type="checkbox" :checked="selected" :aria-label="`${song.title} 선택`"
-            class="form-checkbox h-4 w-4 text-purple-600 shrink-0" @click.stop @change="$emit('toggle-select', song)" />
+            class="shrink-0" @click.stop @change="$emit('toggle-select', song)" />
         <span v-if="rank" class="w-6 sm:w-7 text-right text-sm sm:text-base font-semibold text-gray-400 shrink-0 tabular-nums">{{ rank }}</span>
         <img :src="cover" :alt="''" class="w-11 h-11 rounded-md object-cover shrink-0 bg-gray-700" loading="lazy" />
         <div class="min-w-0 flex-1">

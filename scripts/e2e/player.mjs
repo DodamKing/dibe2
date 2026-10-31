@@ -327,6 +327,73 @@ const scenarios = {
         await context.close()
     },
 
+    // 화면·창 전수 스크린샷(예전 스타일이 남은 곳 찾기용) — 판정 없이 찍기만 한다
+    async audit(browser) {
+        for (const vp of [{ width: 1440, height: 900, tag: 'd' }, { width: 390, height: 844, tag: 'm' }]) {
+            const { context, page } = await newPage(browser, { width: vp.width, height: vp.height })
+            const shot = async name => { await page.waitForTimeout(700); await page.screenshot({ path: join(OUT, `audit-${vp.tag}-${name}.png`) }) }
+            await gotoHome(page)
+            // 검색
+            if (vp.tag === 'd') {
+                await page.locator('input[aria-label="검색어"]').fill('아이유')
+                await page.keyboard.press('Enter')
+            } else {
+                await page.getByRole('button', { name: '검색' }).first().click()
+                await shot('search-popup')
+                await page.locator('input[placeholder="노래, 앨범, 아티스트 검색"]').last().fill('아이유')
+                await page.keyboard.press('Enter')
+            }
+            await page.waitForTimeout(3000)
+            await shot('search-results')
+            await page.keyboard.press('Escape')
+            // 차트 선택 + 담기
+            await page.goto(BASE + '/chart', { waitUntil: 'domcontentloaded' })
+            await page.waitForSelector('.song-row', { timeout: 20000 })
+            await page.locator('.song-row input[type=checkbox]').nth(1).check()
+            await page.locator('.song-row input[type=checkbox]').nth(2).check()
+            await shot('chart-selected')
+            await page.getByRole('button', { name: '선택 곡 담기' }).click()
+            await shot('add-modal')
+            await page.getByRole('button', { name: '새 플레이리스트' }).click()
+            await shot('create-modal')
+            await page.keyboard.press('Escape')
+            // 플리 상세(첫 플리)
+            const firstPl = await page.evaluate(() => (window.$nuxt.$store.state.playlist.playlists[0] || {})._id)
+            if (firstPl) {
+                await page.goto(BASE + '/playlist/' + firstPl, { waitUntil: 'domcontentloaded' })
+                await page.waitForTimeout(2500)
+                await shot('playlist')
+            }
+            await page.goto(BASE + '/liked', { waitUntil: 'domcontentloaded' })
+            await shot('liked')
+            await page.goto(BASE + '/theme/rain', { waitUntil: 'domcontentloaded' })
+            await page.waitForTimeout(2500)
+            await shot('theme')
+            // 영상 모드
+            await page.goto(BASE + '/video', { waitUntil: 'domcontentloaded' })
+            await page.waitForTimeout(2000)
+            await page.locator('input[placeholder*="유튜브"]').fill('아이유 밤편지')
+            await page.keyboard.press('Enter')
+            await page.waitForTimeout(4000)
+            await shot('video-search')
+            await page.getByRole('button', { name: '보관함' }).click()
+            await shot('video-library')
+            await page.goto(BASE + '/download', { waitUntil: 'domcontentloaded' })
+            await shot('download')
+            await page.goto(BASE + '/subscription-notice', { waitUntil: 'domcontentloaded' })
+            await shot('subscription')
+            await context.close()
+        }
+        // 로그인 안 한 화면
+        const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+        const page = await context.newPage()
+        await page.goto(BASE + '/login', { waitUntil: 'domcontentloaded' })
+        await page.waitForTimeout(3000)
+        await page.screenshot({ path: join(OUT, 'audit-d-login.png') })
+        await context.close()
+        check('audit 스크린샷', true)
+    },
+
     async tablet(browser) {
         const { context, page } = await newPage(browser, { width: 820, height: 1180 })
         await gotoHome(page)

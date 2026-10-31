@@ -1,0 +1,29 @@
+/* 전역 스타일 — nuxt.config.js css 에 등록. 컴포넌트마다 반복되는 기본 입력 모양만 둔다 */
+
+/* 체크박스: 브라우저 기본 흰 네모 대신 어두운 테두리 → 체크하면 보라 채움(2026-11).
+   차트 선택·검색 결과·영상 대기열·곡 줄이 같이 쓴다 */
+input[type='checkbox'] {
+    -webkit-appearance: none;
+    appearance: none;
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    border: 1.5px solid rgba(255, 255, 255, 0.35);
+    border-radius: 5px;
+    background: transparent center / 12px 12px no-repeat;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s;
+}
+input[type='checkbox']:hover {
+    border-color: rgba(255, 255, 255, 0.6);
+}
+input[type='checkbox']:checked {
+    border-color: #a855f7;
+    background-color: #a855f7;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+}
+input[type='checkbox']:focus-visible {
+    outline: 2px solid #c084fc;
+    outline-offset: 2px;
+}

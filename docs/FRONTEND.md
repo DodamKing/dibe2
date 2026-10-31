@@ -8,6 +8,9 @@
   - 2026-11에 Font Awesome 6 CDN을 **사이트 전체에서** 걷어냈다(관리자 화면 포함). 새 아이콘은 lucide.dev 의 path 를 `ICONS`에 추가
   - 🔴 `<Icon @click>`은 **안 먹는다**(Vue 2 컴포넌트엔 `.native` 필요) — 누르는 아이콘은 `<button>`으로 감쌀 것
 - `components/CoverImg.vue` — 곡 커버. 유튜브 썸네일(`hqdefault`)은 위아래 검은 띠가 박혀 있어 `video` 를 주면 띠만큼 확대해 잘라낸다
+- `components/BackButton.vue` — 뒤로가기(배경 없는 화살표, 올리면 옅은 원). 제목 바로 왼쪽. 돌아갈 곳이 없으면 `fallback`
+- **체크박스는 `assets/css/global.css`** 에서 전역으로 꾸민다(어두운 테두리 → 체크하면 보라). 클래스 안 붙여도 된다
+- 창(모달)은 같은 틀: 어두운 카드 `bg-surface-2`, 모바일은 아래 시트·데스크탑은 가운데, Esc·바깥 누르면 닫기 — `SongMenuSheet`·`CreatePlaylistModal`·레이아웃의 "담기" 시트
 
 ## 레이아웃
 - `layouts/main.vue` ★ 핵심 레이아웃
@@ -26,7 +29,7 @@
 | `/login` | `pages/login.vue` | auth | 로그인 (구글/카카오 소셜 로그인만 — 아이디/비밀번호 폼 없음). 좌측 브랜드 패널 + 우측 로그인 패널 2단 레이아웃(모바일은 세로 스택). 소셜 버튼(`SocialLoginButton.vue`)은 각 사 공식 버튼 가이드(색상/라벨/radius) 준수, 카카오 말풍선 심볼은 근사치 SVG(공식 에셋 아님) |
 | `/register` | `pages/register.vue` | auth | 회원가입 (현재 막혀있음) |
 | `/subscription-notice` | `pages/subscription-notice.vue` | - | 구독 만료 안내 |
-| `/playlist/:id` | `pages/playlist/_id.vue` | main | 플레이리스트 상세. 줄 클릭 = 이 플리를 그 곡부터 |
+| `/playlist/:id` | `pages/playlist/_id.vue` | main | 플레이리스트 상세(좋아요·테마 상세와 같은 틀, `SongRow`). 줄 클릭 = 이 플리를 그 곡부터. 곡 빼기는 ⋯ 메뉴(`SongMenuSheet removable`), 이름은 눌러서 고침. 스토어의 `currentPlaylist` 는 지난번 플리일 수 있어 주소 id 와 같을 때만 그린다 |
 | `/theme` | `pages/theme/index.vue` | main | 테마 9개 카드(`GET /api/themes`, `store/themes.js`가 한 번 받아 홈과 공유) |
 | `/theme/:key` | `pages/theme/_key.vue` | main | 테마 50곡(`GET /api/themes/:key`). 곡은 유튜브 영상 — 대기열에 `kind:'video'`로 들어간다. ⋯ 메뉴는 다음에 재생·맨 뒤 추가만(좋아요·담기 없음) |
 | `/admin` | `pages/admin/index.vue` | main | 관리자 대시보드 |

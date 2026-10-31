@@ -18,7 +18,8 @@
             </div>
 
             <!-- ── 데스크탑 ── -->
-            <div class="hidden sm:flex flex-1 min-h-0 gap-10 lg:gap-16 px-8 lg:px-24 pt-4 pb-8">
+            <!-- 커버+가사 덩어리를 최대 1200px 로 묶어 가운데에(넓은 화면에서 오른쪽이 휑하게 남던 것) -->
+            <div class="hidden sm:flex flex-1 min-h-0 w-full max-w-[1200px] mx-auto gap-10 lg:gap-16 px-8 lg:px-12 pt-4 pb-8">
                 <div class="flex flex-col gap-6 shrink-0" :style="{ width: coverSize }">
                     <CoverImg :src="bigCover" :video="isVideo" class="cover rounded-xl" :style="{ width: coverSize, height: coverSize }" />
                     <div class="flex items-center gap-3">

@@ -20,6 +20,10 @@
                 <button v-if="kind === 'song'" type="button" class="menu-item" @click="$emit('add-to-playlist', song)">
                     <Icon name="plus" class="w-5 text-gray-300" />내 플레이리스트에 담기
                 </button>
+                <!-- 플레이리스트 상세에서만 -->
+                <button v-if="removable" type="button" class="menu-item text-red-300" @click="$emit('remove', song); $emit('close')">
+                    <Icon name="trash" class="w-5" />이 플레이리스트에서 빼기
+                </button>
             </div>
         </div>
     </transition>
@@ -33,6 +37,7 @@ export default {
         songId: { type: String, default: null },
         // 'video' = 테마(유튜브 곡) — 좋아요·내 플레이리스트 담기는 곡 id가 없어 숨긴다
         kind: { type: String, default: 'song' },
+        removable: { type: Boolean, default: false },
     },
     computed: {
         liked() {

@@ -1,11 +1,7 @@
 <template>
 	<main class="w-full max-w-[1600px] mx-auto px-4 sm:px-8 py-6 sm:py-8 flex-grow pb-28 sm:pb-36 flex flex-col gap-4">
 		<div class="flex items-center gap-3 flex-wrap">
-			<button
-type="button" class="w-10 h-10 rounded-full bg-gray-800 text-gray-200 hover:bg-gray-700" aria-label="뒤로 가기"
-				@click="$router.back()">
-				<Icon name="arrow-left" />
-			</button>
+			<BackButton />
 			<h1 class="text-2xl sm:text-3xl font-bold">{{ isPop ? '해외 Top 100' : '오늘의 Top 100' }}</h1>
 			<div role="group" aria-label="차트 종류" class="flex bg-gray-800 rounded-full p-1">
 				<button type="button" :class="tabClass(!isPop)" :aria-pressed="!isPop ? 'true' : 'false'" @click="setType(false)">국내</button>
@@ -17,7 +13,7 @@ type="button" class="w-10 h-10 rounded-full bg-gray-800 text-gray-200 hover:bg-g
 		<!-- 선택 도구줄 — 기존 "전체 선택 → 추가" 기능 -->
 		<div class="sticky top-0 z-10 flex items-center gap-2 flex-wrap px-3 py-2 rounded-xl bg-surface-1 bg-opacity-95 border border-white border-opacity-10">
 			<label class="flex items-center gap-2 text-sm text-gray-200 min-h-[40px] cursor-pointer">
-				<input type="checkbox" class="form-checkbox h-4 w-4 text-purple-600" :checked="allSelected" @change="toggleAll" />
+				<input type="checkbox" :checked="allSelected" @change="toggleAll" />
 				전체 선택
 			</label>
 			<span v-if="selectedCount" class="text-sm text-gray-400 ml-1">{{ selectedCount }}곡 선택됨</span>

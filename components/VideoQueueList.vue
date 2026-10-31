@@ -26,7 +26,7 @@
                 ]">
                     <div class="flex items-center justify-center w-6 h-6 mr-2">
                         <input type="checkbox" :checked="isVideoSelected(video)" @change="toggleVideoSelection(video)"
-                            class="form-checkbox h-3 w-3 text-purple-600">
+                            >
                     </div>
 
                     <div class="flex-grow flex items-center min-w-0 cursor-pointer group" @click="playVideo(video)">
