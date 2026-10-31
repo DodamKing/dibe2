@@ -12,7 +12,7 @@
 - `songId`가 없는 항목(크론이 아직 못 채움)은 `liked: false`. 하트를 숨길 것
 - `liked`는 사용자마다 다르므로 **차트를 로컬 캐시할 땐 빼고 저장**(웹 `dibe2_chart_cache`가 그렇게 한다)
 | GET | `/songdata?title=&artist=` | 제목+아티스트로 곡 조회 |
-| POST | `/songsdata` | body: {songs[]} → 복수 곡 조회 |
+| POST | `/songsdata` | body: {songs[]} → 복수 곡 조회. ⚠️ **2026-11부터 아무도 안 부른다**(웹은 재생 직전 `/songdata` 한 곡씩, 앱은 원래 안 씀) — 곡마다 순차 조회라 느리다. 정리 대상 |
 | GET | `/search?query=&type=&page=&limit=` | 곡 검색 (type: all/title/artist/lyrics). **all=공백 토큰 AND**(각 토큰이 title∪artist 어디든 매칭) → "아이유 좋은날"처럼 가수+제목 조합도 잡힘. 단일 토큰은 종전과 동일 |
 | GET | `/youtubeId/:songId` | songId → YouTube 비디오 ID |
 | POST | `/by-ids` | body: {ids[]} → ID 배열로 일괄 조회 (lyrics 제외, 캐시 갱신용). 응답에 `liked`/`likeCount`/`playCount` 포함 |
@@ -97,7 +97,7 @@
 
 > APK는 private 저장소 `dibe2-app`의 GitHub Releases 자산으로 배포. `/download`는 private 자산을 octet-stream으로 요청해 GitHub이 주는 단기 서명 URL(약 5분)만 받아 반환(바이트 프록시 X → Netlify 6MB 제한 무관). Netlify env `GITHUB_TOKEN`(dibe2-app contents:read) 필요.
 
-## Themes (`/api/themes`) - server/api/theme.js (테마 플레이리스트, 모바일 앱용)
+## Themes (`/api/themes`) - server/api/theme.js (테마 플레이리스트 — 앱, 웹 `/theme`(2026-11~))
 설계·알고리즘은 `docs/THEME_PLAYLIST.md`. 로그인 필수(전역 JWT).
 
 | Method | Path | 설명 |

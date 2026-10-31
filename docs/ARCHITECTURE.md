@@ -2,43 +2,58 @@
 
 ```
 dibe2/
-├── components/          # Vue 컴포넌트
-│   ├── admin/           # 관리자 전용 컴포넌트
+├── components/          # Vue 컴포넌트 (2026-11 목록 갱신)
+│   ├── admin/           # 관리자 전용 컴포넌트 (밝은 테마 — 따로)
 │   │   ├── AdminDashboard.vue
 │   │   ├── MusicManagement.vue
 │   │   └── UserManagement.vue
-│   ├── AppHeader.vue
-│   ├── CreatePlaylistModal.vue
-│   ├── MusicPlayer.vue       # 메인 음악 플레이어 (하단 고정)
-│   ├── MusicPlayer_v2.vue    # v2 (미사용?)
-│   ├── MyPlaylistSection.vue
-│   ├── Playlist.vue          # 재생 큐 사이드바
+│   │  ── 공통 부품 ──
+│   ├── Icon.vue              # 가는 선 아이콘(SVG). Font Awesome 대체
+│   ├── CoverImg.vue          # 곡 커버(유튜브 썸네일 검은 띠 잘라냄)
+│   ├── BackButton.vue        # 뒤로가기
+│   ├── SongRow.vue           # 곡 한 줄(차트·좋아요·플리·검색 공용 — 하트·⋯·선택)
+│   ├── SongMenuSheet.vue     # 곡 ⋯ 메뉴(다음에 재생·대기열·담기·좋아요·플리에서 빼기)
+│   │  ── 음원 재생 화면 ──
+│   ├── MusicPlayer.vue       # 하단 미니 플레이어 ★
+│   ├── NowPlaying.vue        # 지금 재생 중 큰 화면(커버·가사·다음 곡)
+│   ├── QueuePanel.vue        # 재생 대기열(데스크탑 오른쪽 서랍·모바일 시트)
+│   ├── LyricsView.vue        # 가사(정적, 싱크 가사 끼울 자리)
+│   │  ── 음원 기타 ──
+│   ├── AppHeader.vue         # 헤더(메뉴·검색·영상·UserMenu) + 모바일 검색 막대
+│   ├── UserMenu.vue          # 사용자 메뉴(AppHeader·VideoHeader 공통)
 │   ├── SearchResultsModal.vue
+│   ├── CreatePlaylistModal.vue
 │   ├── SocialLoginButton.vue
-│   ├── TestErrorComponent.vue
-│   ├── VideoHeader.vue          # 비디오 모드 전용 헤더 (← 뒤로가기, 음원모드 전환, UserMenu만 — 큐 진입점은 하단 미니플레이어/Now Playing 오버레이가 담당)
-│   ├── VideoQueueList.vue       # "지금 재생 중" 오버레이 안의 재생목록(큐) 콘텐츠 (Playlist.vue 축소판, 모달도 탭도 아닌 인라인)
+│   │  ── 영상 모드 (예전 디자인 — 다음 단계에서 손볼 예정) ──
+│   ├── VideoHeader.vue          # 비디오 모드 전용 헤더 (음원모드 전환, UserMenu)
+│   ├── VideoQueueList.vue       # 지금 재생 중 오버레이 안의 재생목록(큐) 콘텐츠 (인라인)
 │   ├── MyVideoPlaylistSection.vue   # 보관함 탭 - 저장된 비디오 플레이리스트 그리드
 │   ├── CreateVideoPlaylistModal.vue
 │   ├── VideoPlaylistDetailPanel.vue # 보관함 탭 - 플레이리스트 상세(인라인, 라우트 아님)
-│   └── VideoAddModal.vue        # 영상 1개를 재생목록/플레이리스트에 추가 (검색카드+지금재생중 슬림바 공유)
+│   └── VideoAddModal.vue        # 영상 1개를 재생목록/플레이리스트에 추가
+│
+├── assets/css/global.css    # 전역 스타일(체크박스)
 │
 ├── layouts/
 │   ├── auth.vue         # 로그인/회원가입용 레이아웃
-│   ├── main.vue         # 메인 레이아웃 (플레이어, 헤더 포함) ★ 핵심
+│   ├── main.vue         # 메인 레이아웃 (헤더·플레이어·대기열·지금 재생 중·담기 시트·알림) ★ 핵심
 │   └── video.vue        # 비디오 레이아웃 (VideoHeader + Nuxt만 — 모달 없음)
 │
 ├── middleware/
 │   └── auth.js          # 클라이언트 라우터 미들웨어 (페이지 접근 제어)
 │
 ├── pages/
-│   ├── index.vue        # 메인 (차트 Top100 + 내 플레이리스트)
+│   ├── index.vue        # 홈 (내 플레이리스트 · 테마 · Top 100 미리보기)
+│   ├── chart.vue        # Top 100 전체 (?type=pop 해외)
+│   ├── liked.vue        # 좋아요한 곡
+│   ├── theme/index.vue  # 테마 목록
+│   ├── theme/_key.vue   # 테마 50곡(유튜브 곡)
+│   ├── playlist/_id.vue # 플레이리스트 상세
+│   ├── download.vue     # 안드로이드 앱 다운로드
 │   ├── login.vue
 │   ├── register.vue
 │   ├── subscription-notice.vue  # 구독 만료 안내
-│   ├── test-error.vue
 │   ├── admin/index.vue  # 관리자 대시보드
-│   ├── playlist/_id.vue # 플레이리스트 상세
 │   └── video/index.vue  # 유튜브 검색 + 영상 재생 (음원과 독립)
 │
 ├── plugins/
@@ -134,7 +149,9 @@ dibe2/
 ├── store/               # Vuex 스토어
 │   ├── index.js
 │   ├── auth.js          # 로그인/로그아웃
-│   ├── player.js        # 재생 상태 (큐, 현재곡, 볼륨, 셔플, 반복) ★ 핵심
+│   ├── player.js        # 재생 대기열(2구역)·현재곡·재생 상태·볼륨·셔플·반복 ★ 핵심. 계산은 utils/queue.js
+│   ├── likes.js         # 좋아요 공유 상태
+│   ├── themes.js        # 테마 목록
 │   ├── playlist.js      # 내 플레이리스트 CRUD
 │   ├── videoQueue.js    # 비디오 재생 큐 (player.js 축소판 — 셔플/반복/볼륨 없음)
 │   ├── videoPlaylist.js # 내 비디오 플레이리스트 CRUD
@@ -144,8 +161,12 @@ dibe2/
 │       └── titleUpdate.js
 │
 ├── utils/               # 클라이언트 유틸
-│   ├── audioPlayer.js
-│   └── youtubePlayer.js # YouTube IFrame API 래퍼
+│   ├── queue.js         # 재생 대기열 계산(순수 함수) — tests/queue.test.mjs
+│   ├── youtubePlayer.js # YouTube IFrame API 래퍼
+│   └── audioPlayer.js   # ⚠️ 아무 데서도 안 씀(2026-11 확인) — 정리 대상
+│
+├── tests/queue.test.mjs # npm test (Node 내장 test runner)
+├── scripts/e2e/         # Playwright 브라우저 검증 — player.mjs(시나리오, --only=audit 전 화면 스크린샷), make-token.js(로그인 토큰)
 │
 ├── modules/             # ⚠️ 전부 죽은 코드 — nuxt.config.js에서 주석 처리됨
 │   ├── cron.js          #   node-cron 기반 크론. 24시간 살아있는 서버가 있어야 도는데

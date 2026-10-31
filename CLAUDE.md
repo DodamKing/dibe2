@@ -32,6 +32,7 @@
 - nuxt만 단독으로 띄우면 `/api/*` 라우팅이 안 먹음. 항상 `npm run dev` 사용
 - `predev`가 3000·3333 포트를 먼저 비운다(`kill-port`). 터미널을 닫아도 netlify가 띄운 자식 프로세스가 남아 포트를 쥐고 있으면 새 dev가 "Could not acquire port 3000"으로 못 뜬다(2026-10-31). 그래서 **dev를 두 개 띄우면 먼저 것이 죽는다**
 - 🔴 **`bcrypt`(네이티브 모듈) 다시 넣지 말 것 — `bcryptjs`를 쓴다.** 네이티브 모듈은 한 프로세스에서 다시 못 읽어서, 서버 파일을 고칠 때마다 netlify dev가 `api` 함수 리로드에서 멈추고 3000번 전체가 응답을 끊었다(2026-10-31 재현·수정, netlify-cli 24.8.1·27.16.1 둘 다 동일)
+- **검증**: `npm test`(재생 대기열 계산) / 브라우저는 dev 켜고 `GLOBAL_MODULES="$(npm root -g)" node scripts/e2e/player.mjs`(`--only=이름`, `--only=audit` 은 전 화면 스크린샷 → `scripts/e2e/out/`). 운영 DB를 쓰므로 스크립트가 쓰기 요청을 가로채 막는다
 - `netlify.toml`의 `/_nuxt/*`·`/_loading/*`·`/__webpack_hmr/*` 통과 규칙을 지우지 말 것 — 없으면 SPA 폴백이 JS까지 index.html로 바꿔 dev 화면이 "Loading..."에서 멈춘다
 
 ## 작업 규칙
