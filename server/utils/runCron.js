@@ -7,6 +7,8 @@ const { sendErrorToDiscord } = require('./helper')
  * 왜 시작 시점에 먼저 기록하나: Netlify 스케줄 함수는 30초에 **강제 종료**돼 끝 처리가 안 돈다.
  * 시작할 때 `running`으로 만들어 두면, 그대로 남은 문서가 곧 "타임아웃으로 죽었다"는 증거가 된다.
  *
+ * task(startedMs) — 함수 시작 시각(ms)을 받는다. 채움 크론은 이걸 시간 예산 기준으로 쓴다
+ * (콜드 스타트·DB 연결까지 예산에 포함 → 30초 제한 안쪽 보장).
  * task 는 `{ target, filled, closed, failed, budgetHit }`(있는 것만)를 돌려준다.
  * 진행(filled+closed) 0 + 실패>0 이면 `wiped` — per-song catch 가 에러를 삼켜 200이 나가는
  * "초록불인데 죽음"을 잡는다(예전 `alertIfWiped`의 역할).
@@ -35,7 +37,7 @@ const runCron = (job, task) => async () => {
         await connectToMongoDB()
         run = await CronRun.create({ job, startedAt })
 
-        const stats = (await task()) || {}
+        const stats = (await task(startedAt.getTime())) || {}
         const progressed = (stats.filled || 0) + (stats.closed || 0)
         const wiped = progressed === 0 && stats.failed > 0
         await finish(wiped ? 'wiped' : 'ok', stats)

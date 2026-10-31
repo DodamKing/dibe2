@@ -41,8 +41,12 @@ const youtubeQuery = (title, artist) =>
     `${title} ${artist} official audio`.replace(/#/g, ' ').replace(/\s+/g, ' ').trim()
 
 // Netlify 스케줄 함수는 **30초 제한이고 설정으로 못 늘린다**(동기 60초 / 백그라운드 15분과 별개).
-// 타임아웃은 강제 종료라 catch 가 안 돌아 슬랙 알림도 없이 조용히 죽는다.
+// 타임아웃은 강제 종료라 catch 가 안 돌아 알림도 없이 조용히 죽는다.
 // 그래서 크론이 도는 함수는 전부 시간 예산을 보고 스스로 멈춘다.
+//
+// 🔴 예산은 **함수 시작 시각**(runCron 이 넘겨줌)부터 잰다. 서비스 안에서 새로 재면 콜드 스타트·
+// DB 연결(~2초)이 예산 밖으로 빠진다 — 실측 2026-10-31 유튜브 수동 실행이 예산 안에서 멈췄는데도
+// 함수 전체 **28.1초**(제한 30초)였다. 기본값 Date.now() 는 스크립트에서 직접 부를 때용.
 //
 // 곡 수로 끊지 않고 경과 시간으로 끊는 이유: 대상 사이트가 느린 날에도 안 터진다.
 // 못 끝낸 곡은 다음 날 이어서 처리되므로 손실이 없다.
@@ -145,9 +149,8 @@ module.exports = {
         }
     },
 
-    updateYoutubeUrls: async () => {
+    updateYoutubeUrls: async (startedAt = Date.now()) => {
         try {
-            const startedAt = Date.now()
             // 대상 전체를 한 번에 가져오지 않는다. 백로그가 수천 곡이면 쿼리부터 무거워진다.
             // youtubeCheckedAt 제외 — 안 그러면 못 찾는 곡이 매일 앞을 막는다(가사와 같은 병).
             const songs = await db.Song.find({
@@ -472,9 +475,8 @@ module.exports = {
         };
     },
 
-    updateLyrics: async () => {
+    updateLyrics: async (startedAt = Date.now()) => {
         try {
-            const startedAt = Date.now()
             const songs = await db.Song.find(LYRICS_PENDING)
                 .sort(CRON_ORDER)
                 .limit(120)
@@ -524,9 +526,8 @@ module.exports = {
      * 앨범 요청이 cron-chart 안에 있으면 신곡이 많은 날 30초를 넘겨 **곡 저장 자체가 실패**한다.
      * 가사/유튜브와 같은 "저장 먼저, 필드는 나중에" 패턴을 따른다.
      */
-    updateGenres: async () => {
+    updateGenres: async (startedAt = Date.now()) => {
         try {
-            const startedAt = Date.now()
             // genre 필드가 아예 없는 문서만. 빈 배열([])은 "찾아봤는데 없더라"라 재시도하지 않는다.
             const songs = await db.Song.find({ genre: { $exists: false }, coverUrl: { $ne: null } })
                 .sort(CRON_ORDER)
