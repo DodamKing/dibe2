@@ -43,7 +43,8 @@
 - **`duration`(2026-08-16 추가)**: 벅스 트랙 상세의 `재생 시간`을 초로. **유튜브 매칭의 고정 상한(2~6분)을 대체**하는 게 주목적이고, 곡 길이 표시는 덤
   - 🔴 **없는 곡이 훨씬 많다** — 아티스트 수집분 167곡에만 있고 기존 13,760곡엔 없다. 그래서 매칭은 항상 **"길이가 있으면 ±5초, 없으면 기존 2~6분 룰"로 이중화**해야 한다. 필수로 가정하면 대부분의 곡이 검색에서 탈락한다
   - ⚠️ 이건 **벅스 음원 길이지 유튜브 영상 길이가 아니다** — 실제 재생은 유튜브라 1~3초씩 어긋난다. 진행바·남은시간에 쓰면 안 되고 목록 표시와 매칭 기준으로만 쓸 것. 상세는 `docs/CRON_EXTERNAL.md`
-- 인덱스: `genre: 1`, `likeCount: -1`, `playCount: -1`, **`{lastChartedAt: -1, chartHits: -1}`**(크론 정렬용 복합)
+- 인덱스: **`{title: 1, artist: 1}` unique**(2026-11-04~ — 곡 정체성 키. 차트 크론이 매일 이 키로 조회하는데 전엔 인덱스가 없어 매번 전체 스캔이었다. 겹친 크론의 중복 삽입도 막는다), `genre: 1`, `likeCount: -1`, `playCount: -1`, **`{lastChartedAt: -1, chartHits: -1}`**(크론 정렬용 복합)
+- ⚠️ `chartHits`는 2026-10-31~11-04 사이 Netlify 재호출로 하루 최대 3번씩 세어져 **부풀어 있다**(예: 302). 그날그날의 차트 목록이 안 남아 정확한 보정이 불가능해 그대로 둠. 11-04부터 곡당 하루 1회만 센다
   - 2차 키가 필요한 이유: 적재분은 `lastChartedAt`이 **차트 등장 '월' 단위**라 같은 값이 무더기로 생긴다. 그것만으로 정렬하면 그 안에서는 삽입 순서가 이겨버려 인기순이 죽는다
 - **`youtubeUrl`은 곡 저장보다 늦게 채워진다** (차트 크론 08:00 저장 → 유튜브 크론 08:30 채움). 그 사이엔 URL이 없는 곡이 존재하므로 **`youtubeUrl`이 항상 있다고 가정하지 말 것**. `getYoutubeId`가 없으면 즉석에서 채우고(lazy fill), 그래도 없으면 `null`을 반환한다 — 상세는 `docs/CRON_EXTERNAL.md`
 - **`lyrics`도 마찬가지로 늦게 채워지고, lazy fill 이 있다**(가사 크론 08:10 / `songService.getLyrics`가 재생 시점에 즉석 채움). 실측 671ms
@@ -188,13 +189,15 @@
 ```
 {
   job: String,               // updateChartData | updatePopChartData | updateLyrics | updateGenres | updateYoutubeUrls
-  status: 'running' | 'ok' | 'wiped' | 'error',
+  status: 'running' | 'timeout' | 'ok' | 'wiped' | 'error',
   startedAt: Date,           // 시작 시점에 먼저 기록
   finishedAt: Date, durationMs: Number,
-  stats: { target, filled, closed, failed, budgetHit },   // 차트 크론은 target 만
+  stats: { target, filled, closed, failed, budgetHit,
+           marked, ms: { setup, fetch, save, chart, mark } },  // 차트 크론은 target·marked·ms
   error: String
 }
 ```
-- **`running`으로 남은 문서 = 30초 제한에 강제 종료**(끝 처리가 못 돎). 그날 문서가 없음 = 실행 안 됨. `wiped` = 진행 0 + 실패>0
-- 인덱스 `{job, startedAt:-1}`, **TTL 1년**(`startedAt`). 한 건 ~300B × 하루 6건
+- **`running`으로 1분 넘게 남은 문서 = 30초 제한에 강제 종료**(끝 처리가 못 돎). 다음에 시작하는 아무 크론이 `timeout`으로 바꾸고 디스코드로 알린다(2026-11-04~). 그날 문서가 없음 = 실행 안 됨. `wiped` = 진행 0 + 실패>0
+- **같은 job·같은 분에 문서가 여러 개 = Netlify 재호출**(최대 3번, 겹쳐 실행). `CRON_EXTERNAL.md` 참고
+- 인덱스 `{job, startedAt:-1}`, **TTL 1년**(`startedAt`). 한 건 ~300B × 하루 6~15건
 - 조회: `node scripts/cron-health.js` 맨 위 "최근 7일 실행 기록"

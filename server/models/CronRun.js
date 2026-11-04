@@ -4,7 +4,8 @@ const mongoose = require('mongoose')
  * 크론 실행 기록. 한 실행 = 한 문서. `server/utils/runCron.js`만 쓴다.
  *
  * status
- *  - running : 시작만 기록됨. **이대로 남아 있으면 30초 제한에 강제 종료된 것**(끝 처리가 못 돎)
+ *  - running : 시작만 기록됨. **1분 넘게 이대로면 30초 제한에 강제 종료된 것**(끝 처리가 못 돎)
+ *  - timeout : 위 running 을 다음에 시작한 크론이 발견해 바꾸고 디스코드로 알린 것(runCron.reportTimeouts)
  *  - ok      : 정상 종료
  *  - wiped   : 끝까지 돌았는데 진행 0 + 실패>0 (예: 유튜브가 빈 결과로 막음)
  *  - error   : 예외로 중단
@@ -12,7 +13,7 @@ const mongoose = require('mongoose')
  */
 const cronRunSchema = new mongoose.Schema({
     job: { type: String, required: true },
-    status: { type: String, enum: ['running', 'ok', 'wiped', 'error'], default: 'running' },
+    status: { type: String, enum: ['running', 'timeout', 'ok', 'wiped', 'error'], default: 'running' },
     startedAt: { type: Date, default: Date.now },
     finishedAt: Date,
     durationMs: Number,
@@ -23,6 +24,11 @@ const cronRunSchema = new mongoose.Schema({
         closed: Number,
         failed: Number,
         budgetHit: Boolean,
+        // 차트 크론만: 오늘 처음 센 곡 수(재호출분이면 0) / 단계별 소요시간 ms (server/utils/chartCron.js)
+        marked: Number,
+        ms: {
+            setup: Number, fetch: Number, save: Number, chart: Number, mark: Number,
+        },
     },
     error: String,
 })

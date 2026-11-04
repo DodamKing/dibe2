@@ -14,7 +14,36 @@ const { sendErrorToDiscord } = require('./helper')
  * "초록불인데 죽음"을 잡는다(예전 `alertIfWiped`의 역할).
  *
  * 알림·기록은 전부 await — 리턴하는 순간 함수가 얼어붙어 안 기다린 요청은 사라진다.
+ *
+ * Netlify 는 15초 안에 응답이 없거나 200이 아니면 같은 크론을 최대 3번까지 **겹쳐서** 다시 부른다
+ * (공식 문서엔 없고 포럼 직원 답변 + cronruns 실측, 2026-11-04). 끌 방법이 없으니 task 가 겹쳐 돌아도
+ * 안전해야 한다 — 차트 크론은 Song unique 인덱스와 markCharted 의 하루 1회 필터로 막는다.
  */
+
+// running 으로 남은 기록 = 30초에 강제 종료된 실행. 그 자신은 끝 처리가 안 돌아 알릴 수 없으므로
+// 다음에 시작하는 아무 크론이 대신 timeout 으로 바꾸고 알린다(하루 마지막 유튜브 08:30분은 다음 날 08:00에 잡힘).
+// 1분 여유 = 겹쳐 도는 재호출(+15·+30초)을 아직 살아 있는 실행으로 본다.
+// findOneAndUpdate 로 바꾼 쪽만 알리니 겹친 실행끼리도 알림은 한 번. 최대 5건 — 첫 배포 때 묵은 기록이 쏟아지지 않게.
+const reportTimeouts = async () => {
+    try {
+        const cutoff = new Date(Date.now() - 60 * 1000)
+        for (let i = 0; i < 5; i++) {
+            const stale = await CronRun.findOneAndUpdate(
+                { status: 'running', startedAt: { $lt: cutoff } },
+                { status: 'timeout' },
+                { new: true },
+            ).lean()
+            if (!stale) return
+            await sendErrorToDiscord(
+                new Error(`${stale.job} 타임아웃 — 30초 제한에 강제 종료(끝 처리 못 함)`),
+                null, { context: 'Cron', jobName: stale.job, startedAt: stale.startedAt.toISOString() },
+            )
+        }
+    } catch (e) {
+        console.error('타임아웃 점검 실패:', e.message)
+    }
+}
+
 const runCron = (job, task) => async () => {
     const startedAt = new Date()
     console.log(`${job} 시작:`, startedAt.toISOString())
@@ -35,6 +64,7 @@ const runCron = (job, task) => async () => {
 
     try {
         await connectToMongoDB()
+        await reportTimeouts()
         run = await CronRun.create({ job, startedAt })
 
         const stats = (await task(startedAt.getTime())) || {}

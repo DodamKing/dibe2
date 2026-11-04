@@ -119,42 +119,50 @@ module.exports = {
     getAlbumGenre,
     parseTitleCell,
     // path: 'day/total'(국내 포함 종합, 기본) | 'day/pop'(해외 전체 장르 — J-POP·OST도 섞인다)
+    // 🔴 실패는 [] 로 삼키지 않고 throw 한다 — 예전엔 []를 돌려 "0곡"만 남고 진짜 원인(ECONNRESET 등)이 사라졌다.
+    // 벅스는 가끔 연결을 끊는다(2026-11-04 재현: ECONNRESET 직후 연속 6번 성공) → 짧게 3번까지 다시 시도.
     getBugsChart: async (path = 'day/total') => {
-        try {
-            const url = `https://music.bugs.co.kr/chart/track/${path}`;
-            const response = await axios.get(url);
-            const html = response.data;
-            const $ = cheerio.load(html);
-
-            const chartData = [];
-
-            const rows = $('.list > tbody > tr').toArray();
-            for (const element of rows) {
-                const rank = $(element).find('.ranking > strong').text().trim();
-                const { title, adult } = parseTitleCell($(element).find('.title'))
-                const artist = $(element).find('.artist > a').first().text().trim()
-                const album = $(element).find('.album').text().trim();
-                const coverUrl = $(element).find('.thumbnail > img').attr('src');
-                const detailLink = $(element).find('.trackInfo').attr('href');
-                // const lyrics = await getLyrics(detailLink);
-
-                chartData.push({
-                    rank,
-                    title,
-                    artist,
-                    album,
-                    coverUrl,
-                    detailLink,
-                    adult,
-                    // lyrics
-                });
+        const url = `https://music.bugs.co.kr/chart/track/${path}`;
+        let response
+        for (let attempt = 1; ; attempt++) {
+            try {
+                response = await axios.get(url, { timeout: 8000 });
+                break
+            } catch (err) {
+                const reason = err.response ? `HTTP ${err.response.status}` : (err.code || err.message)
+                console.error(`벅스 차트 요청 실패(${attempt}/3): ${reason}`)
+                if (attempt >= 3) throw new Error(`벅스 차트 요청 3회 실패 — ${reason}`)
+                await new Promise(resolve => setTimeout(resolve, 1000))
             }
-
-            return chartData
-        } catch (err) {
-            console.error('벅스 크롤링 오류:', err)
-            return []
         }
+        const html = response.data;
+        const $ = cheerio.load(html);
+
+        const chartData = [];
+
+        const rows = $('.list > tbody > tr').toArray();
+        for (const element of rows) {
+            const rank = $(element).find('.ranking > strong').text().trim();
+            const { title, adult } = parseTitleCell($(element).find('.title'))
+            const artist = $(element).find('.artist > a').first().text().trim()
+            const album = $(element).find('.album').text().trim();
+            const coverUrl = $(element).find('.thumbnail > img').attr('src');
+            const detailLink = $(element).find('.trackInfo').attr('href');
+            // const lyrics = await getLyrics(detailLink);
+
+            chartData.push({
+                rank,
+                title,
+                artist,
+                album,
+                coverUrl,
+                detailLink,
+                adult,
+                // lyrics
+            });
+        }
+
+        return chartData
     },
 
     getBugsDetailUrl: async (query) => {

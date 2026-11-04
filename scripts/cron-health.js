@@ -38,9 +38,11 @@ async function main() {
     const fmtStats = st => !st ? '' : [
         st.target != null && `대상 ${st.target}`, st.filled != null && `채움 ${st.filled}`,
         st.closed != null && `닫음 ${st.closed}`, st.failed != null && `실패 ${st.failed}`,
-        st.budgetHit && '예산초과',
+        st.budgetHit && '예산초과', st.marked != null && `센 곡 ${st.marked}`,
+        st.ms && `[${Object.entries(st.ms).map(([k, v]) => `${k} ${(v / 1000).toFixed(1)}`).join(' / ')}]`,
     ].filter(Boolean).join(' · ')
-    console.log('■ 최근 7일 실행 기록 (running=타임아웃 강제종료 / 행 없음=실행 안 됨)')
+    // 같은 날 여러 행 = Netlify 재호출(15초 안에 응답 없거나 200 아님 → 최대 3번 겹쳐 실행)
+    console.log('■ 최근 7일 실행 기록 (running·timeout=30초 강제종료 / 행 없음=실행 안 됨 / 같은 분에 여러 행=Netlify 재호출)')
     for (const job of JOBS) {
         const mine = runs.filter(r => r.job === job)
         console.log(`  ${job} — ${mine.length}회`)

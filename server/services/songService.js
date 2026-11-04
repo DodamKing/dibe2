@@ -88,44 +88,41 @@ const createFlexibleRegex = (query) => {
 
 module.exports = {
     // model: db.Chart(국내 종합, 기본) | db.PopChart(해외)
+    // 차트 크론 3함수(updateChartData·saveSongData·markCharted)는 에러를 삼키지 않는다 — 삼키면 실패해도
+    // cronruns 에 ok 가 찍히고 알림도 안 간다(2026-11-04 수정). 호출부(runCron)가 받아 기록·알림한다.
     updateChartData: async (newChartData, model = db.Chart) => {
-        try {
-            const currentChart = await model.findOne()
+        const currentChart = await model.findOne()
 
-            if (!currentChart) {
-                await model.create({ items: newChartData })
-                console.log('차트 초기 데이터 삽입 성공');
-                return
-            }
-
-            let needsUpdate = false
-
-            for (let i = 0; i < 100; i++) {
-                const currentItem = currentChart.items[i]
-                const newItem = newChartData[i]
-
-                // songId 도 비교한다 — 안 그러면 순위가 그대로인 날엔 songId 가 영영 안 채워진다
-                if (
-                    String(currentItem.songId) !== String(newItem.songId) ||
-                    currentItem.rank.toString() !== newItem.rank ||
-                    currentItem.title !== newItem.title ||
-                    currentItem.artist !== newItem.artist ||
-                    currentItem.album !== newItem.album ||
-                    currentItem.coverUrl !== newItem.coverUrl ||
-                    currentItem.detailLink !== newItem.detailLink
-                ) {
-                    needsUpdate = true
-                    break
-                }
-            }
-
-            if (needsUpdate) {
-                await model.findOneAndUpdate({}, { $set: { items: newChartData } })
-            }
-            else console.log('차트 변경점 없음')
-        } catch (err) {
-            console.error('차트 업데이트 하다가 에러남:', err)
+        if (!currentChart) {
+            await model.create({ items: newChartData })
+            console.log('차트 초기 데이터 삽입 성공');
+            return
         }
+
+        let needsUpdate = currentChart.items.length !== newChartData.length
+
+        for (let i = 0; !needsUpdate && i < newChartData.length; i++) {
+            const currentItem = currentChart.items[i]
+            const newItem = newChartData[i]
+
+            // songId 도 비교한다 — 안 그러면 순위가 그대로인 날엔 songId 가 영영 안 채워진다
+            if (
+                String(currentItem.songId) !== String(newItem.songId) ||
+                currentItem.rank.toString() !== newItem.rank ||
+                currentItem.title !== newItem.title ||
+                currentItem.artist !== newItem.artist ||
+                currentItem.album !== newItem.album ||
+                currentItem.coverUrl !== newItem.coverUrl ||
+                currentItem.detailLink !== newItem.detailLink
+            ) {
+                needsUpdate = true
+            }
+        }
+
+        if (needsUpdate) {
+            await model.findOneAndUpdate({}, { $set: { items: newChartData } })
+        }
+        else console.log('차트 변경점 없음')
     },
 
     getChartData: async (model = db.Chart) => {
@@ -139,20 +136,23 @@ module.exports = {
 
     // 차트 항목마다 `songId`(Song._id)를 **제자리에서** 붙인다 → 뒤이은 updateChartData 가 그대로 저장.
     // 찾거나 만드는 김에 얻는 값이라 추가 쿼리가 없다.
+    // 중복키(11000)는 Netlify 재호출로 겹쳐 돈 다른 실행이 방금 같은 곡을 넣은 것 → 그 곡을 다시 찾아 쓴다.
     saveSongData: async (chartData) => {
-        try {
-            for (const song of chartData) {
-                const existingSong = await db.Song.findOne({ title: song.title, artist: song.artist }).select('_id')
-                if (existingSong) {
-                    song.songId = existingSong._id
-                } else {
-                    const created = await db.Song.create(song)
-                    song.songId = created._id
-                    console.log(`새로운 곡 저장: ${song.title} by ${song.artist}`)
-                }
+        for (const song of chartData) {
+            const existingSong = await db.Song.findOne({ title: song.title, artist: song.artist }).select('_id')
+            if (existingSong) {
+                song.songId = existingSong._id
+                continue
             }
-        } catch (err) {
-            console.error('음원 데이터 저장 중 에러 발생:', err)
+            try {
+                const created = await db.Song.create(song)
+                song.songId = created._id
+                console.log(`새로운 곡 저장: ${song.title} by ${song.artist}`)
+            } catch (err) {
+                if (err.code !== 11000) throw err
+                const raced = await db.Song.findOne({ title: song.title, artist: song.artist }).select('_id')
+                song.songId = raced._id
+            }
         }
     },
 
@@ -411,24 +411,33 @@ module.exports = {
 
     /**
      * 차트에 오른 곡들에 등장 시각/횟수를 기록한다. 크론 우선순위(`lastChartedAt`)와
-     * 추천 신호(`chartHits`)가 여기서 나온다. `saveSongData` 다음에 불러야 신곡도 포함된다.
+     * 추천 신호(`chartHits`)가 여기서 나온다. `saveSongData` 다음에 불러야 신곡도 포함된다(songId 필요).
      * 100곡을 순차 update 하면 30초 예산이 아까우므로 bulkWrite 한 방으로 처리한다.
+     *
+     * **곡당 하루 1회만 센다**(KST 기준). Netlify 가 같은 크론을 최대 3번 겹쳐 부르는데(재시도),
+     * 예전엔 그때마다 +1 해서 chartHits 가 ~3배로 부풀었다(2026-11-04 발견, 기존 값은 보정 안 함).
+     * 필터 조건이라 문서 단위로 원자적 → 겹친 실행끼리 락 없이도 한 번만 먹힌다.
+     * 부수 효과: 국내·해외 차트에 같이 오른 곡도 하루 1회로 센다.
+     * 돌려주는 값 = 실제로 센 곡 수(재호출분이면 0).
      */
     markCharted: async (chartData) => {
-        try {
-            const now = new Date()
-            const ops = chartData.map(song => ({
-                updateOne: {
-                    filter: { title: song.title, artist: song.artist },
-                    update: { $set: { lastChartedAt: now }, $inc: { chartHits: 1 } },
+        const now = new Date()
+        const KST_MS = 9 * 3600e3
+        const DAY_MS = 86400e3
+        const todayKst = new Date(Math.floor((now.getTime() + KST_MS) / DAY_MS) * DAY_MS - KST_MS)
+        const ops = chartData.map(song => ({
+            updateOne: {
+                filter: {
+                    _id: song.songId,
+                    $or: [{ lastChartedAt: { $lt: todayKst } }, { lastChartedAt: null }],
                 },
-            }))
-            if (!ops.length) return
-            const res = await db.Song.bulkWrite(ops, { ordered: false })
-            console.log(`차트 등장 기록: ${res.modifiedCount}곡`)
-        } catch (err) {
-            console.error('차트 등장 기록 중 에러:', err)
-        }
+                update: { $set: { lastChartedAt: now }, $inc: { chartHits: 1 } },
+            },
+        }))
+        if (!ops.length) return 0
+        const res = await db.Song.bulkWrite(ops, { ordered: false })
+        console.log(`차트 등장 기록: ${res.modifiedCount}곡`)
+        return res.modifiedCount
     },
 
     searchSong: async (query, type, page = 1, limit = 20) => {

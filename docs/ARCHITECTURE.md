@@ -98,7 +98,8 @@ dibe2/
 │   │   └── themeDefinitions.js  # 테마 9개 + 검색어 (원본)
 │   └── utils/
 │       ├── helper.js              # Bugs 크롤링(parseTitleCell/getLyrics/getAlbumGenre), 디스코드 알림
-│       └── runCron.js             # 크론 공통 래퍼 — cronruns 기록 + 전멸·에러 디스코드 알림
+│       ├── runCron.js             # 크론 공통 래퍼 — cronruns 기록 + 전멸·에러·타임아웃 디스코드 알림
+│       └── chartCron.js           # 차트 크론(국내·해외) 공통 본체 — 곡 저장 → 차트 저장 → 등장 기록, 단계별 소요시간
 │
 ├── scripts/             # 로컬 실행 일회성/백필 스크립트 (배포 안 됨)
 │   │                      # ⚠️ DB 접속은 반드시 server/models의 connectToMongoDB() 사용

@@ -55,6 +55,10 @@ const songSchema = new mongoose.Schema({
     playCount: { type: Number, default: 0, min: 0 },
 }, { timestamps: true })
 
+// 곡의 정체성 키. 차트 크론이 매일 이 키로 200번 조회하는데(saveSongData·markCharted) 2026-11-04까지
+// 인덱스가 없어 매번 전체 스캔(1.4만 곡, 30ms)이었다 → 30초 제한에 걸린 주원인.
+// unique 는 Netlify 재호출로 겹쳐 도는 크론이 같은 신곡을 두 번 넣는 걸 막는 유일한 장치다.
+songSchema.index({ title: 1, artist: 1 }, { unique: true })
 songSchema.index({ genre: 1 })
 songSchema.index({ likeCount: -1 })
 songSchema.index({ playCount: -1 })
