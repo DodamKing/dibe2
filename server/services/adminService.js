@@ -35,9 +35,14 @@ class AdminService {
 		// await client.connect()
 		// const db = client.db('dibe2')
 
-		const sevenDaysAgo = new Date()
-		sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-		sevenDaysAgo.setHours(0, 0, 0, 0)
+		// 날짜는 **한국 시간** 기준. 예전엔 서버(Netlify=UTC) 시각으로 잘라서 "오늘 신규"가 09시 KST부터 셌고
+		// 일별 막대도 9시간 밀려 있었다(2026-11-07 수정)
+		const DAY = 86400000
+		const kstDate = ms => new Date(ms + 9 * 3600000).toISOString().split('T')[0]
+		const kstMidnight = ymd => new Date(`${ymd}T00:00:00+09:00`)
+		const last7Days = Array.from({ length: 7 }, (_, i) => kstDate(Date.now() - (6 - i) * DAY))
+		const todayStart = kstMidnight(last7Days[6])
+		const sevenDaysAgo = kstMidnight(last7Days[0])
 
 		const [totalStats, dailyStats] = await Promise.all([
 			db.User.aggregate([
@@ -48,7 +53,7 @@ class AdminService {
 						newUsersToday: {
 							$sum: {
 								$cond: [
-									{ $gte: ['$createdAt', new Date(new Date().setHours(0, 0, 0, 0))] },
+									{ $gte: ['$createdAt', todayStart] },
 									1,
 									0
 								]
@@ -72,7 +77,7 @@ class AdminService {
 				},
 				{
 					$group: {
-						_id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+						_id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "Asia/Seoul" } },
 						newUsers: { $sum: 1 }
 					}
 				},
@@ -82,13 +87,6 @@ class AdminService {
 			])
 		])
 
-		 // 최근 7일의 날짜 배열 생성
-		 const last7Days = Array.from({ length: 7 }, (_, i) => {
-			const date = new Date()
-			date.setDate(date.getDate() - (6 - i))
-			return date.toISOString().split('T')[0]
-		})
-	
 		// 날짜별 데이터 매핑
 		const dailyStatsMap = Object.fromEntries(
 			dailyStats.map(day => [day._id, day.newUsers])
@@ -104,6 +102,19 @@ class AdminService {
 			newUsersLastWeek,
 			dates: last7Days
 		}
+	}
+
+	// 대시보드 "음원 통계" — 예전엔 화면에 가짜 숫자(50000/100000)가 박혀 있었다(2026-11-07 교체).
+	// 하루 재생 수는 따로 기록하지 않아(Song.playCount 누적뿐) 누적 재생 수를 보여준다
+	async getMusicStats() {
+		const noUrl = { youtubeUrl: { $in: [null, ''] } }
+		const [totalTracks, noYoutube, gated, plays] = await Promise.all([
+			db.Song.estimatedDocumentCount(),
+			db.Song.countDocuments(noUrl),
+			db.Song.countDocuments({ ...noUrl, youtubeGatedAt: { $exists: true } }),
+			db.Song.aggregate([{ $group: { _id: null, total: { $sum: '$playCount' } } }]),
+		])
+		return { totalTracks, noYoutube, gated, totalPlays: (plays[0] && plays[0].total) || 0 }
 	}
 
 	async setUserAccessPeriod(userId, days) {

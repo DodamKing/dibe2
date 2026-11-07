@@ -9,7 +9,7 @@
                 <h3 class="text-lg font-semibold mb-2">사용자 통계</h3>
                 <p>총 사용자 수: {{ userStats.totalUsers }}</p>
                 <p>신규 사용자 (오늘): {{ userStats.newUsersToday }}</p>
-                <LineChart :chart-data="userChartData" :options="chartOptions" />
+                <LineChart :chart-data="userChartData" :options="chartOptions" :height="220" />
             </div>
 
             <!-- 방문자 통계 -->
@@ -42,22 +42,23 @@
                         <p>로그인한 방문 수: {{ weeklyStats.loggedInVisits }}</p>
                         <p>고유 로그인 사용자 수: {{ weeklyStats.uniqueLoggedInVisitors }}</p>
                     </template>
-                    <BarChart :chart-data="visitorChartData" :options="chartOptions" />
+                    <BarChart :chart-data="visitorChartData" :options="chartOptions" :height="220" />
                 </div>
             </div>
 
-            <!-- 음원 통계 -->
+            <!-- 음원 통계 — 실제 값(/api/admin/music-stats). 예전 가짜 숫자·"문의사항" 카드는 2026-11-07 제거 -->
             <div class="bg-white shadow rounded-lg p-6">
                 <h3 class="text-lg font-semibold mb-2">음원 통계</h3>
-                <p>총 음원 수: {{ musicStats.totalTracks }}</p>
-                <p>오늘의 스트리밍 횟수: {{ musicStats.todayStreams }}</p>
-            </div>
-
-            <!-- 문의사항 -->
-            <div class="bg-white shadow rounded-lg p-6">
-                <h3 class="text-lg font-semibold mb-2">문의사항</h3>
-                <p>대기 중인 문의: {{ supportStats.pendingInquiries }}</p>
-                <p>오늘 해결된 문의: {{ supportStats.resolvedToday }}</p>
+                <p v-if="!musicStats">불러오지 못했어요.</p>
+                <template v-else>
+                    <p>총 음원 수: {{ fmt(musicStats.totalTracks) }}</p>
+                    <p>누적 재생 수: {{ fmt(musicStats.totalPlays) }}</p>
+                    <p>유튜브 주소 없는 곡: {{ fmt(musicStats.noYoutube) }}</p>
+                    <p>
+                        연령 게이트 (손으로 채울 곡): {{ fmt(musicStats.gated) }}
+                        <span class="block text-xs text-gray-500">음원 관리 → 검색 종류 "연령 게이트"</span>
+                    </p>
+                </template>
             </div>
 
         </div>
@@ -105,8 +106,7 @@ export default {
             userStats: {},
             visitorStats: [],
             visitorChartData: null,
-            musicStats: {},
-            supportStats: {},
+            musicStats: null,
             isLoading: true,
             visitorStatsLoading: false,
             error: null,
@@ -115,18 +115,12 @@ export default {
             chartOptions: {
                 responsive: true,
                 maintainAspectRatio: false,
+                // Chart.js **2.9** 형식(yAxes 배열). 예전엔 3 형식(scales.y)으로 써 있어 무시됐고,
+                // 값이 전부 0이면 세로축이 -1.0까지 내려갔다
                 scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1,
-                            callback(value) {
-                                if (Math.floor(value) === value) {
-                                    return value;
-                                }
-                            }
-                        }
-                    }
+                    yAxes: [{
+                        ticks: { beginAtZero: true, min: 0, precision: 0 }
+                    }]
                 }
             }
         }
@@ -166,8 +160,8 @@ export default {
                 this.prepareUserChartData()
                 this.prepareVisitorChartData()
 
-                this.musicStats = this.getDummyMusicStats()
-                this.supportStats = this.getDummySupportStats()
+                // 음원 통계가 실패해도 나머지 대시보드는 보이게 따로 받는다
+                this.musicStats = await this.$axios.$get('/api/admin/music-stats').catch(() => null)
             } catch (error) {
                 console.error('Error fetching dashboard data:', error)
                 this.error = error.message
@@ -268,17 +262,8 @@ export default {
                 this.visitorStatsLoading = false
             }
         },
-        getDummyMusicStats() {
-            return {
-                totalTracks: 50000,
-                todayStreams: 100000
-            }
-        },
-        getDummySupportStats() {
-            return {
-                pendingInquiries: 20,
-                resolvedToday: 50
-            }
+        fmt(n) {
+            return Number(n || 0).toLocaleString('ko-KR')
         },
     },
 }

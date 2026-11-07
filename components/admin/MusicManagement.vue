@@ -44,14 +44,39 @@
                     <p class="mt-2 text-gray-600">검색 중...</p>
                 </div>
 
+                <template v-else-if="songs.length">
                 <!--
-                    모바일은 한 곡이 한 줄(썸네일 옆 정보), 데스크탑(sm+)은 기존 카드 그리드.
-                    카드 그대로 두면 커버(h-48)가 풀폭으로 늘어나 **한 곡이 화면을 통째로 먹는다**
-                    (실측 2026-07-17: 20곡 = 8,542px ≈ 10화면). 관리자는 곡을 훑고 고치는 화면이라
-                    목록성이 중요하다. 홈 차트·검색 결과가 쓰는 리스트 패턴과도 맞춘다.
-                    마크업을 둘로 나누지 않고 `flex sm:block` 한 벌로 처리한다.
+                    모바일 = 음악 앱 같은 한 줄 목록(64px). 줄을 누르면 편집 창, 커버의 ▶ 는 미리듣기.
+                    삭제는 거의 안 쓰고 되돌릴 수 없어 편집 창 맨 아래로 옮겼다(2026-11-07 사용자 결정).
+                    예전 카드는 수정·재생·삭제 버튼 줄 때문에 카드가 커버보다 훨씬 길어 커버 아래가 비어 보였다.
+                    유튜브 주소가 없는 곡은 배지로 바로 보인다(연령 게이트면 따로 표시)
                 -->
-                <div v-else-if="songs.length" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+                <ul class="sm:hidden -mx-2 divide-y divide-gray-100">
+                    <li v-for="song in songs" :key="song._id" class="flex items-center gap-3 px-2 py-2">
+                        <button type="button" class="relative shrink-0 w-14 h-14 rounded-md overflow-hidden bg-gray-100"
+                            :aria-label="`${song.title} 미리듣기`" :disabled="!song.youtubeUrl" @click="playSong(song)">
+                            <img :src="coverUrl(song, 150)" alt="" class="w-full h-full object-cover" loading="lazy">
+                            <span v-if="song.youtubeUrl" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-25">
+                                <Icon name="play" :size="18" filled class="text-white drop-shadow" />
+                            </span>
+                        </button>
+                        <button type="button" class="min-w-0 flex-1 text-left py-1" @click="editSong(song)">
+                            <span class="block font-medium text-gray-900 truncate">{{ song.title }}</span>
+                            <span class="block text-sm text-gray-600 truncate">{{ song.artist }}</span>
+                            <span class="flex items-center gap-1.5 text-xs text-gray-400 min-w-0">
+                                <span class="truncate">{{ song.album }}</span>
+                                <span v-if="!song.youtubeUrl" class="shrink-0 px-1.5 rounded-full font-medium"
+                                    :class="song.youtubeGatedAt ? 'bg-amber-100 text-amber-800' : 'bg-red-50 text-red-600'">
+                                    {{ song.youtubeGatedAt ? '연령 게이트' : '유튜브 없음' }}
+                                </span>
+                            </span>
+                        </button>
+                        <Icon name="chevron-right" :size="18" class="shrink-0 text-gray-300" />
+                    </li>
+                </ul>
+
+                <!-- 데스크탑(sm+)은 기존 카드 그리드 -->
+                <div class="hidden sm:grid grid-cols-2 lg:grid-cols-3 gap-6">
                     <div v-for="song in songs" :key="song._id"
                         class="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 flex sm:block">
                         <picture class="flex-shrink-0">
@@ -96,31 +121,25 @@
                                 </div>
                             </div>
                             <!-- 터치 영역 44px 확보(py-2 + min-h) — FRONTEND.md 모바일 규칙 -->
-                            <div class="flex gap-1 sm:gap-0 sm:justify-between">
+                            <div class="flex gap-2 -ml-2 sm:ml-0 sm:gap-0 sm:justify-between">
                                 <button @click="editSong(song)"
-                                    class="px-3 py-2 min-h-[44px] sm:min-h-0 sm:px-0 sm:py-0 text-blue-600 hover:text-blue-800 font-medium transition duration-150 ease-in-out">
+                                    class="px-2 py-2 min-h-[44px] whitespace-nowrap sm:min-h-0 sm:px-0 sm:py-0 text-blue-600 hover:text-blue-800 font-medium transition duration-150 ease-in-out">
                                     수정
                                 </button>
                                 <button @click="playSong(song)"
-                                    class="px-3 py-2 min-h-[44px] sm:min-h-0 sm:px-0 sm:py-0 text-green-600 hover:text-green-800 font-medium transition duration-150 ease-in-out">
+                                    class="px-2 py-2 min-h-[44px] whitespace-nowrap sm:min-h-0 sm:px-0 sm:py-0 text-green-600 hover:text-green-800 font-medium transition duration-150 ease-in-out">
                                     재생
                                 </button>
                                 <button @click="deleteSong(song)"
-                                    class="px-3 py-2 min-h-[44px] sm:min-h-0 sm:px-0 sm:py-0 text-red-600 hover:text-red-800 font-medium transition duration-150 ease-in-out">
+                                    class="px-2 py-2 min-h-[44px] whitespace-nowrap sm:min-h-0 sm:px-0 sm:py-0 text-red-600 hover:text-red-800 font-medium transition duration-150 ease-in-out">
                                     삭제
                                 </button>
                             </div>
                         </div>
                     </div>
-
-                    <!-- 페이지네이션 또는 "더 보기" 버튼 -->
-                    <div v-if="hasMore" class="mt-6 text-center">
-                        <button @click="loadMore"
-                            class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition duration-150 ease-in-out">
-                            더 보기
-                        </button>
-                    </div>
+                    <!-- (그리드 안에도 "더 보기"가 하나 더 있어 두 개씩 떴다 — 아래 하나만 남김) -->
                 </div>
+                </template>
                 <p v-else-if="searchQuery && !loading" class="text-center py-8 text-gray-600">검색 결과가 없습니다.</p>
 
                 <div v-if="hasMore" class="mt-8 text-center">
@@ -137,13 +156,30 @@
             모바일은 풀스크린(top-20 여백을 주면 좁은 화면에서 위쪽만 날리고 폼은 더 밀린다),
             데스크탑은 기존처럼 가운데 뜨는 카드. 제목은 sticky 로 붙여 스크롤해도 맥락이 남는다.
         -->
-        <div v-if="showAddModal || editingSong"
-            class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <!-- overscroll-contain + modalOpen 감시(뒤 <main> 스크롤 잠금): 창 안을 끝까지 굴리면 뒤 목록이 같이 밀리던 것 -->
+        <div v-if="modalOpen"
+            class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto overscroll-contain h-full w-full z-50"
+            @click.self="closeModal">
             <div
                 class="relative min-h-full sm:min-h-0 sm:top-20 mx-auto p-4 sm:p-5 border w-full max-w-2xl shadow-lg sm:rounded-md bg-white sm:mb-20">
-                <h3 class="text-lg font-semibold mb-4 sticky top-0 bg-white py-2 -mt-2 z-10 sm:static sm:py-0 sm:mt-0">
-                    {{ editingSong ? '음원 수정' : '새 음원 추가' }}
-                </h3>
+                <div class="flex items-center justify-between mb-4 sticky top-0 bg-white py-2 -mt-2 z-10 sm:static sm:py-0 sm:mt-0">
+                    <h3 class="text-lg font-semibold">{{ editingSong ? '음원 수정' : '새 음원 추가' }}</h3>
+                    <button type="button" class="w-11 h-11 -mr-2 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
+                        aria-label="닫기" @click="closeModal">
+                        <Icon name="x" />
+                    </button>
+                </div>
+
+                <!-- 어떤 곡을 고치는지 한눈에 — 커버를 크게(접힌 칸 옆 32px 썸네일은 너무 작았다) -->
+                <div v-if="currentSong.coverUrl || currentSong.title" class="flex items-center gap-4 mb-4">
+                    <img v-if="currentSong.coverUrl" :src="coverUrl(currentSong, 300)" alt=""
+                        class="w-24 h-24 rounded-md object-cover shrink-0 bg-gray-100">
+                    <div class="min-w-0">
+                        <p class="font-semibold text-gray-900 truncate">{{ currentSong.title }}</p>
+                        <p class="text-sm text-gray-600 truncate">{{ currentSong.artist }}</p>
+                        <p class="text-xs text-gray-400 truncate">{{ currentSong.album }}</p>
+                    </div>
+                </div>
 
                 <!-- 검색 인터페이스 -->
                 <div v-if="!editingSong" class="mb-4">
@@ -205,15 +241,25 @@
                         <input id="album" v-model="currentSong.album" type="text"
                             class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                     </div>
+                    <!-- 거의 안 고치는 칸(벅스에서 자동으로 채워짐)은 접어 둔다. 커버는 작은 그림으로 확인 -->
                     <div>
-                        <label for="coverUrl" class="block text-sm font-medium text-gray-700">앨범 커버 URL</label>
-                        <input id="coverUrl" v-model="currentSong.coverUrl" type="text"
-                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <div>
-                        <label for="detailLink" class="block text-sm font-medium text-gray-700">상세 정보 링크</label>
-                        <input id="detailLink" v-model="currentSong.detailLink" type="text"
-                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        <button type="button" class="flex items-center gap-2 min-h-[44px] text-sm font-medium text-gray-700"
+                            :aria-expanded="showExtraFields ? 'true' : 'false'" @click="showExtraFields = !showExtraFields">
+                            커버·상세 링크 (URL)
+                            <Icon :name="showExtraFields ? 'chevron-up' : 'chevron-down'" :size="16" class="text-gray-500" />
+                        </button>
+                        <div v-show="showExtraFields" class="space-y-4 mt-2">
+                            <div>
+                                <label for="coverUrl" class="block text-sm font-medium text-gray-700">앨범 커버 URL</label>
+                                <input id="coverUrl" v-model="currentSong.coverUrl" type="text"
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="detailLink" class="block text-sm font-medium text-gray-700">상세 정보 링크</label>
+                                <input id="detailLink" v-model="currentSong.detailLink" type="text"
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        </div>
                     </div>
                     <div>
                         <label for="lyrics" class="block text-sm font-medium text-gray-700">가사</label>
@@ -223,14 +269,28 @@
                     </div>
                     <div>
                         <label for="youtubeUrl" class="block text-sm font-medium text-gray-700">YouTube URL</label>
-                        <div class="flex space-x-2">
+                        <!-- 입력칸과 버튼을 같은 높이 한 줄로(예전엔 버튼 안 아이콘·글자가 두 줄로 쪼개져 칸보다 컸다) -->
+                        <div class="flex items-stretch gap-2 mt-1">
                             <input id="youtubeUrl" v-model="currentSong.youtubeUrl" type="text"
-                                class="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                class="flex-1 min-w-0 h-11 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                             <button type="button" @click="searchYoutubeUrl"
                                 :disabled="!currentSong.title || !currentSong.artist"
-                                class="mt-1 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                                <Icon name="youtube" class="mr-2" />검색
+                                class="h-11 shrink-0 inline-flex items-center gap-1.5 px-4 bg-red-600 text-white rounded-md whitespace-nowrap hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                                <Icon name="youtube" :size="18" />검색
                             </button>
+                        </div>
+
+                        <!--
+                            연령 게이트 곡 — 서버 검색(로그인 없음)이 유튜브에 막힌다. 로그인한 브라우저에서
+                            "제목 가수"로 검색된 유튜브를 새 탭으로 열고, 영상 주소를 복사해 위 칸에 붙여 넣는다
+                        -->
+                        <div v-if="youtubeGated" class="mt-2 p-3 rounded-md bg-amber-50 border border-amber-200 text-sm text-amber-900">
+                            <p>유튜브가 연령 인증을 요구해 여기서는 검색이 안 되는 곡이에요.</p>
+                            <a :href="youtubeSearchLink" target="_blank" rel="noopener"
+                                class="mt-2 inline-flex items-center gap-1.5 min-h-[44px] font-medium text-red-700 hover:text-red-800">
+                                <Icon name="youtube" :size="18" />유튜브에서 직접 찾기 (새 탭)
+                            </a>
+                            <p class="text-xs text-amber-800">찾은 영상의 주소를 복사해 위 칸에 붙여 넣고 저장하세요.</p>
                         </div>
 
                         <!-- 검색 결과 토글 버튼 -->
@@ -313,6 +373,11 @@
                     -->
                     <div
                         class="flex justify-end gap-2 sticky bottom-0 bg-white py-3 -mx-4 px-4 border-t sm:static sm:py-0 sm:mx-0 sm:px-0 sm:border-0">
+                        <!-- 모바일 목록엔 삭제 버튼이 없다(거의 안 쓰고 되돌릴 수 없어서) — 여기서만 -->
+                        <button v-if="editingSong" type="button" @click="deleteFromModal"
+                            class="mr-auto px-3 min-h-[44px] text-red-600 hover:text-red-800 font-medium">
+                            삭제
+                        </button>
                         <button type="button" @click="closeModal"
                             class="px-4 py-2 min-h-[44px] bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400">
                             취소
@@ -393,15 +458,43 @@ export default {
             showSearchResults: true,
             showYoutubeResults: false,
             youtubeSearchResults: [],
+            // 이번 편집 중 서버 유튜브 검색이 연령 게이트에 막혔는지(이미 표시된 곡은 currentSong.youtubeGatedAt)
+            youtubeSearchGated: false,
+            showExtraFields: false,
             player: null,
             updateInterval: null,
         }
+    },
+    computed: {
+        modalOpen() {
+            return this.showAddModal || !!this.editingSong
+        },
+        // 주소가 비어 있고, 크론·즉석 채우기가 게이트로 표시했거나 방금 검색이 막혔을 때
+        youtubeGated() {
+            return !this.currentSong.youtubeUrl && (!!this.currentSong.youtubeGatedAt || this.youtubeSearchGated)
+        },
+        youtubeSearchLink() {
+            const q = `${this.currentSong.title || ''} ${this.currentSong.artist || ''}`.trim()
+            return 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q)
+        },
+    },
+    watch: {
+        // 창이 떠 있는 동안 뒤 화면 스크롤 잠금. 관리자 페이지는 body 가 아니라 <main> 이 스크롤된다
+        modalOpen(open) {
+            const main = this.$el && this.$el.closest('main')
+            if (main) main.style.overflow = open ? 'hidden' : ''
+            document.body.style.overflow = open ? 'hidden' : ''
+            if (!open) this.showExtraFields = false
+        },
     },
     mounted() {
         this.initAdminPlayer()
         this.updateInterval = setInterval(this.updateCurrentTime, 1000)
     },
     beforeDestroy() {
+        const main = this.$el && this.$el.closest('main')
+        if (main) main.style.overflow = ''
+        document.body.style.overflow = ''
         if (this.updateInterval) clearInterval(this.updateInterval)
         if (this.player && this.player.destroy) {
             try { this.player.destroy() } catch (e) { /* ignore */ }
@@ -514,6 +607,7 @@ export default {
             this.bugsSearchQuery = '';
             this.bugsSearchResults = [];
             this.youtubeSearchResults = [];
+            this.youtubeSearchGated = false;
             if (this.isPlaying) {
                 this.stopPlay();
             }
@@ -526,6 +620,7 @@ export default {
                     if (response.success) {
                         this.$toast.success(response.message);
                         await this.searchSongs();
+                        return true
                     } else {
                         this.$toast.error(response.message);
                     }
@@ -533,6 +628,9 @@ export default {
                     this.$toast.error('음원 삭제 중 오류가 발생했습니다.');
                 }
             }
+        },
+        async deleteFromModal() {
+            if (await this.deleteSong(this.editingSong)) this.closeModal()
         },
         playSong(song) {
             const videoId = this.extractVideoId(song.youtubeUrl);
@@ -671,6 +769,8 @@ export default {
                 });
                 this.youtubeSearchResults = response.results;
                 this.showYoutubeResults = true;
+                this.youtubeSearchGated = !!response.gated;
+                if (response.gated) return // 안내는 입력칸 아래 상자가 한다
                 if (!response.results.length) {
                     this.$toast.info(response.message || 'YouTube 검색 결과가 없습니다.');
                     return

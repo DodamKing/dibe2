@@ -3,20 +3,21 @@
         <h2 class="text-2xl font-semibold text-gray-900 mb-4">사용자 관리</h2>
         <div class="bg-white shadow rounded-lg p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row justify-between mb-4">
-                <div class="flex mb-2 sm:mb-0">
+                <!-- 모바일에서 버튼 글자가 "검/색" 세로로 쪼개지던 것 — 칸은 min-w-0 로 줄고 버튼은 줄바꿈 금지 -->
+                <div class="flex gap-2 mb-2 sm:mb-0">
                     <input v-model="searchTerm" type="text" placeholder="사용자 검색"
-                        class="border p-2 rounded mr-2 w-full sm:w-auto">
-                    <button @click="search" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                        class="border px-3 h-11 rounded min-w-0 flex-1 sm:flex-none sm:w-56" @keyup.enter="search">
+                    <button @click="search" class="h-11 px-4 shrink-0 whitespace-nowrap bg-blue-500 text-white rounded hover:bg-blue-600">
                         검색
                     </button>
                 </div>
                 <div class="flex items-center justify-between sm:justify-end w-full sm:w-auto mt-2 sm:mt-0">
-                    <span class="mr-2">페이지 {{ currentPage }} / {{ totalPages }}</span>
-                    <div>
-                        <button @click="changePage(-1)" :disabled="currentPage === 1"
-                            class="px-2 py-1 bg-gray-200 rounded mr-1">&lt;</button>
-                        <button @click="changePage(1)" :disabled="currentPage === totalPages"
-                            class="px-2 py-1 bg-gray-200 rounded">&gt;</button>
+                    <span class="mr-2 text-sm text-gray-600">페이지 {{ currentPage }} / {{ totalPages }}</span>
+                    <div class="flex gap-1">
+                        <button @click="changePage(-1)" :disabled="currentPage === 1" aria-label="이전 페이지"
+                            class="w-11 h-11 sm:w-9 sm:h-9 bg-gray-200 rounded disabled:opacity-40">&lt;</button>
+                        <button @click="changePage(1)" :disabled="currentPage === totalPages" aria-label="다음 페이지"
+                            class="w-11 h-11 sm:w-9 sm:h-9 bg-gray-200 rounded disabled:opacity-40">&gt;</button>
                     </div>
                 </div>
             </div>
@@ -73,44 +74,25 @@
 
             <!-- 모바일 뷰 -->
             <div class="sm:hidden">
-                <div v-for="user in users" :key="user._id" class="border-t py-4">
-                    <div class="mb-2">
-                        <strong>이메일:</strong> {{ user.email || '이메일 없음' }}
+                <!-- 한 사람 = 2줄. 주로 "누가 있나" 훑고 가끔 사용 기간을 바꾼다 → 기간 배지 자체가 버튼(오른쪽).
+                     관리자 지정은 거의 안 쓰므로 작은 글자 링크로만. 예전엔 이름표 줄 5개(한 화면 3~4명),
+                     그다음엔 큰 버튼 2개라 목록이 안 보였다(2026-11-07 사용자 지적) -->
+                <div v-for="user in users" :key="user._id" class="border-t py-2.5 flex items-center gap-3">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-medium text-gray-900 truncate">{{ user.email || '이메일 없음' }}</p>
+                        <p class="flex items-center gap-1.5 text-xs text-gray-500 truncate">
+                            <span class="truncate">{{ user.username || '이름 없음' }} · {{ user.provider || '로컬' }}</span>
+                            <span v-if="user.isAdmin" class="shrink-0 bg-green-100 text-green-800 px-1.5 rounded-full font-medium">관리자</span>
+                            <button type="button" class="shrink-0 underline text-gray-400 py-1" @click="showToggleAdminToast(user)">
+                                {{ user.isAdmin ? '해제' : '관리자로' }}
+                            </button>
+                        </p>
                     </div>
-                    <div class="mb-2">
-                        <strong>이름:</strong> {{ user.username || '이름 없음' }}
-                    </div>
-                    <div class="mb-2">
-                        <strong>가입 방법:</strong> {{ user.provider || '로컬' }}
-                    </div>
-                    <div class="mb-2">
-                        <strong>관리자:</strong>
-                        <span :class="user.isAdmin ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
-                            class="px-2 py-1 rounded-full text-xs font-medium ml-2">
-                            {{ user.isAdmin ? '관리자' : '일반 사용자' }}
-                        </span>
-                    </div>
-                    <div class="mb-2">
-                        <strong>사용 기간:</strong>
-                        <span v-if="!user.expiryDate" class="text-red-600 text-sm ml-2">
-                            미설정
-                        </span>
-                        <span v-else :class="getExpiryStatusClass(user.expiryDate)"
-                            class="px-2 py-1 rounded-full text-xs font-medium ml-2">
-                            {{ formatExpiryDate(user.expiryDate) }}
-                        </span>
-                    </div>
-                    <div class="flex flex-wrap gap-2 mt-2">
-                        <span @click="showToggleAdminToast(user)"
-                            :class="user.isAdmin ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' : 'bg-blue-100 text-blue-800 hover:bg-blue-200'"
-                            class="px-2 py-1 rounded-full text-xs font-medium cursor-pointer">
-                            {{ user.isAdmin ? '관리자 해제' : '관리자 지정' }}
-                        </span>
-                        <span @click="showAccessPeriodModal(user)"
-                            class="bg-green-100 text-green-800 hover:bg-green-200 px-2 py-1 rounded-full text-xs font-medium cursor-pointer">
-                            사용 기간 설정
-                        </span>
-                    </div>
+                    <button type="button" @click="showAccessPeriodModal(user)" :aria-label="`${user.email} 사용 기간 설정`"
+                        class="shrink-0 min-h-[40px] px-2.5 rounded-full text-xs font-medium whitespace-nowrap"
+                        :class="user.expiryDate ? getExpiryStatusClass(user.expiryDate) : 'bg-red-50 text-red-600'">
+                        {{ user.expiryDate ? formatExpiryDate(user.expiryDate) : '기간 미설정' }} ›
+                    </button>
                 </div>
             </div>
         </div>

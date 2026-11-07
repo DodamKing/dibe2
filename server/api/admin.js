@@ -22,6 +22,15 @@ router.get('/visitor-stats', async (req, res) => {
     }
 })
 
+router.get('/music-stats', async (req, res) => {
+    try {
+        res.json(await services.adminService.getMusicStats())
+    } catch (error) {
+        console.error('Error fetching music-stats:', error)
+        res.status(500).json({ error: 'Internal Server Error' })
+    }
+})
+
 router.put('/users/:userId/access', async (req, res) => {
     try {
         const { userId } = req.params

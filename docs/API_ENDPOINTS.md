@@ -13,7 +13,7 @@
 - `liked`는 사용자마다 다르므로 **차트를 로컬 캐시할 땐 빼고 저장**(웹 `dibe2_chart_cache`가 그렇게 한다)
 | GET | `/songdata?title=&artist=` | 제목+아티스트로 곡 조회 |
 | POST | `/songsdata` | body: {songs[]} → 복수 곡 조회. ⚠️ **2026-11부터 아무도 안 부른다**(웹은 재생 직전 `/songdata` 한 곡씩, 앱은 원래 안 씀) — 곡마다 순차 조회라 느리다. 정리 대상 |
-| GET | `/search?query=&type=&page=&limit=` | 곡 검색 (type: all/title/artist/lyrics). **all=공백 토큰 AND**(각 토큰이 title∪artist 어디든 매칭) → "아이유 좋은날"처럼 가수+제목 조합도 잡힘. 단일 토큰은 종전과 동일 |
+| GET | `/search?query=&type=&page=&limit=` | 곡 검색 (type: all/title/artist/lyrics/ytgated). **ytgated**=유튜브 연령 게이트 곡(관리자 필터, 검색어 없어도 됨). **all=공백 토큰 AND**(각 토큰이 title∪artist 어디든 매칭) → "아이유 좋은날"처럼 가수+제목 조합도 잡힘. 단일 토큰은 종전과 동일 |
 | GET | `/youtubeId/:songId` | songId → YouTube 비디오 ID |
 | POST | `/by-ids` | body: {ids[]} → ID 배열로 일괄 조회 (lyrics 제외, 캐시 갱신용). 응답에 `liked`/`likeCount`/`playCount` 포함 |
 | GET | `/lyrics/:songId` | songId → `{lyrics, adult}`. **비어 있으면 즉석에서 채운다(lazy fill)** — 상세는 아래 |
@@ -21,7 +21,7 @@
 | PUT | `/:id` | 곡 수정 (관리자만) |
 | DELETE | `/delete/:id` | 곡 삭제 |
 | GET | `/search-bugs?query=` | Bugs Music 검색 |
-| GET | `/search-youtube?query=` | YouTube 검색. **길이로 안 거른다**(2026-08-16) — 관리자가 눈으로 보고 고르는 화면이라 후보를 좁히지 않는다. 예전 2~6분 상한 탓에 6분 넘는 곡은 손으로도 못 찾았다. 자동 판정(크론·lazy fill)만 곡 길이 ±5초 → `docs/CRON_EXTERNAL.md` |
+| GET | `/search-youtube?query=` | YouTube 검색. **길이로 안 거른다**(2026-08-16) — 관리자가 눈으로 보고 고르는 화면이라 후보를 좁히지 않는다. 예전 2~6분 상한 탓에 6분 넘는 곡은 손으로도 못 찾았다. 자동 판정(크론·lazy fill)만 곡 길이 ±5초 → `docs/CRON_EXTERNAL.md`. 연령 게이트면 `{success:false, gated:true}` |
 
 - **`/lyrics/:songId` 는 조회가 아니라 "조회 + 즉석 채우기"다.** 가사가 비어 있으면 벅스 트랙 페이지를 그 자리에서 긁어 저장하고 반환한다(실측 671ms). **같은 페이지에 있는 곡 길이(`duration`)도 같이 저장한다 — 요청이 안 늘어난다.** 크론(08:10)만으로는 백로그를 다 채우는 데 수개월이 걸리는데, lazy fill 은 **사용자가 실제로 튼 곡부터** 채우므로 그 대기가 사실상 사라진다. `youtubeUrl` 의 `getYoutubeId` 와 같은 패턴이고, 크론과 lazy fill 이 둘 다 "가사 없는 곡"만 고르므로 중복이 없다
   - 응답의 `adult` 는 **"가사 없음"과 "19금이라 제공 안 됨"을 UI가 구분**하기 위한 것. 19금 곡과 이미 "없음"으로 닫힌 곡(`lyricsCheckedAt`)은 **긁지 않고 즉시 반환**한다(실측 43~52ms) — 안 그러면 가사를 못 받는 곡을 누를 때마다 벅스를 때리는 증폭기가 된다
@@ -71,6 +71,7 @@
 |--------|------|------|
 | GET | `/user-stats` | 사용자 통계 (총 유저, 신규 유저 등) |
 | GET | `/visitor-stats` | 방문자 통계 (7일) |
+| GET | `/music-stats` | 음원 통계 `{totalTracks, totalPlays, noYoutube, gated}` — 대시보드용. 재생 수는 누적(하루치 기록 없음) |
 | GET | `/system-stats` | 시스템 상태 (CPU/메모리/디스크/uptime) |
 | PUT | `/users/:userId/access` | 사용자 접근 기간 설정 {days} |
 
