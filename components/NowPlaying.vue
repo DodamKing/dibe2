@@ -156,7 +156,7 @@ export default {
         }
     },
     computed: {
-        ...mapState('player', ['currentTrack', 'upNext', 'isPlaying', 'isLoading', 'currentTime', 'duration', 'shuffleOn', 'repeatMode']),
+        ...mapState('player', ['currentTrack', 'isPlaying', 'isLoading', 'currentTime', 'duration', 'shuffleOn', 'repeatMode']),
         ...mapGetters('player', ['upcoming', 'contextName', 'hasNextTrack']),
         isVideo() {
             return this.currentTrack && this.currentTrack.kind === 'video'
@@ -180,7 +180,7 @@ export default {
             return `${Math.max(220, Math.min(520, byHeight, byWidth))}px`
         },
         nextItems() {
-            return [...this.upNext, ...this.upcoming].slice(0, 30)
+            return this.upcoming.slice(0, 30)
         },
         progress() {
             return this.duration > 0 ? (this.currentTime / this.duration) * 100 : 0

@@ -54,7 +54,7 @@ const P = page => page.evaluate(() => {
     const t = p.currentTrack
     return {
         title: t && t.title, qid: t && t.qid, kind: t && t.kind, id: t && t._id, lyrics: t && t.lyrics,
-        upNext: p.upNext.map(i => i.title), upcoming: g['player/upcoming'].map(i => i.title),
+        played: g['player/played'].map(i => i.title), upcoming: g['player/upcoming'].map(i => i.title),
         ctxName: g['player/contextName'], ctxLen: p.context ? p.context.items.length : 0, pos: p.context ? p.context.pos : null,
         isPlaying: p.isPlaying, time: p.currentTime, shuffleOn: p.shuffleOn, repeat: p.repeatMode, ended: p.isQueueEnded,
         ready: p.isYouTubeReady, loading: p.isLoading,
@@ -95,6 +95,7 @@ const scenarios = {
 
         const rows = page.locator('.song-row')
         const third = (await rows.nth(2).locator('p span.truncate').first().textContent()).trim()
+        const fourth = (await rows.nth(3).locator('p span.truncate').first().textContent()).trim()
         await rows.nth(2).click()
         let s = await waitFor(page, s => s.title === third, { label: '3위 곡이 지금 곡' })
         check('홈 3위 줄 클릭 → 그 곡 재생', s.title === third, third)
@@ -116,22 +117,43 @@ const scenarios = {
         await dispatch(page, 'player/addToQueue', { songs: [extra[0]], idKey: '_id' })
         await dispatch(page, 'player/addToQueue', { songs: [extra[1]], idKey: '_id', front: true })
         s = await P(page)
-        check('"다음에 재생"은 맨 앞, "맨 뒤에 추가"는 맨 뒤', s.upNext[0] === extra[1].title && s.upNext[1] === extra[0].title, s.upNext.join(' / '))
+        check('"다음에 재생"은 지금 곡 바로 뒤, "맨 뒤에 추가"는 끝',
+            s.upcoming[0] === extra[1].title && s.upcoming[1] === fourth && s.upcoming[s.upcoming.length - 1] === extra[0].title,
+            `${s.upcoming[0]} / ${s.upcoming[1]} … ${s.upcoming[s.upcoming.length - 1]}`)
 
         await page.getByRole('button', { name: '재생 대기열', exact: true }).click()
         await page.waitForSelector('aside[aria-label="재생 대기열"]')
         await page.waitForTimeout(400)
         const panelText = await page.locator('aside[aria-label="재생 대기열"]').innerText()
-        check('대기열 패널: 두 구역', /다음에 재생 · 2곡/.test(panelText) && /다음:\s*\S/.test(panelText))
+        // 한 목록 — 칸 이름 없이 재생 순서대로, 지금 곡만 강조(aria-current)
+        const panel = page.locator('aside[aria-label="재생 대기열"]')
+        const titlesInPanel = () => panel.locator('li.queue-row .row-main > span.min-w-0 > span.block').allTextContents()
+        const rowTitles = await titlesInPanel()
+        const curIdx = await panel.locator('li.queue-row').evaluateAll(els => els.findIndex(e => e.getAttribute('aria-current') === 'true'))
+        check('대기열 패널: 한 목록, 지난 곡 → 지금 곡(강조) → 다음 곡',
+            /\d+곡 · /.test(panelText) && !/들은 곡|지금 재생 중/.test(panelText) && curIdx === 2 && rowTitles[2] === third && rowTitles[3] === extra[1].title,
+            `강조 ${curIdx}번째: ${rowTitles[curIdx]}`)
         await page.screenshot({ path: join(OUT, 'desktop-queue.png') })
 
+        // 순서 바꾸기(패널 드래그가 부르는 동작) — 바로 다음 곡을 지금 곡 위로 → 지난 곡이 되고 패널도 바뀐다.
+        // 손가락·마우스 드래그 자체는 폰에서 직접 확인(자동화 흉내가 스크롤된 패널에서 불안정)
+        await dispatch(page, 'player/moveInQueue', { from: 3, to: 2 })
+        await page.waitForTimeout(300)
+        s = await P(page)
+        const moved = await titlesInPanel()
+        check('순서 바꾸기: 다음 곡을 지금 곡 위로 → 지금 곡 그대로, 그 곡은 지난 곡, 패널 반영',
+            s.title === third && s.played[s.played.length - 1] === extra[1].title && moved[2] === extra[1].title && moved[3] === third,
+            `${s.played.slice(-1)} | ${s.title} | ${s.upcoming[0]}`)
+        // 원래대로 되돌린다(아래 단계가 "다음 → 다음에 재생 곡"을 확인)
+        await dispatch(page, 'player/moveInQueue', { from: 2, to: 3 })
+        s = await P(page)
+
         await page.getByRole('button', { name: '다음 곡' }).first().click()
-        s = await waitFor(page, s => s.title === extra[1].title, { label: '다음 → 직접 넣은 곡' })
-        check('다음 → 직접 넣은 곡이 먼저', true)
+        s = await waitFor(page, s => s.title === extra[1].title, { label: '다음 → 다음에 재생 곡' })
+        check('다음 → "다음에 재생" 곡', true)
         await page.getByRole('button', { name: '다음 곡' }).first().click()
-        await page.getByRole('button', { name: '다음 곡' }).first().click()
-        s = await waitFor(page, s => s.pos === 3 && !s.upNext.length, { label: '직접 넣은 곡 다 듣고 목록으로' })
-        check('직접 넣은 곡이 끝나면 목록(4위)으로', s.pos === 3, s.title)
+        s = await waitFor(page, s => s.title === fourth, { label: '그다음 목록(4위)' })
+        check('그다음은 목록(4위), 들은 곡에 넣은 곡이 남음', s.played.includes(extra[1].title), s.played.slice(-2).join(' / '))
 
         // 셔플: 목록만 섞이고 지금 곡 유지
         const before = await P(page)
@@ -140,7 +162,7 @@ const scenarios = {
         check('셔플 켜기 → 지금 곡 그대로, 남은 곡 수 같음', s.shuffleOn && s.title === before.title && s.upcoming.length === before.upcoming.length + before.pos - 0 || (s.shuffleOn && s.title === before.title), `${before.upcoming.length} → ${s.upcoming.length}`)
         await page.getByRole('button', { name: '셔플' }).first().click()
         s = await P(page)
-        check('셔플 끄기 → 원래 순서·자리', !s.shuffleOn && s.pos === 3 && s.title === before.title)
+        check('셔플 끄기 → 원래 순서·자리', !s.shuffleOn && s.pos === before.pos && s.title === before.title)
 
         // 한 곡 반복: 끝나면 같은 곡, "다음"을 누르면 넘어감
         await page.getByRole('button', { name: '반복 재생' }).first().click() // all
@@ -185,6 +207,39 @@ const scenarios = {
         await context.close()
     },
 
+    // 2026-11-07 버그: 검색에서 한 곡 재생 + "대기열에 추가" → 다 듣고 나면 처음 곡 하나만 남아 반복되던 것
+    async searchRepeat(browser) {
+        const { context, page } = await newPage(browser, { width: 1280, height: 800 })
+        await gotoHome(page)
+        const picks = await page.evaluate(async () => {
+            const { chart } = await window.$nuxt.$axios.$get('/api/songs/chart')
+            return chart.items.filter(s => s.songId).slice(10, 13).map(s => ({ _id: s.songId, title: s.title, artist: s.artist, coverUrl: s.coverUrl }))
+        })
+        await dispatch(page, 'player/playList', { source: { type: 'search', id: picks[0]._id, name: '"e2e" 검색' }, songs: [picks[0]], idKey: '_id', index: 0 })
+        // 검색 화면의 "대기열에 추가" 버튼과 같은 경로
+        await dispatch(page, 'player/addToQueue', { songs: [picks[1], picks[2]], idKey: '_id' })
+        await page.evaluate(() => {
+            const s = window.$nuxt.$store
+            while (s.state.player.repeatMode !== 'all') s.dispatch('player/toggleRepeat')
+        })
+        const seen = []
+        for (let i = 0; i < 4; i++) {
+            await dispatch(page, 'player/playNext', { auto: true })
+            seen.push((await P(page)).title)
+        }
+        const t = picks.map(p => p.title)
+        check('검색 한 곡 + 추가 2곡, 전체 반복 → 세 곡이 돌아가며 나온다',
+            JSON.stringify(seen) === JSON.stringify([t[1], t[2], t[0], t[1]]), seen.join(' → '))
+        const s = await P(page)
+        check('다 듣고 나도 대기열 3곡 그대로', s.ctxLen === 3, `${s.ctxLen}곡`)
+        check('담은 곡이 섞이면 이름은 "재생 대기열"(첫 검색어가 아니라)', s.ctxName === '재생 대기열', s.ctxName)
+        await page.evaluate(() => {
+            const s = window.$nuxt.$store
+            while (s.state.player.repeatMode !== 'off') s.dispatch('player/toggleRepeat')
+        })
+        await context.close()
+    },
+
     async legacyMigration(browser) {
         const { context, page } = await newPage(browser, { width: 1280, height: 800 })
         await gotoHome(page)
@@ -209,6 +264,34 @@ const scenarios = {
         check('옛 큐 변환: 셔플 켜짐 유지', s.shuffleOn === true)
         const kept = await page.evaluate(prefix => !!localStorage.getItem(prefix + 'queue') && !!localStorage.getItem(prefix + 'player_v2'), prefix)
         check('옛 키는 지우지 않음(롤백 대비) + 새 키 저장', kept)
+        await context.close()
+    },
+
+    // 2구역 시절(2026-11-01~11-07) 저장분: "다음에 재생" 곡이 지금 곡 뒤로 합쳐지는지
+    async v2Migration(browser) {
+        const { context, page } = await newPage(browser, { width: 1280, height: 800 })
+        await gotoHome(page)
+        const prefix = await page.evaluate(() => `user_${window.$nuxt.$store.state.auth.user.userId}_`)
+        const t = await page.evaluate(async prefix => {
+            const { chart } = await window.$nuxt.$axios.$get('/api/songs/chart')
+            const it = (s, i) => ({ qid: `qe2e${i}`, kind: 'song', _id: s.songId, title: s.title, artist: s.artist, coverUrl: s.coverUrl })
+            const list = chart.items.filter(s => s.songId).slice(0, 5).map(it)
+            const [a, b, c, u1, u2] = list
+            localStorage.setItem(prefix + 'player_v2', JSON.stringify({
+                currentTrack: b,
+                upNext: [u1, u2],
+                context: { source: { type: 'chart', id: 'kr', name: 'Top 100 국내' }, items: [a, b, c], order: [0, 1, 2], pos: 1 },
+                history: [],
+                shuffleOn: false,
+            }))
+            return list.map(i => i.title)
+        }, prefix)
+        await page.reload({ waitUntil: 'domcontentloaded' })
+        await page.waitForFunction(() => window.$nuxt && window.$nuxt.$store && window.$nuxt.$store.state.player.isInitialized, null, { timeout: 30000 })
+        const s = await P(page)
+        check('2구역 저장분 → 들은 곡 · 지금 · 다음에 재생 · 남은 목록 순',
+            s.title === t[1] && JSON.stringify(s.played) === JSON.stringify([t[0]]) && JSON.stringify(s.upcoming) === JSON.stringify([t[3], t[4], t[2]]),
+            `${s.played.join(',')} | ${s.title} | ${s.upcoming.join(', ')}`)
         await context.close()
     },
 
@@ -247,8 +330,8 @@ const scenarios = {
         const t5 = (await rows.nth(4).locator('p span.truncate').first().textContent()).trim()
         await rows.nth(4).getByRole('button', { name: '곡 메뉴' }).click()
         await page.getByRole('button', { name: '다음에 재생' }).click()
-        let s = await P(page)
-        check('모바일 ⋯ → 다음에 재생', s.upNext[0] === t5, s.upNext.join(' / '))
+        const s = await P(page)
+        check('모바일 ⋯ → 다음에 재생', s.upcoming[0] === t5, s.upcoming.slice(0, 2).join(' / '))
         await page.waitForTimeout(800)
         await page.screenshot({ path: join(OUT, 'mobile-mini.png') })
 
@@ -294,7 +377,7 @@ const scenarios = {
         await page.screenshot({ path: join(OUT, 'theme-menu.png') })
         await menu.getByRole('button', { name: '다음에 재생' }).click()
         s = await P(page)
-        check('테마 곡 ⋯ → 다음에 재생', s.upNext[0] === t5)
+        check('테마 곡 ⋯ → 다음에 재생', s.upcoming[0] === t5)
         await page.waitForTimeout(500)
         await page.screenshot({ path: join(OUT, 'theme-detail.png') })
         await context.close()

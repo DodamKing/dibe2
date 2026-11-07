@@ -274,8 +274,8 @@ export default {
                 // 차트 항목이면 곡 id 는 `songId`(항목 _id 는 곡이 아님), DB 곡이면 `_id`
                 const songs = this.selectedSongs.map(s => ({ ...s, _id: 'songId' in s ? s.songId : s._id }))
                 const { added, full } = await this.addToQueue({ songs, idKey: '_id' })
-                this.showToast(!added ? '재생 대기열이 가득 찼어요. (최대 1000곡)'
-                    : full ? `대기열에 ${added}곡만 추가했어요. (최대 1000곡)`
+                this.showToast(!added ? '재생 대기열이 가득 찼어요. (직접 추가는 최대 500곡)'
+                    : full ? `대기열에 ${added}곡만 추가했어요. (직접 추가는 최대 500곡)`
                         : `${added}곡을 대기열에 추가했어요.`)
                 if (added) this.selectedSongs = []
             } catch (err) {

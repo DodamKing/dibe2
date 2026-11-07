@@ -96,7 +96,7 @@ export default {
 		toggleAll() {
 			this.layoutMethods.setSelectedSongs(this.allSelected ? [] : this.chart)
 		},
-		// 줄 클릭 = 차트 전체를 그 곡부터(스포티파이·애플뮤직 방식). "다음에 재생"에 넣은 곡은 지켜진다
+		// 줄 클릭 = 대기열을 차트 전체로 바꾸고 그 곡부터(쌓아 둔 곡도 같이 바뀜 — 멜론과 같음, 2026-11-07)
 		playNow(song) {
 			this.playFrom(Math.max(0, this.chart.indexOf(song)))
 		},

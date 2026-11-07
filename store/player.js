@@ -1,5 +1,6 @@
 // store/player.js
-// 재생 대기열은 2구역 — "다음에 재생"(upNext, 직접 넣은 곡) + "지금 듣는 목록"(context).
+// 재생 대기열은 한 줄 목록(context) + 지금 위치. 직접 넣은 곡도 목록 안에 들어가 들은 뒤에도 남는다(2026-11-07,
+// 예전 2구역 upNext 방식에서 바꿈 — utils/queue.js 머리말).
 // 계산은 전부 utils/queue.js(순수 함수, tests/queue.test.mjs)가 하고, 여기선 상태 반영·재생·저장만 한다.
 // 설계: docs/PLAYER_V2_PLAN.md
 import youtubePlayer from "~/utils/youtubePlayer"
@@ -20,9 +21,7 @@ const emptyTally = () => ({ trackId: null, seconds: 0, counted: false, lastTick:
 
 export const state = () => ({
     currentTrack: null,
-    upNext: [],
     context: null,
-    history: [],
     isPlaying: false,
     currentTime: 0,
     duration: 0,
@@ -49,9 +48,7 @@ export const mutations = {
     },
     // 대기열 계산 결과 반영(지금 곡은 SET_CURRENT_TRACK 으로 따로 — mediaSession·titleUpdate 플러그인이 그걸 본다)
     APPLY_QUEUE(state, q) {
-        state.upNext = q.upNext
         state.context = q.context
-        state.history = q.history
         state.shuffleOn = q.shuffleOn
         state.isQueueEnded = q.isQueueEnded
     },
@@ -101,7 +98,6 @@ export const mutations = {
     PATCH_ITEM(state, { qid, patch }) {
         const fix = item => (item && item.qid === qid ? { ...item, ...patch } : item)
         if (state.currentTrack && state.currentTrack.qid === qid) state.currentTrack = fix(state.currentTrack)
-        state.upNext = state.upNext.map(fix)
         if (state.context) state.context = { ...state.context, items: state.context.items.map(fix) }
     },
 }
@@ -109,9 +105,7 @@ export const mutations = {
 // 스토어 상태 → utils/queue 가 다루는 모양
 const queueState = state => ({
     currentTrack: state.currentTrack,
-    upNext: state.upNext,
     context: state.context,
-    history: state.history,
     shuffleOn: state.shuffleOn,
     repeatMode: state.repeatMode,
     isQueueEnded: state.isQueueEnded,
@@ -172,19 +166,20 @@ export const actions = {
                 currentTrack: read('current_track'),
                 shuffleOn,
             })
-            if (migrated) saved = { ...migrated, history: [], shuffleOn }
+            if (migrated) saved = { ...migrated, shuffleOn }
         }
         if (saved) {
+            // 2구역 시절(2026-11-01~11-07) 저장분은 "다음에 재생" 곡을 지금 곡 뒤로 합친다. 키(player_v2)는 그대로 —
+            // 새 형식엔 upNext 가 없을 뿐이라 배포를 롤백해도 예전 코드가 그대로 읽는다
+            const merged = Q.mergeUpNext({ context: saved.context, upNext: saved.upNext, currentTrack: saved.currentTrack })
             commit('APPLY_QUEUE', {
-                upNext: saved.upNext || [],
-                context: saved.context || null,
-                history: saved.history || [],
+                context: merged.context,
                 shuffleOn: !!saved.shuffleOn,
                 isQueueEnded: false,
             })
-            commit('SET_CURRENT_TRACK', saved.currentTrack || null)
+            commit('SET_CURRENT_TRACK', merged.currentTrack || null)
             dispatch('persistQueue')
-            if (saved.currentTrack) dispatch('fetchCurrentTrackLyrics')
+            if (merged.currentTrack) dispatch('fetchCurrentTrackLyrics')
         }
 
         // 마지막으로 듣던 곡의 위치만 기억(비디오 user_{id}_video_position과 동일 패턴) — 다음 play()에서 한 번만 소비
@@ -199,9 +194,7 @@ export const actions = {
         try {
             localStorage.setItem(key, JSON.stringify({
                 currentTrack: Q.stripItem(state.currentTrack),
-                upNext: state.upNext.map(Q.stripItem),
                 context: ctx ? { source: ctx.source, items: ctx.items.map(Q.stripItem), order: ctx.order, pos: ctx.pos } : null,
-                history: state.history.map(Q.stripItem),
                 shuffleOn: state.shuffleOn,
             }))
         } catch (e) {
@@ -241,7 +234,7 @@ export const actions = {
     /**
      * 목록을 그 곡부터 재생 — 목록에서 줄 클릭, 전체 재생, 셔플 재생.
      * songs: 화면의 곡 목록 그대로. idKey: 곡 id가 든 필드(차트·플리 'songId', 좋아요·검색 '_id').
-     * kind 'video' = 테마(유튜브 곡). "다음에 재생"에 넣어 둔 곡은 지켜진다.
+     * kind 'video' = 테마(유튜브 곡). 대기열을 통째로 바꾼다(직접 넣어 둔 곡도 같이 바뀜 — 멜론과 같음).
      */
     async playList({ dispatch, state }, { source, songs, idKey = 'songId', kind = 'song', index = 0, shuffle = false }) {
         const items = (songs || []).map(s => (kind === 'video' ? Q.toVideoItem(s) : Q.toSongItem(s, idKey))).filter(Boolean)
@@ -256,18 +249,14 @@ export const actions = {
     },
 
     /**
-     * 직접 추가. front=true "다음에 재생"(맨 앞) / false "대기열 맨 뒤에 추가".
-     * 반환 { added, full } — full: 한도(1000곡)에 걸려 일부만 들어갔거나 하나도 못 넣음
+     * 직접 추가. front=true "다음에 재생"(지금 곡 바로 뒤) / false "대기열 맨 뒤에 추가". 들은 뒤에도 목록에 남는다.
+     * 아무것도 안 듣고 있었으면 첫 곡이 지금 곡이 된다(재생은 사용자가 누를 때).
+     * 반환 { added, full } — full: 한도(Q.ADD_LIMIT, 직접 넣은 곡 500곡)에 걸려 일부만 들어갔거나 하나도 못 넣음
      */
     async addToQueue({ dispatch, state }, { songs, idKey = '_id', kind = 'song', front = false }) {
         const items = (songs || []).map(s => (kind === 'video' ? Q.toVideoItem(s) : Q.toSongItem(s, idKey))).filter(Boolean)
-        const r = Q.addUpNext(queueState(state), items, { front })
-        let next = r.state
-        // 아무것도 안 듣고 있었으면 첫 곡을 지금 곡으로(재생은 사용자가 누를 때) — 예전과 같은 동작
-        if (!next.currentTrack && next.upNext.length) {
-            next = { ...next, currentTrack: next.upNext[0], upNext: next.upNext.slice(1) }
-        }
-        await dispatch('applyQueue', next)
+        const r = Q.addToQueue(queueState(state), items, { front })
+        await dispatch('applyQueue', r.state)
         return { added: r.added, full: r.full }
     },
 
@@ -296,26 +285,20 @@ export const actions = {
         if (wasPlaying) dispatch('play')
     },
 
-    clearUpNext({ dispatch, state }) {
-        return dispatch('removeFromQueue', state.upNext.map(i => i.qid))
+    // 패널 "비우기" — 지금 곡만 남긴다
+    clearOthers({ dispatch, state }) {
+        return dispatch('removeFromQueue', Q.othersThanCurrent(queueState(state)).map(i => i.qid))
     },
 
-    clearUpcoming({ dispatch, state }) {
-        return dispatch('removeFromQueue', Q.upcomingContext(queueState(state)).map(i => i.qid))
-    },
-
-    moveUpNext({ dispatch, state }, { from, to }) {
-        return dispatch('applyQueue', Q.moveUpNext(queueState(state), from, to))
-    },
-
-    moveUpcoming({ dispatch, state }, { from, to }) {
-        return dispatch('applyQueue', Q.moveContext(queueState(state), from, to))
+    // 패널 드래그(from·to = 패널 순서). 들은 곡·지금 곡도 옮길 수 있다
+    moveInQueue({ dispatch, state }, { from, to }) {
+        return dispatch('applyQueue', Q.moveInQueue(queueState(state), from, to))
     },
 
     // ── 가사·갱신 ─────────────────────────────────────────────────────
 
     async refreshQueueData({ state, commit, dispatch }) {
-        const all = [state.currentTrack, ...state.upNext, ...(state.context ? state.context.items : [])]
+        const all = [state.currentTrack, ...(state.context ? state.context.items : [])]
         const ids = [...new Set(all.filter(i => i && i.kind === 'song' && i._id).map(i => i._id))]
         if (ids.length === 0) return
 
@@ -333,9 +316,7 @@ export const actions = {
                 return fresh ? { ...item, title: fresh.title, artist: fresh.artist, coverUrl: fresh.coverUrl } : item
             }
             commit('APPLY_QUEUE', {
-                upNext: state.upNext.map(merge),
                 context: state.context ? { ...state.context, items: state.context.items.map(merge) } : null,
-                history: state.history,
                 shuffleOn: state.shuffleOn,
                 isQueueEnded: state.isQueueEnded,
             })
@@ -598,6 +579,15 @@ export const getters = {
     hasPreviousTrack: state => !!state.currentTrack,
     hasNextTrack: state => !!state.currentTrack && Q.hasNext(queueState(state)),
     upcoming: state => Q.upcomingContext(queueState(state)),
+    played: state => Q.playedContext(queueState(state)),
+    queueItems: state => Q.queueItems(queueState(state)),
     queueLength: state => Q.queueLength(queueState(state)),
-    contextName: state => (state.context && state.context.source && state.context.source.name) || '',
+    // 패널·재생 화면의 목록 이름. 직접 넣은 곡이 섞이면 "재생 대기열" — 처음 시작한 곳 이름(예: 첫 검색어)이
+    // 여러 곳에서 담은 목록에 계속 붙어 있던 것(2026-11-07 사용자 지적). 넣은 곡을 다 빼면 원래 이름으로
+    contextName: state => {
+        const ctx = state.context
+        if (!ctx) return ''
+        if (ctx.items.some(i => i.added)) return '재생 대기열'
+        return (ctx.source && ctx.source.name) || ''
+    },
 }

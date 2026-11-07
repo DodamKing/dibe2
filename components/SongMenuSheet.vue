@@ -65,7 +65,7 @@ export default {
             this.$store.dispatch('likes/toggle', this.songId)
             this.$emit('close')
         },
-        // front=true "다음에 재생"(맨 앞) / false "대기열 맨 뒤에 추가".
+        // front=true "다음에 재생"(지금 곡 바로 뒤) / false "대기열 맨 뒤에 추가". 들은 뒤에도 대기열에 남는다.
         // 곡 id 는 songId prop 이 정답이다 — 차트 항목의 _id 는 곡이 아니다
         async addToQueue(front) {
             const song = { ...this.song, _id: this.songId || undefined }

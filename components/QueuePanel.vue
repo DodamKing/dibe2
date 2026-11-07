@@ -1,6 +1,9 @@
 <template>
     <!-- 재생 대기열(2026-11, 예전 Playlist.vue 대체). 데스크탑: 오른쪽 서랍(뒤 페이지가 보인다) / 모바일: 전체 화면 시트.
-         두 구역 — "다음에 재생"(직접 넣은 곡, 먼저 나옴) / "다음: ○○에서"(지금 듣는 목록). 구역 안에서만 순서 바꾸기 -->
+         **한 목록**(2026-11-07, 멜론·유튜브 뮤직과 같은 구성): 칸 구분 없이 재생 순서대로, 지금 곡만 강조.
+         들은 곡도 흐리게 하지 않는다. 지금 곡까지 전부 드래그로 옮길 수 있다(재생은 끊기지 않음).
+         열면 지금 곡 위치로 스크롤. 한때 "들은 곡 / 지금 재생 중 / 다음" 세 칸이었는데 일반적이지 않고
+         다음 곡이 1곡이면 옮길 게 없었다(사용자 지적) -->
     <transition :name="isMobile ? 'sheet' : 'drawer'">
         <aside v-if="show" aria-label="재생 대기열"
             class="queue-panel fixed bg-surface-1 flex flex-col inset-0 sm:inset-auto sm:top-0 sm:right-0 sm:bottom-20 sm:w-[400px] sm:border-l sm:border-white sm:border-opacity-5">
@@ -26,79 +29,46 @@
                 </div>
             </div>
 
+            <div v-if="all.length" class="section-head px-3 !mt-0 shrink-0">
+                <p class="section-label truncate">{{ all.length }}곡 · {{ contextName || '재생 대기열' }}</p>
+                <button v-if="all.length > 1" type="button" class="clear-btn" @click="clearOthers">비우기</button>
+            </div>
+
             <div ref="scroller" class="flex-1 overflow-y-auto overscroll-contain px-3 pb-8 custom-scrollbar">
-                <template v-if="currentTrack">
-                    <p class="section-label">지금 재생 중</p>
-                    <div class="flex items-center gap-3 p-2 rounded-lg bg-purple-400 bg-opacity-10">
-                        <CoverImg :src="currentTrack.coverUrl" :video="currentTrack.kind === 'video'" class="w-12 h-12 rounded-md" />
-                        <div class="min-w-0 flex-1">
-                            <p class="text-sm font-medium truncate text-purple-300">{{ currentTrack.title }}</p>
-                            <p class="flex items-center gap-1 text-xs text-gray-400 truncate">
-                                <Icon v-if="currentTrack.kind === 'video'" name="youtube" :size="13" class="text-red-400" />
-                                <span class="truncate">{{ currentTrack.artist }}</span>
-                            </p>
-                        </div>
-                        <span v-if="isPlaying" class="eq mr-2" role="img" aria-label="재생 중"><i></i><i></i><i></i></span>
-                    </div>
-                </template>
+                <button v-if="start > 0" type="button"
+                    class="w-full h-11 mb-2 rounded-lg text-sm text-gray-300 hover:bg-white hover:bg-opacity-5" @click="before += PAGE">
+                    이전 {{ start }}곡 더 보기
+                </button>
 
-                <template v-if="upNext.length">
-                    <div class="section-head">
-                        <p class="section-label">다음에 재생 · {{ upNext.length }}곡</p>
-                        <button type="button" class="clear-btn" @click="clearUpNext">비우기</button>
-                    </div>
-                    <draggable :value="upNext" tag="ul" handle=".drag-handle" :animation="200" :force-fallback="true" :fallback-tolerance="5"
-                        :delay-on-touch-only="true" :touch-start-threshold="2" ghost-class="ghost-item" @end="onMove('moveUpNext', $event)">
-                        <li v-for="item in upNext" :key="item.qid" class="queue-row">
-                            <button type="button" class="row-main" @click="playQueueItem(item.qid)">
-                                <CoverImg :src="item.coverUrl" :video="item.kind === 'video'" lazy class="w-11 h-11 rounded-md" />
-                                <span class="min-w-0 flex-1">
-                                    <span class="block text-sm font-medium truncate">{{ item.title }}</span>
-                                    <span class="flex items-center gap-1 text-xs text-gray-400 truncate">
-                                        <Icon v-if="item.kind === 'video'" name="youtube" :size="13" class="text-red-400" />
-                                        <span class="truncate">{{ item.artist }}</span>
-                                    </span>
+                <draggable :value="visible" tag="ul" handle=".drag-handle" :animation="200" :force-fallback="true" :fallback-tolerance="5"
+                    :delay-on-touch-only="true" :touch-start-threshold="2" ghost-class="ghost-item" @end="onMove">
+                    <li v-for="item in visible" :key="item.qid" :ref="isCurrent(item) ? 'current' : null"
+                        class="queue-row" :class="{ 'is-current': isCurrent(item) }"
+                        :aria-current="isCurrent(item) ? 'true' : null">
+                        <button type="button" class="row-main" @click="playQueueItem(item.qid)">
+                            <CoverImg :src="item.coverUrl" :video="item.kind === 'video'" lazy class="w-11 h-11 rounded-md" />
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-medium truncate" :class="isCurrent(item) ? 'text-purple-300' : ''">{{ item.title }}</span>
+                                <span class="flex items-center gap-1 text-xs text-gray-400 truncate">
+                                    <Icon v-if="item.kind === 'video'" name="youtube" :size="13" class="text-red-400" />
+                                    <span class="truncate">{{ item.artist }}</span>
                                 </span>
-                            </button>
-                            <button type="button" class="icon-btn text-gray-400 hover:text-white" :aria-label="`${item.title} 빼기`" @click="removeFromQueue([item.qid])">
-                                <Icon name="minus" :size="18" />
-                            </button>
-                            <span class="drag-handle icon-btn text-gray-400" aria-hidden="true"><Icon name="grip-vertical" :size="18" /></span>
-                        </li>
-                    </draggable>
-                </template>
+                            </span>
+                            <span v-if="isCurrent(item) && isPlaying" class="eq" role="img" aria-label="재생 중"><i></i><i></i><i></i></span>
+                        </button>
+                        <button type="button" class="icon-btn text-gray-400 hover:text-white" :aria-label="`${item.title} 빼기`" @click="removeFromQueue([item.qid])">
+                            <Icon name="minus" :size="18" />
+                        </button>
+                        <span class="drag-handle icon-btn text-gray-400" aria-hidden="true"><Icon name="grip-vertical" :size="18" /></span>
+                    </li>
+                </draggable>
 
-                <template v-if="upcoming.length">
-                    <div class="section-head">
-                        <p class="section-label truncate">다음: <span class="text-white">{{ contextName || '재생 목록' }}</span>에서</p>
-                        <button type="button" class="clear-btn" @click="clearUpcoming">비우기</button>
-                    </div>
-                    <draggable :value="visibleUpcoming" tag="ul" handle=".drag-handle" :animation="200" :force-fallback="true" :fallback-tolerance="5"
-                        :delay-on-touch-only="true" :touch-start-threshold="2" ghost-class="ghost-item" @end="onMove('moveUpcoming', $event)">
-                        <li v-for="item in visibleUpcoming" :key="item.qid" class="queue-row">
-                            <button type="button" class="row-main" @click="playQueueItem(item.qid)">
-                                <CoverImg :src="item.coverUrl" :video="item.kind === 'video'" lazy class="w-11 h-11 rounded-md" />
-                                <span class="min-w-0 flex-1">
-                                    <span class="block text-sm font-medium truncate">{{ item.title }}</span>
-                                    <span class="flex items-center gap-1 text-xs text-gray-400 truncate">
-                                        <Icon v-if="item.kind === 'video'" name="youtube" :size="13" class="text-red-400" />
-                                        <span class="truncate">{{ item.artist }}</span>
-                                    </span>
-                                </span>
-                            </button>
-                            <button type="button" class="icon-btn text-gray-400 hover:text-white" :aria-label="`${item.title} 빼기`" @click="removeFromQueue([item.qid])">
-                                <Icon name="minus" :size="18" />
-                            </button>
-                            <span class="drag-handle icon-btn text-gray-400" aria-hidden="true"><Icon name="grip-vertical" :size="18" /></span>
-                        </li>
-                    </draggable>
-                    <button v-if="upcoming.length > visibleUpcoming.length" type="button"
-                        class="w-full h-11 mt-2 rounded-lg text-sm text-gray-300 hover:bg-white hover:bg-opacity-5" @click="limit += PAGE">
-                        {{ upcoming.length - visibleUpcoming.length }}곡 더 보기
-                    </button>
-                </template>
+                <button v-if="end < all.length" type="button"
+                    class="w-full h-11 mt-2 rounded-lg text-sm text-gray-300 hover:bg-white hover:bg-opacity-5" @click="after += PAGE">
+                    {{ all.length - end }}곡 더 보기
+                </button>
 
-                <div v-if="!currentTrack && !upNext.length" class="flex flex-col items-center text-center gap-3 pt-20 text-gray-400">
+                <div v-if="!all.length" class="flex flex-col items-center text-center gap-3 pt-20 text-gray-400">
                     <Icon name="list-music" :size="40" :stroke-width="1.25" />
                     <p class="text-sm">대기열이 비어 있어요.<br>차트나 플레이리스트에서 곡을 눌러 보세요.</p>
                 </div>
@@ -111,7 +81,7 @@
 import { mapState, mapGetters, mapActions } from 'vuex'
 import draggable from 'vuedraggable'
 
-// 목록이 길면(좋아요 수백 곡 등) 처음엔 이만큼만 그린다
+// 목록이 길면(좋아요 수백 곡 등) 지금 곡 앞뒤로 이만큼만 그리고 "더 보기"로 늘린다
 const PAGE = 100
 
 export default {
@@ -120,21 +90,41 @@ export default {
         show: { type: Boolean, required: true },
     },
     data() {
-        return { limit: PAGE, PAGE, isMobile: false }
+        return { before: 20, after: PAGE, PAGE, isMobile: false }
     },
     computed: {
-        ...mapState('player', ['currentTrack', 'upNext', 'shuffleOn', 'repeatMode', 'isPlaying']),
-        ...mapGetters('player', ['upcoming', 'contextName']),
-        visibleUpcoming() {
-            return this.upcoming.slice(0, this.limit)
+        ...mapState('player', ['currentTrack', 'context', 'shuffleOn', 'repeatMode', 'isPlaying']),
+        ...mapGetters('player', ['queueItems', 'contextName']),
+        all() {
+            return this.queueItems
+        },
+        pos() {
+            return this.context ? Math.max(this.context.pos, 0) : 0
+        },
+        start() {
+            return Math.max(0, this.pos - this.before)
+        },
+        end() {
+            return Math.min(this.all.length, this.pos + 1 + this.after)
+        },
+        visible() {
+            return this.all.slice(this.start, this.end)
         },
     },
     watch: {
         show(open) {
             if (open) {
-                this.limit = PAGE
+                this.before = 20
+                this.after = PAGE
                 this.isMobile = window.innerWidth < 640
-                this.$nextTick(() => { if (this.$refs.scroller) this.$refs.scroller.scrollTop = 0 })
+                // 열면 지금 곡이 보이게(위쪽 지난 곡은 스크롤해서 본다)
+                this.$nextTick(() => {
+                    const sc = this.$refs.scroller
+                    const cur = [].concat(this.$refs.current || [])[0]
+                    if (!sc) return
+                    sc.scrollTop = 0
+                    if (cur) sc.scrollTop = Math.max(cur.getBoundingClientRect().top - sc.getBoundingClientRect().top - 8, 0)
+                })
             }
             // 모바일 전체 화면 시트일 때만 뒤 페이지 스크롤을 잠근다(데스크탑 서랍은 뒤 페이지를 계속 쓸 수 있다)
             document.body.style.overflow = open && window.innerWidth < 640 ? 'hidden' : ''
@@ -144,10 +134,14 @@ export default {
         document.body.style.overflow = ''
     },
     methods: {
-        ...mapActions('player', ['playQueueItem', 'removeFromQueue', 'clearUpNext', 'clearUpcoming', 'toggleShuffle', 'toggleRepeat']),
-        onMove(action, e) {
+        ...mapActions('player', ['playQueueItem', 'removeFromQueue', 'clearOthers', 'toggleShuffle', 'toggleRepeat']),
+        isCurrent(item) {
+            return !!(this.currentTrack && item.qid === this.currentTrack.qid)
+        },
+        // 보이는 구간 기준 위치 → 전체 위치
+        onMove(e) {
             if (e.oldIndex === e.newIndex) return
-            this.$store.dispatch(`player/${action}`, { from: e.oldIndex, to: e.newIndex })
+            this.$store.dispatch('player/moveInQueue', { from: this.start + e.oldIndex, to: this.start + e.newIndex })
             if ('vibrate' in navigator) navigator.vibrate(30)
         },
     },
@@ -186,6 +180,8 @@ export default {
     min-height: 60px;
 }
 .queue-row:hover { background: rgba(255, 255, 255, 0.04); }
+/* 지금 곡 — 배경과 글자색으로만 구분(칸을 나누지 않는다) */
+.queue-row.is-current { background: rgba(192, 132, 252, 0.1); }
 .row-main {
     display: flex;
     align-items: center;
@@ -216,7 +212,7 @@ export default {
     background: rgba(192, 132, 252, 0.12);
 }
 /* 재생 중 표시(막대 3개) */
-.eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; color: rgb(192, 132, 252); }
+.eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; flex-shrink: 0; color: rgb(192, 132, 252); }
 .eq i { width: 3px; background: currentColor; border-radius: 2px; animation: eq 1s ease-in-out infinite; }
 .eq i:nth-child(1) { height: 10px; }
 .eq i:nth-child(2) { height: 16px; animation-delay: -0.3s; }

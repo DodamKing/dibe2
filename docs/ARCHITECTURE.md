@@ -150,7 +150,7 @@ dibe2/
 ├── store/               # Vuex 스토어
 │   ├── index.js
 │   ├── auth.js          # 로그인/로그아웃
-│   ├── player.js        # 재생 대기열(2구역)·현재곡·재생 상태·볼륨·셔플·반복 ★ 핵심. 계산은 utils/queue.js
+│   ├── player.js        # 재생 대기열(한 줄 목록)·현재곡·재생 상태·볼륨·셔플·반복 ★ 핵심. 계산은 utils/queue.js
 │   ├── likes.js         # 좋아요 공유 상태
 │   ├── themes.js        # 테마 목록
 │   ├── playlist.js      # 내 플레이리스트 CRUD

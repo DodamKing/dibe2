@@ -39,7 +39,7 @@
 | 모듈 | 파일 | 역할 |
 |------|------|------|
 | `auth` | `store/auth.js` | 로그인 상태, user 객체 |
-| `player` | `store/player.js` | 재생 대기열(2구역), 현재곡, 재생 상태, 볼륨, 셔플, 반복. 대기열 계산은 `utils/queue.js` |
+| `player` | `store/player.js` | 재생 대기열(한 줄 목록), 현재곡, 재생 상태, 볼륨, 셔플, 반복. 대기열 계산은 `utils/queue.js` |
 | `themes` | `store/themes.js` | 테마 목록(세션 동안 한 번만 받음) |
 | `playlist` | `store/playlist.js` | 내 플레이리스트 CRUD |
 | `videoQueue` | `store/videoQueue.js` | 비디오 재생 큐, 현재 영상, 셔플/반복(player.js와 동일 패턴). 볼륨은 페이지 로컬 YT.Player가 직접 관리(스토어에 없음). localStorage 캐싱은 player.js와 동일 패턴 |
@@ -48,16 +48,21 @@
 | `likes` | `store/likes.js` | 좋아요 공유 상태(키 = Song._id). 차트·좋아요 목록·하단 플레이어가 같은 값을 본다. 누르면 먼저 바꿔 보여주고 실패하면 되돌림. 채우는 곳: 차트 응답의 `liked`(키는 **`songId`** — 차트 항목 `_id`는 곡이 아님), `/by-ids`(큐 새로고침), 현재 곡을 모르면 `ensure`. 로그아웃 시 RESET |
 
 ### player 스토어 주요 동작
-- **재생 대기열 = 2구역**(2026-11, 스포티파이·애플뮤직 방식, 설계 `docs/PLAYER_V2_PLAN.md`)
-  - `upNext` "다음에 재생" — 직접 넣은 곡(⋯ 메뉴·검색·선택 곡 추가). 항상 먼저 나오고 재생되면 빠진다. **한도 1000곡은 여기에만**
-  - `context` "다음: ○○에서" — 지금 듣는 목록 `{source, items, order, pos}`. 줄 클릭·전체 재생·셔플 재생이 통째로 바꾼다(upNext 는 지킨다). 한도 없음
-  - 계산은 전부 **`utils/queue.js` 순수 함수**(다음·이전·셔플·빼기·순서 바꾸기·옛 큐 변환), 테스트 `tests/queue.test.mjs`(`npm test`)
-  - 항목 `{qid, kind:'song'|'video', _id?, videoId?, title, artist, coverUrl}` — **곡 비교는 `qid`**(같은 곡 중복·유튜브 곡 가능). 가사 받기·재생수(`playTally.trackId`)·이어듣기 위치도 qid 기준
+- **재생 대기열 = 한 줄 목록 + 지금 위치**(2026-11-07, 멜론·지니·벅스의 "현재 재생목록" 방식. 2026-11-01~11-07엔 스포티파이식 2구역이었다 — `docs/PLAYER_V2_PLAN.md`)
+  - `context` `{source, items, order, pos}` 하나. `order.slice(0,pos)` = 지난 곡(패널에 그대로 남음), `order[pos]` = 지금 곡, 그 뒤 = 다음 곡
+  - 줄 클릭·전체 재생·셔플 재생 = **대기열 통째 교체**(확인창 없음). 검색 결과 줄 클릭은 그 곡 하나로 교체
+  - ⋯ "다음에 재생" = 지금 곡 바로 뒤 / "대기열 맨 뒤에 추가"·검색 "대기열에 추가" = 끝. **넣은 곡도 목록 안이라 들은 뒤에도 남고 전체 반복에 포함**. 원래 순서(`items`)에도 같은 자리에 넣어 셔플을 꺼도 넣은 자리가 유지된다
+  - 한도: **직접 넣은 곡(`added:true`)만 500곡**. 목록 통째 재생은 한도 없음
+  - 목록 이름(`contextName`): 직접 넣은 곡이 섞이면 "재생 대기열", 아니면 시작한 곳 이름(`source.name`)
+  - 대기열이 끝나 멈춘 뒤 추가하면 재생은 방금 넣은 곡부터
+  - 계산은 전부 **`utils/queue.js` 순수 함수**(다음·이전·셔플·추가·빼기·순서 바꾸기·옛 큐 변환), 테스트 `tests/queue.test.mjs`(`npm test`)
+  - 항목 `{qid, kind:'song'|'video', _id?, videoId?, title, artist, coverUrl, added?}` — **곡 비교는 `qid`**(같은 곡 중복·유튜브 곡 가능). 가사 받기·재생수(`playTally.trackId`)·이어듣기 위치도 qid 기준
   - `kind:'video'`(테마 곡)는 가사·재생수·하트·`/by-ids` 를 전부 건너뛴다
   - 곡 id 가 없는 차트 항목은 **재생 직전에** `/songdata` 로 찾는다(`resolveVideoId`) — 100곡을 미리 다 찾지 않는다
   - 다음: 곡이 끝나서(`{auto:true}`) 한 곡 반복이면 같은 곡, 사용자가 누른 다음·미디어 키는 넘어간다. 이전: 3초 넘게 들었으면 처음으로
   - 재생 실패(유튜브 주소 없음·임베드 차단 onError) → 알림 + 다음 곡, **5번 연속**이면 멈춤
-- `localStorage` `user_{id}_player_v2` 한 키에 `{currentTrack, upNext, context, history, shuffleOn}`(표시 최소 필드만 — `stripItem`). 볼륨·반복·위치는 따로
+- `localStorage` `user_{id}_player_v2` 한 키에 `{currentTrack, context, shuffleOn}`(표시 최소 필드만 — `stripItem`). 볼륨·반복·위치는 따로
+  - **2구역 시절 저장분(`upNext`·`history` 있음)은 읽을 때 합친다**(`mergeUpNext`): 들은 목록 곡 → 지금 곡 → "다음에 재생" 곡 → 남은 목록 곡. 키는 그대로라 배포를 롤백해도 예전 코드가 새 저장분을 읽는다(upNext 가 없을 뿐)
   - **옛 형식(`queue`·`original_queue`·`current_track`·`shuffle`)은 v2 키가 없을 때 한 번 변환**해 "이전 재생목록" context 가 된다(셔플 중이었으면 `original_queue`가 원래 순서). 🗑️ 옛 키는 롤백 대비로 안 지웠다 — 다음 릴리스에서 정리
   - lyrics는 캐시 안 함 (곡이 바뀔 때 `setCurrentTrack`이 `/api/songs/lyrics/:id`로 fetch — `fetchCurrentTrackLyrics`)
     - **서버가 가사를 즉석에서 채울 수 있어(lazy fill) 최대 1초쯤 걸린다.** 그래서 요청 시점의 `qid`와 응답 시점의 `currentTrack.qid`를 비교해 **늦게 온 응답을 다음 곡에 붙이지 않는 가드**가 있다
@@ -77,7 +82,7 @@
 ## 주요 컴포넌트
 - `MusicPlayer.vue`: 하단 미니 플레이어. 왼쪽 커버(누르면 "지금 재생 중")·제목·하트 / 가운데 셔플·이전·재생·다음·반복 / 오른쪽 시간·볼륨(손잡이)·대기열. **진행바는 플레이어 맨 위 가장자리에 화면 끝까지**(유튜브뮤직식, 마우스를 올리면 두꺼워지고 손잡이). 모바일은 커버·제목·하트·이전·재생·다음만 — 셔플·반복·대기열은 "지금 재생 중"에. "지금 재생 중"이 열려 있으면(데스크탑) 곡 정보는 숨긴다
 - `NowPlaying.vue`: 지금 재생 중 큰 화면. 데스크탑은 미니 플레이어를 남기고 위를 덮는다(큰 커버 + 가사/다음 곡 탭), 모바일은 전체 화면(자체 진행바·컨트롤, 아래 가사/재생 대기열 버튼)
-- `QueuePanel.vue`: 재생 대기열. 데스크탑 오른쪽 서랍(400px, 뒤 페이지 그대로 쓸 수 있음) / 모바일 전체 화면 시트. "다음에 재생"·"다음: ○○에서" 두 구역, 구역마다 비우기·빼기·구역 안 드래그(vuedraggable). 남은 목록은 100곡씩 그린다
+- `QueuePanel.vue`: 재생 대기열. 데스크탑 오른쪽 서랍(400px, 뒤 페이지 그대로 쓸 수 있음) / 모바일 전체 화면 시트. **한 목록**(멜론·유튜브 뮤직 구성) — 칸 구분 없이 재생 순서대로, 지금 곡만 배경·글자색으로 강조(지난 곡도 흐리게 안 함). **지금 곡까지 전부 드래그**(vuedraggable → `moveInQueue`, 재생은 안 끊기고 위치가 따라감)·빼기, "비우기" = 지금 곡만 남김. 열면 지금 곡 위치로 스크롤. 지금 곡 앞 20곡·뒤 100곡만 그리고 "더 보기"로 늘린다
 - `LyricsView.vue`: 가사 표시(정적). `lines`를 주면 싱크 가사로 그린다(아직 API 없음 — 하게 되면 앱 먼저)
 - `SongRow.vue`: 곡 한 줄(차트·좋아요 목록 공용). 데스크탑은 하트와 ⋯ 이 **마우스를 올리면** 보이고 좋아요한 곡 하트는 항상 보임 — `@media (hover: hover)`로만 숨겨서 터치 태블릿에선 항상 보인다. ⋯ → `SongMenuSheet`(좋아요 / 다음에 재생 / 대기열 맨 뒤에 추가 / 내 플레이리스트에 담기) — 모바일은 아래 시트, 데스크탑은 가운데 작은 창
 - **색**: `tailwind.config.js`의 `surface` 0(바탕)·1(헤더·플레이어)·2(카드). 순회색 대신 보라 기운을 살짝. 보라 강조(purple-500/400)는 재생 버튼·좋아요 하트에만 — 다 보라면 아무것도 안 튄다(2026-10-31 개편). 설정을 바꾸면 **dev를 다시 켜야** 새 색 클래스가 생긴다(안 그러면 배경이 하얗게 나옴)
@@ -101,7 +106,7 @@
 - **"지금 재생 중" 패널**(`showNowPlaying`, 하단 바의 "재생목록" 버튼으로 토글): 큰 영상 프레임 + 제목/채널명 + 그 아래 재생목록(`VideoQueueList`, 헤더 옆에 "현재 영상 추가" `+` 버튼)만 담당. 재생 컨트롤(이전/재생/다음/셔플/반복/음량/진행바)은 의도적으로 빼서 하단 고정 바와 중복 안 되게 함. "유튜브에서 보기" 링크도 정상재생 중엔 노출 안 함(차단 감지 안내 카드에만 남아있음). 닫기는 우측 상단 화살표 같은 별도 버튼이 아니라 하단 바의 "재생목록" 버튼을 다시 누르는 단순 토글(`showNowPlaying = !showNowPlaying`) — 패널이 하단 바를 가리지 않게 z-index를 더 낮게 둬서 항상 그 버튼을 누를 수 있게 함
 - **"추가" 버튼 위치**: 음원 대기열 패널(`QueuePanel.vue`)에도 "추가" 버튼이 없는 것과 동일하게, 재생 중인 영상을 빠르게 플레이리스트에 추가하는 길은 검색 카드의 "추가"가 기본. 다만 비디오는 "지금 재생 중" 패널의 재생목록 헤더 옆에 `+`를 하나 남겨둠(제목 줄 옆은 UX상 안 좋아서 위치만 재생목록 헤더로 이동)
 - "영상을 보고 싶을 때만 본다"는 의도로 영상 프레임 자체도 하단에 상시 고정하지 않고 이 패널 안에만 둠(음원의 "재생 대기열=`QueuePanel.vue` 토글"과 같은 토글 패턴이지만, 비디오는 영상 프레임도 같이 들어있다는 점만 다름)
-- 셔플/반복: `store/videoQueue.js`에 **2026-11 이전** 음원 `player.js`와 같은 방식으로 구현(음원은 지금 `utils/queue.js`의 2구역·`order` 방식 — 영상 모드를 손볼 때 맞출 것)(셔플은 현재 영상 제외하고 나머지 섞기 + `originalQueue` 보관 후 복원, 반복은 off→all→one 순환). 단, repeat `'one'`일 때 영상을 처음부터 재시작하는 실제 동작(`seekTo(0)` + `playVideo()`)은 스토어가 아니라 `pages/video/index.vue`의 `playNext()` 메서드에서 처리 — 비디오는 음원과 달리 공유 싱글톤 플레이어가 아니라 페이지 로컬 `YT.Player` 인스턴스이기 때문. 스토어의 `videoQueue/playNext` 액션은 일반 다음곡 진행 + repeat `'all'` 시 첫 곡으로 wraparound만 담당
+- 셔플/반복: `store/videoQueue.js`에 **2026-11 이전** 음원 `player.js`와 같은 방식으로 구현(음원은 지금 `utils/queue.js`의 한 줄 목록·`order` 방식 — 영상 모드를 손볼 때 맞출 것)(셔플은 현재 영상 제외하고 나머지 섞기 + `originalQueue` 보관 후 복원, 반복은 off→all→one 순환). 단, repeat `'one'`일 때 영상을 처음부터 재시작하는 실제 동작(`seekTo(0)` + `playVideo()`)은 스토어가 아니라 `pages/video/index.vue`의 `playNext()` 메서드에서 처리 — 비디오는 음원과 달리 공유 싱글톤 플레이어가 아니라 페이지 로컬 `YT.Player` 인스턴스이기 때문. 스토어의 `videoQueue/playNext` 액션은 일반 다음곡 진행 + repeat `'all'` 시 첫 곡으로 wraparound만 담당
 - 하단 바/패널 모두 `v-show`로만 토글 — `#video-page-player`는 항상 DOM에 남아있어서 탭을 전환하거나 패널을 닫아도 재생이 끊기지 않고 백그라운드에서 계속됨
 - 검색 결과 카드: 썸네일 클릭 = 명시적 재생(클릭 즉시 "지금 재생 중" 패널도 열림). 카드마다 별도로 항상 보이는 "추가" 버튼 → `VideoAddModal` 오픈. 선택모드/다건선택 없음 — 카드 단위로만 추가(음원의 체크박스+모달 패턴과 달리, 영상 카드는 이미 시각적으로 분리돼 있어 단건 추가만으로 충분하다고 판단)
 - **자동재생 방지**: `localStorage`에서 큐/현재영상이 복원될 때는 `autoplay:0`(cue만, 재생 안 함). 검색 결과 클릭/재생목록 항목 클릭/"전체재생" 등 명시적 액션만 autoplay — `pages/video/index.vue`의 `justRestored` 플래그(mount 시 true → `initializeQueue`가 동기적으로 currentVideo를 복원하면서 트리거되는 `currentVideo` watcher가 이 값을 읽어 autoplay 여부 결정 → 다음 tick에 false로 리셋)로 구분. 영상 종료(`onStateChange` ENDED) 시 큐의 다음 영상으로 자동 진행하는 건 재생목록의 정상 동작이라 별개(자동재생 방지 대상 아님)

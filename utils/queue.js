@@ -1,19 +1,22 @@
 // utils/queue.js — 재생 대기열 계산(순수 함수). 화면·네트워크·localStorage를 모른다.
 // store/player.js 가 이 함수들로 다음 상태를 만들고, tests/queue.test.mjs 가 그대로 검증한다.
 //
-// 구조 (스포티파이·애플뮤직과 같은 2구역, docs/PLAYER_V2_PLAN.md)
-//   upNext  : [item]  "다음에 재생" — 직접 넣은 곡. 항상 먼저 나오고, 재생되면 빠진다
-//   context : { source, items, order, pos }  "다음: ○○에서" — 지금 듣는 목록
-//             order = 재생 순서(items 의 인덱스). 셔플이면 섞여 있다
-//             pos   = order 안에서 마지막으로 재생한 목록 곡의 위치. upNext 곡을 듣는 동안엔 그대로 둔다
-//   history : [item]  upNext 곡을 연달아 들을 때의 "이전 곡"용
-//   currentTrack : 지금 곡. 목록 곡인지는 items[order[pos]].qid 와 같은지로 판단한다
+// 구조 — **한 줄 목록 + 지금 위치** (멜론·지니·벅스의 "현재 재생목록" 방식, 2026-11-07 사용자 결정)
+//   context : { source, items, order, pos }
+//             items = 목록(원래 순서). order = 재생 순서(items 의 인덱스, 셔플이면 섞여 있다)
+//             pos   = order 안에서 지금 곡의 위치. order.slice(0, pos) = 지난 곡(패널에 그대로 남는다)
+//   currentTrack = items[order[pos]]
 //
-// item = { qid, kind: 'song'|'video', _id?, videoId?, title, artist, coverUrl }
+// 예전엔 2구역(목록 + "다음에 재생" upNext, 스포티파이 방식)이었다. upNext 곡은 한 번 재생되면 사라져서
+// 검색에서 한 곡 틀고 몇 곡 추가 → 다 듣고 나면 처음 한 곡만 남아 그것만 반복되는 버그가 났다.
+// 이제 직접 넣은 곡도 목록 안에 들어가 **들은 뒤에도 남고 전체 반복에 포함된다.**
+//   줄 클릭·전체 재생 = 목록 교체 / "다음에 재생" = 지금 곡 바로 뒤 / "맨 뒤에 추가" = 끝
+//
+// item = { qid, kind: 'song'|'video', _id?, videoId?, title, artist, coverUrl, added? }
 //   qid 는 대기열에 들어갈 때마다 새로 붙는다 → 같은 곡을 두 번 넣어도 따로 다룬다
+//   added = 직접 넣은 곡(한도 계산용). 목록 통째 재생은 한도가 없다
 
-export const UP_NEXT_LIMIT = 1000
-const HISTORY_LIMIT = 50
+export const ADD_LIMIT = 500
 
 let seq = 0
 export function newQid() {
@@ -51,8 +54,8 @@ export function toVideoItem(video) {
 // localStorage 에 남길 최소 필드
 export function stripItem(item) {
     if (!item) return item
-    const { qid, kind, _id, videoId, title, artist, coverUrl } = item
-    return { qid, kind, _id, videoId, title, artist, coverUrl }
+    const { qid, kind, _id, videoId, title, artist, coverUrl, added } = item
+    return added ? { qid, kind, _id, videoId, title, artist, coverUrl, added } : { qid, kind, _id, videoId, title, artist, coverUrl }
 }
 
 function shuffled(arr, random = Math.random) {
@@ -77,20 +80,21 @@ export function contextItemAt(context, pos) {
     return context.items[context.order[pos]] || null
 }
 
-export function isFromContext(state) {
-    const cur = state.currentTrack
-    const at = contextItemAt(state.context, state.context ? state.context.pos : -1)
-    return !!(cur && at && at.qid === cur.qid)
-}
-
-// 앞으로 나올 목록 곡들(패널 아래 구역)
+// 앞으로 나올 곡들(패널 "다음" 구역)
 export function upcomingContext(state) {
     const ctx = state.context
     if (!ctx) return []
     return ctx.order.slice(ctx.pos + 1).map(i => ctx.items[i]).filter(Boolean)
 }
 
-// 목록을 새로 시작한다. upNext 는 건드리지 않는다
+// 이미 들은 곡들(지금 곡 앞쪽)
+export function playedContext(state) {
+    const ctx = state.context
+    if (!ctx || ctx.pos <= 0) return []
+    return ctx.order.slice(0, ctx.pos).map(i => ctx.items[i]).filter(Boolean)
+}
+
+// 목록을 새로 시작한다(대기열 교체)
 export function startContext(state, { source, items, index = 0, shuffle = false }, random = Math.random) {
     const list = items.filter(Boolean)
     if (!list.length) return state
@@ -98,7 +102,7 @@ export function startContext(state, { source, items, index = 0, shuffle = false 
     const order = buildOrder(list.length, shuffle, first, random)
     const pos = first === null ? 0 : order.indexOf(first)
     const context = { source, items: list, order, pos }
-    return { ...state, context, currentTrack: list[order[pos]], history: [], isQueueEnded: false }
+    return { ...state, context, currentTrack: list[order[pos]], isQueueEnded: false }
 }
 
 /**
@@ -109,27 +113,17 @@ export function startContext(state, { source, items, index = 0, shuffle = false 
 export function advance(state, { auto = false } = {}, random = Math.random) {
     if (auto && state.repeatMode === 'one' && state.currentTrack) return { state, result: 'replay' }
 
-    const fromCtx = isFromContext(state)
-    const prev = state.currentTrack
-
-    if (state.upNext.length) {
-        const [next, ...rest] = state.upNext
-        // upNext 곡을 연달아 들을 때만 history 에 쌓는다(목록 곡의 "이전"은 pos-1 로 간다)
-        const history = prev && !fromCtx ? [...state.history, prev].slice(-HISTORY_LIMIT) : []
-        return { state: { ...state, upNext: rest, currentTrack: next, history, isQueueEnded: false }, result: 'advanced' }
-    }
-
     const ctx = state.context
     if (ctx && ctx.pos + 1 < ctx.order.length) {
         const pos = ctx.pos + 1
-        return { state: { ...state, context: { ...ctx, pos }, currentTrack: contextItemAt(ctx, pos), history: [], isQueueEnded: false }, result: 'advanced' }
+        return { state: { ...state, context: { ...ctx, pos }, currentTrack: contextItemAt(ctx, pos), isQueueEnded: false }, result: 'advanced' }
     }
 
     if (ctx && ctx.items.length && state.repeatMode !== 'off') {
-        // 전체 반복(또는 한 곡 반복 중 "다음"): 처음으로. 셔플이면 새로 섞는다
+        // 전체 반복(또는 한 곡 반복 중 "다음"): 처음으로. 셔플이면 새로 섞는다. 직접 넣은 곡도 목록이라 같이 돈다
         const order = state.shuffleOn ? buildOrder(ctx.items.length, true, null, random) : ctx.order
         const next = { ...ctx, order, pos: 0 }
-        return { state: { ...state, context: next, currentTrack: contextItemAt(next, 0), history: [], isQueueEnded: false }, result: 'advanced' }
+        return { state: { ...state, context: next, currentTrack: contextItemAt(next, 0), isQueueEnded: false }, result: 'advanced' }
     }
 
     return { state: { ...state, isQueueEnded: true }, result: 'ended' }
@@ -141,60 +135,83 @@ export function restart(state, random = Math.random) {
     if (!ctx || !ctx.items.length) return { ...state, isQueueEnded: false }
     const order = state.shuffleOn ? buildOrder(ctx.items.length, true, null, random) : buildOrder(ctx.items.length, false)
     const next = { ...ctx, order, pos: 0 }
-    return { ...state, context: next, currentTrack: contextItemAt(next, 0), history: [], isQueueEnded: false }
+    return { ...state, context: next, currentTrack: contextItemAt(next, 0), isQueueEnded: false }
 }
 
 /**
  * 이전 곡. (3초 넘게 들었으면 처음으로 — 그 판단은 스토어가 currentTime 으로 한다)
- * 목록 곡이면 pos-1. upNext 출신 곡이면 지금 곡을 upNext 맨 앞에 되돌려 놓고
- * history → 없으면 마지막 목록 곡으로 간다(되돌린 곡은 "다음"을 누르면 다시 나온다).
- * 갈 곳이 없으면 null.
+ * 앞 곡으로. 첫 곡이면 전체 반복일 때만 마지막 곡으로. 갈 곳이 없으면 null.
  */
 export function stepBack(state) {
     const ctx = state.context
-    const cur = state.currentTrack
-    if (!cur) return null
-
-    if (isFromContext(state)) {
-        if (ctx.pos > 0) {
-            const pos = ctx.pos - 1
-            return { ...state, context: { ...ctx, pos }, currentTrack: contextItemAt(ctx, pos), isQueueEnded: false }
-        }
-        if (state.repeatMode === 'all' && ctx.order.length > 1) {
-            const pos = ctx.order.length - 1
-            return { ...state, context: { ...ctx, pos }, currentTrack: contextItemAt(ctx, pos), isQueueEnded: false }
-        }
-        return null
+    if (!state.currentTrack || !ctx) return null
+    if (ctx.pos > 0) {
+        const pos = ctx.pos - 1
+        return { ...state, context: { ...ctx, pos }, currentTrack: contextItemAt(ctx, pos), isQueueEnded: false }
     }
-
-    const upNext = [cur, ...state.upNext]
-    if (state.history.length) {
-        const history = state.history.slice(0, -1)
-        return { ...state, upNext, history, currentTrack: state.history[state.history.length - 1], isQueueEnded: false }
+    if (state.repeatMode === 'all' && ctx.order.length > 1) {
+        const pos = ctx.order.length - 1
+        return { ...state, context: { ...ctx, pos }, currentTrack: contextItemAt(ctx, pos), isQueueEnded: false }
     }
-    const back = contextItemAt(ctx, ctx ? ctx.pos : -1)
-    if (back) return { ...state, upNext, currentTrack: back, isQueueEnded: false }
     return null
 }
 
-// 직접 추가. front=true 면 "다음에 재생"(맨 앞), 아니면 맨 뒤
-export function addUpNext(state, items, { front = false } = {}) {
+/**
+ * 목록에 곡을 끼워 넣는다. itemAt = items(원래 순서) 안 자리, orderAt = order(재생 순서) 안 자리.
+ * 원래 순서에도 같은 자리에 넣어야 셔플을 껐을 때 "넣은 자리"가 유지된다.
+ */
+function insertInto(ctx, list, itemAt, orderAt) {
+    const k = list.length
+    const items = [...ctx.items.slice(0, itemAt), ...list, ...ctx.items.slice(itemAt)]
+    const shifted = ctx.order.map(i => (i >= itemAt ? i + k : i))
+    const added = list.map((_, j) => itemAt + j)
+    const order = [...shifted.slice(0, orderAt), ...added, ...shifted.slice(orderAt)]
+    const pos = ctx.pos >= orderAt ? ctx.pos + k : ctx.pos
+    return { ...ctx, items, order, pos }
+}
+
+export function addedCount(state) {
+    return state.context ? state.context.items.filter(i => i.added).length : 0
+}
+
+/**
+ * 직접 추가. front=true "다음에 재생"(지금 곡 바로 뒤), 아니면 맨 뒤.
+ * 대기열이 비어 있으면 넣은 곡들로 새 목록을 만들고 첫 곡을 지금 곡으로(재생은 사용자가 누를 때).
+ * 반환 { state, added, full } — full: 한도(ADD_LIMIT)에 걸려 일부만 들어갔거나 하나도 못 넣음
+ */
+export function addToQueue(state, items, { front = false } = {}) {
+    const room = ADD_LIMIT - addedCount(state)
     const list = items.filter(Boolean)
-    const room = UP_NEXT_LIMIT - state.upNext.length
-    if (room <= 0) return { state, added: 0, full: true }
-    const take = list.slice(0, room)
-    const upNext = front ? [...take, ...state.upNext] : [...state.upNext, ...take]
-    return { state: { ...state, upNext }, added: take.length, full: take.length < list.length }
+    if (room <= 0) return { state, added: 0, full: list.length > 0 }
+    const take = list.slice(0, room).map(i => ({ ...i, added: true }))
+    if (!take.length) return { state, added: 0, full: false }
+    const full = take.length < list.length
+
+    const ctx = state.context
+    if (!ctx || !ctx.items.length) {
+        const context = { source: { type: 'queue', id: null, name: '재생 대기열' }, items: take, order: buildOrder(take.length, false), pos: 0 }
+        return { state: { ...state, context, currentTrack: take[0], isQueueEnded: false }, added: take.length, full }
+    }
+
+    const cur = ctx.pos >= 0 ? ctx.order[ctx.pos] : -1
+    const next = front
+        ? insertInto(ctx, take, cur + 1, ctx.pos + 1)
+        : insertInto(ctx, take, ctx.items.length, ctx.order.length)
+    // 지금 곡이 없거나(곡을 다 빼서 멈춤) 대기열이 끝까지 재생돼 멈춘 상태면, 넣은 첫 곡을 지금 곡으로 —
+    // 재생을 누르면 처음부터가 아니라 방금 넣은 곡부터 나온다
+    if (!state.currentTrack || state.isQueueEnded) {
+        const pos = next.order.findIndex(i => next.items[i].qid === take[0].qid)
+        return { state: { ...state, context: { ...next, pos }, currentTrack: take[0], isQueueEnded: false }, added: take.length, full }
+    }
+    return { state: { ...state, context: next }, added: take.length, full }
 }
 
 /**
  * 대기열에서 빼기. 지금 곡이 빠지면 currentRemoved=true — 스토어가 다음 곡으로 넘긴다.
- * 목록에서 빼면 order 를 다시 매기고, pos 는 "다음에 advance 하면 빠진 곡의 다음 곡"이 되도록 맞춘다.
+ * order 를 다시 매기고, pos 는 "다음에 advance 하면 빠진 곡의 다음 곡"이 되도록 맞춘다.
  */
 export function removeItems(state, qids) {
     const drop = new Set(qids)
-    const upNext = state.upNext.filter(i => !drop.has(i.qid))
-    const history = state.history.filter(i => !drop.has(i.qid))
     const currentRemoved = !!(state.currentTrack && drop.has(state.currentTrack.qid))
 
     let context = state.context
@@ -217,62 +234,59 @@ export function removeItems(state, qids) {
             context = items.length ? { ...context, items, order, pos } : null
         }
     }
-    return { state: { ...state, upNext, history, context }, currentRemoved }
+    return { state: { ...state, context }, currentRemoved }
 }
 
-// "다음에 재생" 안에서 순서 바꾸기
-export function moveUpNext(state, from, to) {
-    const upNext = [...state.upNext]
-    if (from < 0 || from >= upNext.length || to < 0 || to >= upNext.length) return state
-    const [item] = upNext.splice(from, 1)
-    upNext.splice(to, 0, item)
-    return { ...state, upNext }
+// 패널에 보이는 순서 그대로의 전체 목록(들은 곡 + 지금 곡 + 다음 곡)
+export function queueItems(state) {
+    const ctx = state.context
+    if (!ctx) return []
+    return ctx.order.map(i => ctx.items[i]).filter(Boolean)
 }
 
-// 앞으로 나올 목록 곡 안에서 순서 바꾸기(from·to 는 upcomingContext 기준 위치). order 만 바뀐다 —
-// 셔플을 끄면 원래 순서로 돌아간다(스포티파이와 같음)
-export function moveContext(state, from, to) {
+/**
+ * 대기열 안에서 순서 바꾸기(from·to 는 queueItems 기준 위치 = 패널 순서). 지금 곡을 옮겨도 재생은 그대로이고
+ * pos 가 지금 곡을 따라간다. order 만 바뀐다 — 셔플을 끄면 원래 순서로 돌아간다(스포티파이와 같음).
+ * 패널은 한 목록이라 들은 곡·지금 곡까지 전부 옮길 수 있다(2026-11-07 사용자 결정)
+ */
+export function moveInQueue(state, from, to) {
     const ctx = state.context
     if (!ctx) return state
-    const head = ctx.order.slice(0, ctx.pos + 1)
-    const tail = ctx.order.slice(ctx.pos + 1)
-    if (from < 0 || from >= tail.length || to < 0 || to >= tail.length) return state
-    const [idx] = tail.splice(from, 1)
-    tail.splice(to, 0, idx)
-    return { ...state, context: { ...ctx, order: [...head, ...tail] } }
+    const n = ctx.order.length
+    if (from < 0 || from >= n || to < 0 || to >= n || from === to) return state
+    const cur = ctx.pos >= 0 ? ctx.order[ctx.pos] : null
+    const order = [...ctx.order]
+    const [idx] = order.splice(from, 1)
+    order.splice(to, 0, idx)
+    const pos = cur === null ? ctx.pos : order.indexOf(cur)
+    return { ...state, context: { ...ctx, order, pos } }
 }
 
-// 패널에서 곡을 눌러 바로 재생. upNext 곡이면 그 앞의 upNext 곡들은 건너뛴 것으로 보고 뺀다(스포티파이와 같음)
+// "비우기" — 지금 곡만 남긴다(재생은 그대로)
+export function othersThanCurrent(state) {
+    const cur = state.currentTrack
+    return queueItems(state).filter(i => !cur || i.qid !== cur.qid)
+}
+
+// 패널에서 곡을 눌러 바로 재생(들은 곡이든 다음 곡이든 그 자리로)
 export function jumpTo(state, qid) {
-    const ui = state.upNext.findIndex(i => i.qid === qid)
-    if (ui !== -1) {
-        return { ...state, currentTrack: state.upNext[ui], upNext: state.upNext.slice(ui + 1), history: [], isQueueEnded: false }
-    }
     const ctx = state.context
-    if (ctx) {
-        const pos = ctx.order.findIndex(i => ctx.items[i] && ctx.items[i].qid === qid)
-        if (pos !== -1) return { ...state, context: { ...ctx, pos }, currentTrack: contextItemAt(ctx, pos), history: [], isQueueEnded: false }
-    }
-    return state
+    if (!ctx) return state
+    const pos = ctx.order.findIndex(i => ctx.items[i] && ctx.items[i].qid === qid)
+    if (pos === -1) return state
+    return { ...state, context: { ...ctx, pos }, currentTrack: contextItemAt(ctx, pos), isQueueEnded: false }
 }
 
-// 셔플 켜기/끄기 — 목록만 다시 섞는다(upNext 는 그대로)
+// 셔플 켜기/끄기 — 켜면 지금 곡을 맨 앞에 두고 나머지를 섞는다(들은 곡 표시는 비워진다). 끄면 원래 순서의 지금 곡 자리로
 export function setShuffle(state, on, random = Math.random) {
     const ctx = state.context
     if (!ctx) return { ...state, shuffleOn: on }
-    const fromCtx = isFromContext(state)
-    const anchor = ctx.pos >= 0 ? ctx.order[ctx.pos] : null // 마지막으로 재생한 목록 곡(items 인덱스)
+    const anchor = ctx.pos >= 0 ? ctx.order[ctx.pos] : null
     let order
     let pos
     if (on) {
-        if (fromCtx) {
-            order = buildOrder(ctx.items.length, true, anchor, random)
-            pos = 0
-        } else {
-            // upNext 곡을 듣는 중 — 목록은 처음부터 섞어 두고, upNext 가 끝나면 그 맨 앞부터
-            order = buildOrder(ctx.items.length, true, null, random)
-            pos = -1
-        }
+        order = buildOrder(ctx.items.length, true, anchor, random)
+        pos = anchor === null ? -1 : 0
     } else {
         order = buildOrder(ctx.items.length, false)
         pos = anchor === null ? -1 : anchor
@@ -280,13 +294,12 @@ export function setShuffle(state, on, random = Math.random) {
     return { ...state, shuffleOn: on, context: { ...ctx, order, pos } }
 }
 
-// 대기열 전체 곡 수(지금 곡 + 다음에 재생 + 남은 목록)
+// 대기열 남은 곡 수(지금 곡 + 다음 곡들)
 export function queueLength(state) {
-    return (state.currentTrack ? 1 : 0) + state.upNext.length + upcomingContext(state).length
+    return (state.currentTrack ? 1 : 0) + upcomingContext(state).length
 }
 
 export function hasNext(state) {
-    if (state.upNext.length) return true
     const ctx = state.context
     if (!ctx) return false
     if (ctx.pos + 1 < ctx.order.length) return true
@@ -294,7 +307,41 @@ export function hasNext(state) {
 }
 
 /**
- * 옛 저장 형식(배열 하나) → 새 형식. 셔플 중이었다면 queue 는 이미 섞인 순서라
+ * 2구역 시절 저장 형식(context + upNext + history, 2026-11-01~11-07) → 한 줄.
+ * 순서: 들은 목록 곡 → 지금 곡 → "다음에 재생" 곡들 → 남은 목록 곡 (2026-11-07 결정)
+ * 지금 곡이 upNext 출신이면(목록의 pos 자리 곡이 아니면) 목록 지금 자리 바로 뒤에 넣는다.
+ */
+export function mergeUpNext({ context, upNext, currentTrack }) {
+    const extra = (upNext || []).filter(Boolean).map(i => ({ ...i, added: true }))
+    let ctx = context && context.items && context.items.length ? context : null
+    const at = contextItemAt(ctx, ctx ? ctx.pos : -1)
+    const curInCtx = !!(currentTrack && at && at.qid === currentTrack.qid)
+
+    if (!ctx) {
+        const list = [currentTrack ? { ...currentTrack, added: true } : null, ...extra].filter(Boolean)
+        if (!list.length) return { context: null, currentTrack: null }
+        return {
+            context: { source: { type: 'queue', id: null, name: '재생 대기열' }, items: list, order: buildOrder(list.length, false), pos: 0 },
+            currentTrack: list[0],
+        }
+    }
+
+    let cur = currentTrack
+    if (cur && !curInCtx) {
+        cur = { ...cur, added: true }
+        const ci = ctx.pos >= 0 ? ctx.order[ctx.pos] : -1
+        ctx = insertInto(ctx, [cur], ci + 1, ctx.pos + 1)
+        ctx = { ...ctx, pos: ctx.pos + 1 }
+    }
+    if (extra.length) {
+        const ci = ctx.pos >= 0 ? ctx.order[ctx.pos] : -1
+        ctx = insertInto(ctx, extra, ci + 1, ctx.pos + 1)
+    }
+    return { context: ctx, currentTrack: cur || contextItemAt(ctx, Math.max(ctx.pos, 0)) }
+}
+
+/**
+ * 옛 저장 형식(배열 하나, 2026-11 이전) → 새 형식. 셔플 중이었다면 queue 는 이미 섞인 순서라
  * original_queue 를 원래 순서로 쓴다. null 항목은 버리고, 지금 곡이 목록에 없으면 맨 앞에 넣는다.
  */
 export function migrateLegacy({ queue, originalQueue, currentTrack, shuffleOn }) {
@@ -328,5 +375,5 @@ export function migrateLegacy({ queue, originalQueue, currentTrack, shuffleOn })
     }
     const pos = curIdx === undefined ? 0 : order.indexOf(curIdx)
     const context = { source: { type: 'legacy', id: null, name: '이전 재생목록' }, items, order, pos }
-    return { context, upNext: [], currentTrack: curIdx === undefined ? items[order[0]] : items[curIdx] }
+    return { context, currentTrack: curIdx === undefined ? items[order[0]] : items[curIdx] }
 }

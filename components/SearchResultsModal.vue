@@ -159,7 +159,8 @@ export default {
         },
         // 줄 클릭 = 그 곡 하나만 재생. 검색 결과는 사용자가 고른 목록이 아니라 우연히 걸린 곡들이라
         // 차트처럼 "목록을 그 곡부터"로 하면 수십 곡이 대기열에 들어간다(2026-11-01 사용자 지적).
-        // 스포티파이·애플뮤직·앱(dibe2-app 피드백 #3)도 검색에선 그 곡만. "다음에 재생"에 넣어 둔 곡은 지켜진다
+        // 스포티파이·애플뮤직·앱(dibe2-app 피드백 #3)도 검색에선 그 곡만. 대기열을 이 한 곡으로 바꾸고,
+        // 이어 "대기열에 추가"한 곡은 그 뒤에 쌓여 들은 뒤에도 남는다(2026-11-07 한 줄 대기열)
         playOne(song) {
             this.$store.dispatch('player/playList', {
                 source: { type: 'search', id: String(song._id), name: `"${this.searchQuery}" 검색` },
@@ -173,8 +174,8 @@ export default {
             try {
                 // 검색 결과는 DB 곡(_id = 곡 id). 같은 곡이 이미 있어도 넣는다(업계 공통)
                 const { added, full } = await this.$store.dispatch('player/addToQueue', { songs: this.selectedSongs, idKey: '_id' })
-                this.notice(!added ? '재생 대기열이 가득 찼어요. (최대 1000곡)'
-                    : full ? `대기열에 ${added}곡만 추가했어요. (최대 1000곡)` : `${added}곡을 대기열에 추가했어요.`)
+                this.notice(!added ? '재생 대기열이 가득 찼어요. (직접 추가는 최대 500곡)'
+                    : full ? `대기열에 ${added}곡만 추가했어요. (직접 추가는 최대 500곡)` : `${added}곡을 대기열에 추가했어요.`)
                 this.selectedSongs = []
                 this.selectAll = false
             } catch (error) {
