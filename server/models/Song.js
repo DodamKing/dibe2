@@ -35,6 +35,9 @@ const songSchema = new mongoose.Schema({
      */
     lyricsCheckedAt: { type: Date },
     youtubeCheckedAt: { type: Date },
+    // 유튜브가 이 곡 검색어에 "연령을 인증하세요"만 돌려준 시각. 크론·즉석 채우기가 다시 시도하지 않고
+    // 관리자가 손으로 주소를 넣는다(넣으면 지워짐). 상세는 songService 의 isAgeGated
+    youtubeGatedAt: { type: Date },
     /**
      * 마지막으로 차트에 등장한 시각. 크론의 **우선순위 정렬 키**다.
      *

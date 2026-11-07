@@ -40,6 +40,36 @@ const durationFits = (songDuration, videoSeconds) => songDuration
 const youtubeQuery = (title, artist) =>
     `${title} ${artist} official audio`.replace(/#/g, ' ').replace(/\s+/g, ' ').trim()
 
+/**
+ * 유튜브는 로그인 안 한 검색에 **"연령을 인증하세요" 화면만 돌려주는 검색어**가 있다(2026-11-07 실측).
+ * 성인곡이라서가 아니다 — `약속 박화요비`, `Talk Saxy RIIZE` 처럼 평범한 곡도 걸린다.
+ * 지역(gl)·언어·동영상 필터·"official audio" 빼기·내부 검색 API 어느 쪽으로도 안 풀린다.
+ * 라이브러리는 이걸 그냥 "결과 0개"로 돌려줘서 일시 차단과 구분이 안 된다 → 0개일 때만 원본을 한 번 더 본다.
+ *
+ * 걸린 곡은 `youtubeGatedAt` 을 찍고 **다시 시도하지 않는다**. 관리자가 로그인한 브라우저에서 찾아
+ * 주소를 넣는다(관리자 음원 관리 → "연령 게이트" 필터). 주소를 저장하면 표시가 지워진다(updateSong).
+ * 찍지 않으면 매일 크론 맨 앞에서 예산을 먹어 뒤쪽 곡이 하루 3~7곡밖에 안 채워졌다.
+ */
+async function isAgeGated(query) {
+    try {
+        const res = await fetch('https://www.youtube.com/results?search_query=' + encodeURIComponent(query), {
+            headers: { 'accept-language': 'ko-KR,ko;q=0.9' },
+        })
+        const html = await res.text()
+        return html.includes('"backgroundPromoRenderer"') && !html.includes('"videoRenderer"')
+    } catch (err) {
+        return false // 확인 못 하면 게이트로 보지 않는다(멀쩡한 곡을 닫지 않게)
+    }
+}
+
+// 유튜브 검색. gated=true 면 연령 게이트(결과 0개일 때만 확인한다)
+async function searchYoutube(query, limit = 10) {
+    const res = await YouTubeSearch.GetListByKeyword(query, false, limit)
+    const items = (res && res.items) || []
+    const gated = items.length === 0 ? await isAgeGated(query) : false
+    return { items, gated }
+}
+
 // Netlify 스케줄 함수는 **30초 제한이고 설정으로 못 늘린다**(동기 60초 / 백그라운드 15분과 별개).
 // 타임아웃은 강제 종료라 catch 가 안 돌아 알림도 없이 조용히 죽는다.
 // 그래서 크론이 도는 함수는 전부 시간 예산을 보고 스스로 멈춘다.
@@ -82,7 +112,7 @@ const LYRICS_PENDING = {
 
 const createFlexibleRegex = (query) => {
     // 쿼리의 각 문자 사이에 선택적 공백을 허용하는 정규표현식 생성
-    const flexibleQuery = query.split('').join('\\s*');
+    const flexibleQuery = String(query || '').split('').join('\\s*');
     return new RegExp(flexibleQuery, 'i');
 };
 
@@ -163,10 +193,11 @@ module.exports = {
             const songs = await db.Song.find({
                 youtubeUrl: { $in: [null, ''] },
                 youtubeCheckedAt: { $exists: false },
+                youtubeGatedAt: { $exists: false },
             })
                 .sort(CRON_ORDER)
                 .limit(40)
-            let filled = 0, closed = 0, failed = 0, budgetHit = false
+            let filled = 0, closed = 0, gated = 0, failed = 0, budgetHit = false
 
             for (const song of songs) {
                 if (overBudget(startedAt)) {
@@ -176,8 +207,8 @@ module.exports = {
                 }
                 try {
                     const searchQuery = youtubeQuery(song.title, song.artist)
-                    const searchResults = await YouTubeSearch.GetListByKeyword(searchQuery, false, 10)
-                    const hadResults = !!(searchResults && searchResults.items && searchResults.items.length > 0)
+                    const searchResults = await searchYoutube(searchQuery)
+                    const hadResults = searchResults.items.length > 0
 
                     let foundSuitableVideo = false
 
@@ -209,6 +240,10 @@ module.exports = {
                         console.log(`YouTube URL 결과 없음: ${song.title} by ${song.artist}`)
                         await song.updateOne({ youtubeCheckedAt: new Date() })
                         closed++
+                    } else if (searchResults.gated) {
+                        console.log(`YouTube 연령 게이트: ${song.title} by ${song.artist}`)
+                        await song.updateOne({ youtubeGatedAt: new Date() })
+                        gated++
                     } else {
                         // 아이템 0개 = 유튜브가 예외 대신 빈 결과로 조용히 막았을 수 있다.
                         // 여기서 마커를 찍으면 멀쩡한 곡을 "영상 없음"으로 영구 오염시키므로,
@@ -223,8 +258,8 @@ module.exports = {
                     console.error('유튜브 검색하다 에러남:', searchErr)
                 }
             }
-            console.log(`YouTube URL 업데이트: ${filled}곡 채움 | ${closed}곡 없음확정 | ${failed}곡 실패`)
-            return { target: songs.length, filled, closed, failed, budgetHit }
+            console.log(`YouTube URL 업데이트: ${filled}곡 채움 | ${closed}곡 없음확정 | ${gated}곡 연령게이트 | ${failed}곡 실패`)
+            return { target: songs.length, filled, closed, gated, failed, budgetHit }
         } catch (err) {
             console.error('YouTube URL 업데이트 중 오류 발생:', err)
             throw err // 삼키면 크론 기록이 ok 로 남는다
@@ -234,13 +269,17 @@ module.exports = {
     updateYoutubeUrl: async (_id) => {
         try {
             const song = await db.Song.findById(_id)
+            if (song.youtubeGatedAt) return undefined // 연령 게이트 — 다시 검색해도 같다. 관리자가 채운다
             const searchQuery = youtubeQuery(song.title, song.artist)
-            const searchResults = await YouTubeSearch.GetListByKeyword(searchQuery, false, 10)
+            const searchResults = await searchYoutube(searchQuery)
 
             let foundSuitableVideo = false
             let youtubeUrl
 
-            if (searchResults && searchResults.items && searchResults.items.length > 0) {
+            if (searchResults.gated) {
+                await song.updateOne({ youtubeGatedAt: new Date() })
+                console.log(`YouTube 연령 게이트: ${song.title} by ${song.artist}`)
+            } else if (searchResults.items.length > 0) {
                 for (const item of searchResults.items) {
                     const durationInSeconds = parseSimpleTextDuration(item.length.simpleText)
 
@@ -273,10 +312,20 @@ module.exports = {
 
     getYoutubeUrlsByYouTubeSearch: async (query) => {
         try {
-            const searchResults = await YouTubeSearch.GetListByKeyword(query, false, 5)
+            const searchResults = await searchYoutube(query, 5)
             let youtubeUrls = [];
 
-            if (searchResults?.items?.length > 0) {
+            // 관리자 화면의 서버 검색도 같은 게이트에 막힌다 — 직접 찾아 붙여 넣으라고 알린다
+            if (searchResults.gated) {
+                return {
+                    success: false,
+                    gated: true,
+                    message: '유튜브가 연령 인증을 요구해 검색이 막혔어요. 로그인한 유튜브에서 직접 찾아 주소를 붙여 넣으세요.',
+                    results: []
+                }
+            }
+
+            if (searchResults.items.length > 0) {
                 for (const item of searchResults.items) {
                     if (!item.length?.simpleText) continue
 
@@ -469,6 +518,12 @@ module.exports = {
             searchCriteria = {
                 [type]: { $regex: query, $options: 'i' }
             };
+        } else if (type === 'ytgated') {
+            // 관리자 "연령 게이트" 필터 — 유튜브 주소를 손으로 넣어야 하는 곡. 검색어는 있으면 좁히는 용도
+            searchCriteria = { youtubeGatedAt: { $exists: true }, youtubeUrl: { $in: [null, ''] } };
+            if (query && query.trim()) {
+                searchCriteria.$or = [{ title: { $regex: flexibleRegex } }, { artist: { $regex: flexibleRegex } }];
+            }
         } else {
             searchCriteria = {
                 [type]: { $regex: flexibleRegex }
@@ -625,7 +680,14 @@ module.exports = {
 
     updateSong: async (songId, updateData) => {
         try {
-            const updatedSong = await db.Song.findByIdAndUpdate(songId, updateData, { new: true })
+            // 관리자가 유튜브 주소를 넣으면 연령 게이트·없음 표시를 지운다(크론·즉석 채우기가 다시 건드리지 않게 하던 표시)
+            // (폼이 곡 객체를 통째로 보내면 같은 필드를 $set·$unset 하게 돼 Mongo 가 거부하므로 먼저 뺀다)
+            let update = updateData
+            if (updateData && updateData.youtubeUrl) {
+                const { youtubeGatedAt, youtubeCheckedAt, ...rest } = updateData
+                update = { ...rest, $unset: { youtubeGatedAt: 1, youtubeCheckedAt: 1 } }
+            }
+            const updatedSong = await db.Song.findByIdAndUpdate(songId, update, { new: true })
             if (!updatedSong) {
                 return { success: false, message: '음원을 찾을 수 없습니다.' }
             }

@@ -31,6 +31,7 @@
   adult: Boolean (default: false),  // 벅스 19금 배지 — 가사를 원리적으로 못 받는 곡
   lyricsCheckedAt: Date,            // "찾아봤는데 없더라" 마커 (영구 실패만)
   youtubeCheckedAt: Date,           // 〃
+  youtubeGatedAt: Date,             // 유튜브가 검색에 연령 인증만 돌려줌 — 자동 재시도 안 함, 관리자가 주소를 넣으면 지워짐(CRON_EXTERNAL.md)
   lastChartedAt: Date,              // 마지막 차트 등장 — 크론 우선순위 정렬 키
   chartHits: Number (default: 0),   // 차트 등장 횟수 — 인기 신호(추천 콜드스타트)
   genre: [String],                  // 벅스 앨범 페이지의 "장르" (큰 분류, UI 필터용)

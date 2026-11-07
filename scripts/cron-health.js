@@ -37,7 +37,7 @@ async function main() {
     const runs = await CronRun.find({ startedAt: { $gte: since } }).sort({ startedAt: -1 }).lean()
     const fmtStats = st => !st ? '' : [
         st.target != null && `대상 ${st.target}`, st.filled != null && `채움 ${st.filled}`,
-        st.closed != null && `닫음 ${st.closed}`, st.failed != null && `실패 ${st.failed}`,
+        st.closed != null && `닫음 ${st.closed}`, st.gated != null && `연령게이트 ${st.gated}`, st.failed != null && `실패 ${st.failed}`,
         st.budgetHit && '예산초과', st.marked != null && `센 곡 ${st.marked}`,
         st.ms && `[${Object.entries(st.ms).map(([k, v]) => `${k} ${(v / 1000).toFixed(1)}`).join(' / ')}]`,
     ].filter(Boolean).join(' · ')
@@ -72,6 +72,7 @@ async function main() {
     const ytBacklog = await Song.countDocuments({
         youtubeUrl: { $in: [null, ''] },
         youtubeCheckedAt: { $exists: false },
+        youtubeGatedAt: { $exists: false },
     })
     // lyrics: LYRICS_PENDING 필터 (adult·detailLink 없음·마커 제외 → 크론이 실제로 시도할 곡)
     const lyBacklog = await Song.countDocuments({
@@ -92,8 +93,11 @@ async function main() {
     const ytClosed = await Song.countDocuments({ youtubeCheckedAt: { $exists: true } })
     const lyClosed = await Song.countDocuments({ lyricsCheckedAt: { $exists: true }, lyrics: { $in: [null, ''] } })
     const lyAdult = await Song.countDocuments({ adult: true, lyrics: { $in: [null, ''] } })
+    // 연령 게이트 = 유튜브가 로그인 안 한 검색을 막은 곡. 관리자 음원 관리 → "연령 게이트" 필터에서 손으로 채운다
+    const ytGated = await Song.countDocuments({ youtubeGatedAt: { $exists: true }, youtubeUrl: { $in: [null, ''] } })
     console.log('\n  (참고) 못 받아 닫은 곡: ' +
         `youtube ${n(ytClosed)} · lyrics(없음확정) ${n(lyClosed)} · lyrics(19금) ${n(lyAdult)}`)
+    console.log(`  (관리자 할 일) 유튜브 연령 게이트 — 주소를 손으로 넣을 곡: ${n(ytGated)}`)
 
     // ── 3) 크론 속도로 백로그 소진까지 걸리는 시간(ETA) ──────────────────
     // youtube: 곡당 (검색 ~1s + sleep 1s) ≈ 2s → 22s 예산에 ~10곡/일.

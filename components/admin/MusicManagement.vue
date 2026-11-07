@@ -18,6 +18,7 @@
                             <option value="all">전체</option>
                             <option value="title">제목</option>
                             <option value="artist">아티스트</option>
+                            <option value="ytgated">연령 게이트</option>
                         </select>
                         <button @click="searchSongs"
                             class="px-5 sm:px-6 py-2 min-h-[44px] bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 whitespace-nowrap">
@@ -418,7 +419,8 @@ export default {
             return song.coverUrl.replace('/50/', `/${size}/`)
         },
         async searchSongs() {
-            if (!this.searchQuery.trim()) return
+            // "연령 게이트"는 유튜브가 검색을 막아 주소를 손으로 넣어야 하는 곡 목록 — 검색어 없이도 전부 보여준다
+            if (!this.searchQuery.trim() && this.searchType !== 'ytgated') return
 
             this.loading = true;
             this.currentPage = 1;
@@ -669,6 +671,10 @@ export default {
                 });
                 this.youtubeSearchResults = response.results;
                 this.showYoutubeResults = true;
+                if (!response.results.length) {
+                    this.$toast.info(response.message || 'YouTube 검색 결과가 없습니다.');
+                    return
+                }
                 // 결과는 폼 아래에 붙어서 뜬다. 모바일은 화면이 좁아 **검색을 눌러도 아무 일도
                 // 안 일어난 것처럼 보인다**(결과가 화면 밖). 결과로 데려다준다.
                 this.$nextTick(() => {
