@@ -19,4 +19,17 @@ router.get('/search', async (req, res) => {
     }
 })
 
+// POST /api/youtube/:videoId/play — 유튜브 영상 재생 1회 기록(테마 곡·영상 페이지, 30초/절반 도달 시)
+// body: { title, artist, source: 'theme'|'video', theme }
+router.post('/:videoId/play', async (req, res, next) => {
+    const { videoId } = req.params
+    if (!/^[\w-]{11}$/.test(videoId)) return res.status(400).json({ message: '잘못된 영상 ID입니다.' })
+    const { title, artist, source, theme } = req.body || {}
+    try {
+        res.json(await services.statsService.recordVideoPlay(req.user.userId, { videoId, title, artist, source, theme }))
+    } catch (err) {
+        next(err)
+    }
+})
+
 module.exports = router

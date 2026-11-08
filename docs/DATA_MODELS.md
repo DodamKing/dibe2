@@ -79,13 +79,17 @@
 ```
 {
   user: ObjectId (ref: User, required),
-  song: ObjectId (ref: Song, required),
-  source: 'chart'|'playlist'|'search'|'recent'|'video'|'unknown' (default: unknown),
+  song: ObjectId (ref: Song),        // 벅스 곡 재생 — song 또는 videoId 둘 중 하나는 필수(pre validate)
+  videoId: String,                   // 유튜브 영상 재생(2026-11-08~) — 테마 곡·영상 페이지
+  title: String, artist: String,     // 영상만 — Song 이 없어 그때 값을 남긴다(영상 페이지는 채널명)
+  theme: String,                     // 테마에서 재생했으면 Theme.key
+  source: 'chart'|'playlist'|'search'|'recent'|'video'|'theme'|'unknown' (default: unknown),
   playedAt: Date (default: now)
 }
 ```
+- 🔴 **2026-11-08부터 `song` 없는 행(영상)이 섞인다.** `song`으로 집계하는 코드는 `song: {$ne: null}`로 거를 것(현재 읽는 곳: 관리자 대시보드 — 곡/영상을 나눠 묶음, `statsService.recordPlay` 중복 가드 — song 조건이라 무관). 영상 기록은 웹만, 앱은 아직 곡만 보낸다
 - **추천 기능을 위해 미리 쌓아두는 이력 로그.** 최근성·개인 취향·유입 경로 같은 신호는 카운터만으론 복원이 불가능해서 이벤트로 남긴다
-- 인덱스: `{user, playedAt:-1}`(개인 청취 이력), `{song, playedAt:-1}`(기간별 트렌딩), `{user, song, playedAt:-1}`(중복 가드), `{playedAt}` **TTL 180일**
+- 인덱스: `{user, playedAt:-1}`(개인 청취 이력), `{song, playedAt:-1}`(기간별 트렌딩), `{user, song, playedAt:-1}`(중복 가드), `{videoId, playedAt:-1}`(영상, partial), `{playedAt}` **TTL 180일**
 - TTL로 180일 뒤 자동 삭제 — 추천은 최근성이 핵심이라 오래된 이력은 가치가 낮고, 누적 재생수는 `Song.playCount`에 남아 있어 손실이 없다
 - 기록 시점은 앱이 **30초/50% 재생 도달** 시 1회. 스킵한 곡이 취향 신호를 오염시키지 않게 하려는 것(스포티파이/유튜브와 같은 방식)
 

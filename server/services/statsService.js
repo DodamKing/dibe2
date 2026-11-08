@@ -94,6 +94,27 @@ module.exports = {
         return { songs, total, page, limit, hasMore: skip + songs.length < total }
     },
 
+    // 유튜브 영상 재생 1회 기록(테마 곡·영상 페이지) — 곡 기록과 같은 기준(30초/절반)·같은 중복 창.
+    // Song 이 없어 제목·아티스트를 같이 남긴다. 반환 counted=false 면 중복으로 무시한 것
+    recordVideoPlay: async (userId, { videoId, title, artist, source, theme }) => {
+        requireUserId(userId)
+        const recent = await db.PlayEvent.findOne({
+            user: userId,
+            videoId,
+            playedAt: { $gte: new Date(Date.now() - PLAY_DEDUPE_WINDOW_MS) },
+        }).select('_id')
+        if (recent) return { counted: false }
+        await db.PlayEvent.create({
+            user: userId,
+            videoId,
+            title: title ? String(title).slice(0, 200) : undefined,
+            artist: artist ? String(artist).slice(0, 200) : undefined,
+            source: source === 'theme' ? 'theme' : 'video',
+            theme: source === 'theme' && theme ? String(theme).slice(0, 40) : undefined,
+        })
+        return { counted: true }
+    },
+
     // 재생 1회 기록. 앱이 30초/50% 도달 시 호출한다.
     recordPlay: async (userId, songId, source = 'unknown') => {
         requireUserId(userId)

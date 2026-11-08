@@ -84,6 +84,7 @@
 | Method | Path | 설명 |
 |--------|------|------|
 | GET | `/search?query=&limit=` | 유튜브 영상 검색 (비디오 페이지 전용, 길이 필터 없음). 응답: `{ items: [{id, title, duration, thumbnail, channelTitle}] }` |
+| POST | `/:videoId/play` | 유튜브 영상 재생 1회 기록(2026-11-08) — 테마 곡·영상 페이지, **30초/절반 도달 시**. body `{ title, artist, source: 'theme'\|'video', theme }`. 같은 영상 20초 안 재발사는 `{counted:false}`. videoId 11자 아니면 400. 웹만 보낸다(앱은 아직) |
 
 ## Users (`/api/users`) - server/api/user.js
 | Method | Path | 설명 |

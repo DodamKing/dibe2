@@ -228,6 +228,7 @@ export default {
             loading: false,
             hasSearched: false,
             player: null,
+            playTally: null, // 재생 수 기록용 { id, seconds, counted } — 반응형 필요 없음
             isBlocked: false,
             tabs: [
                 { key: 'search', label: '검색' },
@@ -388,8 +389,21 @@ export default {
                 if (this.player && this.player.getCurrentTime) {
                     this.currentTime = this.player.getCurrentTime()
                     this.duration = this.player.getDuration()
+                    this.tallyPlay()
                 }
             }, 1000)
+        },
+        // 재생 1회 기록 — 음원 플레이어(store/player.js tallyPlay)와 같은 기준: 실제로 30초 또는 절반 재생(2026-11-08)
+        tallyPlay() {
+            const v = this.currentVideo
+            if (!v || !this.player.getPlayerState || this.player.getPlayerState() !== 1) return // 1 = 재생 중
+            if (!this.playTally || this.playTally.id !== v.id) this.playTally = { id: v.id, seconds: 0, counted: false }
+            const t = this.playTally
+            t.seconds += 1
+            if (!t.counted && (t.seconds >= 30 || (this.duration > 0 && t.seconds >= this.duration / 2))) {
+                t.counted = true
+                this.$axios.$post(`/api/youtube/${v.id}/play`, { title: v.title, artist: v.channelTitle, source: 'video' }).catch(() => {})
+            }
         },
         stopTimeUpdate() {
             if (this.timeUpdateInterval) {

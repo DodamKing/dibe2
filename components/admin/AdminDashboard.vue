@@ -105,7 +105,7 @@
                     <div><dt>신규 <span class="block text-[11px] font-normal">7일</span></dt><dd>{{ fmt(data.users.new7d) }}</dd></div>
                     <div><dt>활동 <span class="block text-[11px] font-normal">7일 / 30일</span></dt><dd>{{ data.users.active7d }} / {{ data.users.active30d }}</dd></div>
                 </dl>
-                <p class="mt-1 text-xs text-gray-400">활동 = 그 기간에 곡을 재생한 사용자 (테마·영상만 들은 경우는 안 잡힘)</p>
+                <p class="mt-1 text-xs text-gray-400">활동 = 그 기간에 재생한 사용자 (웹·앱 합산. 테마·영상은 웹만 2026-11-08부터)</p>
 
                 <h4 class="sub-title">최근 활동 <span class="font-normal text-gray-400">마지막 재생</span></h4>
                 <p v-if="!data.users.recentActive.length" class="text-sm text-gray-400">재생 기록 없음</p>
@@ -149,10 +149,11 @@
                     <li v-for="(s, i) in data.usage.top" :key="i" class="py-1.5 flex items-center gap-2 min-w-0">
                         <span class="w-4 shrink-0 text-gray-400 tabular-nums">{{ i + 1 }}</span>
                         <span class="truncate text-gray-900">{{ s.title }} <span class="text-gray-500">· {{ s.artist }}</span></span>
+                        <span v-if="s.kind !== 'song'" class="shrink-0 px-1.5 rounded bg-red-50 text-[11px] text-red-600">{{ s.kind === 'theme' ? '테마' : '영상' }}</span>
                         <span class="ml-auto shrink-0 text-gray-500 tabular-nums">{{ s.plays }}회</span>
                     </li>
                 </ol>
-                <p class="mt-1 text-xs text-gray-400">벅스 곡 재생만 집계 (테마·영상 제외)</p>
+                <p class="mt-1 text-xs text-gray-400">테마·영상은 웹 재생만 2026-11-08부터 집계</p>
             </section>
         </div>
     </div>

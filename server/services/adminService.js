@@ -19,7 +19,7 @@ class AdminService {
 	 * 관리자 대시보드 — "손볼 게 있나"를 한 번에 (2026-11-08 재구성).
 	 * 예전 방문자 통계(visitor_stats)는 기록 미들웨어가 2026-04 레거시 제거 때 지워져 3-29 이후 비어 있었고,
 	 * 로그인해야 쓰는 서비스라 페이지뷰보다 "재생한 사용자"(PlayEvent)가 트래픽을 더 잘 보여줘서 대체했다.
-	 * 단 PlayEvent 는 벅스 곡(Song) 재생만 기록 — 테마·영상만 듣는 사용자는 활동 사용자에 안 잡힌다
+	 * 2026-11-08부터 유튜브 영상(테마·영상 페이지) 재생도 PlayEvent 에 쌓인다 — 웹만. 앱은 아직 곡만 보낸다
 	 */
 	async getDashboard(now = Date.now()) {
 		const [cron, music, themes, users, usage] = await Promise.all([
@@ -130,21 +130,27 @@ class AdminService {
 		}
 	}
 
-	// 이용: 최근 7일 재생 수·많이 들은 곡 (PlayEvent = 벅스 곡 재생만)
+	// 이용: 최근 7일 재생 수·많이 들은 곡 (PlayEvent — 곡 + 유튜브 영상)
 	async _usage(now) {
 		const since = new Date(now - 7 * DAY)
 		const [plays7d, top] = await Promise.all([
 			db.PlayEvent.countDocuments({ playedAt: { $gte: since } }),
+			// 곡은 song, 유튜브 영상(테마·영상 페이지)은 videoId 로 묶는다. 영상 제목·아티스트는 기록 때 같이 남긴 값
 			db.PlayEvent.aggregate([
 				{ $match: { playedAt: { $gte: since } } },
-				{ $group: { _id: '$song', n: { $sum: 1 } } },
+				{ $group: { _id: { song: '$song', videoId: '$videoId' }, n: { $sum: 1 }, vTitle: { $last: '$title' }, vArtist: { $last: '$artist' }, source: { $last: '$source' } } },
 				{ $sort: { n: -1 } },
 				{ $limit: 5 },
-				{ $lookup: { from: 'songs', localField: '_id', foreignField: '_id', as: 's' } },
-				{ $project: { n: 1, title: { $first: '$s.title' }, artist: { $first: '$s.artist' } } },
+				{ $lookup: { from: 'songs', localField: '_id.song', foreignField: '_id', as: 's' } },
+				{ $project: { n: 1, vTitle: 1, vArtist: 1, source: 1, isVideo: { $eq: [{ $ifNull: ['$_id.song', null] }, null] }, title: { $first: '$s.title' }, artist: { $first: '$s.artist' } } },
 			]),
 		])
-		return { plays7d, top: top.map((t) => ({ title: t.title || '(삭제된 곡)', artist: t.artist || '', plays: t.n })) }
+		return {
+			plays7d,
+			top: top.map((t) => (t.isVideo
+				? { title: t.vTitle || '(제목 없음)', artist: t.vArtist || '', plays: t.n, kind: t.source === 'theme' ? 'theme' : 'video' }
+				: { title: t.title || '(삭제된 곡)', artist: t.artist || '', plays: t.n, kind: 'song' })),
+		}
 	}
 
 	async setUserAccessPeriod(userId, days) {

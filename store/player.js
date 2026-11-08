@@ -539,10 +539,15 @@ export const actions = {
 
     // 재생 수 기록 — 앱과 같은 기준: 이 곡을 **실제로 30초 또는 절반** 들으면 1회(넘긴 곡은 안 셈).
     // 폴링 횟수가 아니라 경과 시간으로 더한다(좀비 복구로 폴링이 겹쳐도 두 배로 세지 않게, 한 틱 최대 2초).
-    // 서버는 같은 곡 20초 내 재발사를 무시하므로 중복 걱정은 없다. 유튜브 곡(테마)은 곡 id가 없어 세지 않는다
+    // 서버는 같은 곡 20초 내 재발사를 무시하므로 중복 걱정은 없다.
+    // 유튜브 곡(테마)은 videoId 로 따로 기록한다(2026-11-08). 테마 여부는 지금 듣는 목록(context)으로 본다 —
+    // 테마 목록에 다른 데서 넣은 영상도 테마로 잡히지만, 웹에서 영상이 들어오는 곳은 테마뿐이라 사실상 같다
     tallyPlay({ state, commit }, duration) {
         const track = state.currentTrack
-        if (!track || track.kind !== 'song' || !track._id) return
+        if (!track) return
+        const isSong = track.kind === 'song' && track._id
+        const isVideo = track.kind === 'video' && track.videoId
+        if (!isSong && !isVideo) return
         const now = Date.now()
         let { trackId, seconds, counted, lastTick } = state.playTally
         if (trackId !== track.qid) {
@@ -554,8 +559,16 @@ export const actions = {
         seconds += Math.min((now - lastTick) / 1000, 2)
         if (!counted && (seconds >= 30 || (duration > 0 && seconds >= duration / 2))) {
             counted = true
-            // 웹은 "어디서 틀었나"를 추적하지 않는다 → unknown
-            this.$axios.$post(`/api/songs/${track._id}/play`, { source: 'unknown' }).catch(() => {})
+            if (isSong) {
+                // 웹은 "어디서 틀었나"를 추적하지 않는다 → unknown
+                this.$axios.$post(`/api/songs/${track._id}/play`, { source: 'unknown' }).catch(() => {})
+            } else {
+                const src = state.context && state.context.source
+                const theme = src && src.type === 'theme' && src.id ? String(src.id).split(':')[0] : null
+                this.$axios.$post(`/api/youtube/${track.videoId}/play`, {
+                    title: track.title, artist: track.artist, source: theme ? 'theme' : 'video', theme,
+                }).catch(() => {})
+            }
         }
         commit('SET_PLAY_TALLY', { trackId, seconds, counted, lastTick: now })
     },
