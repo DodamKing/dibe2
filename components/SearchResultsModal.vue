@@ -12,13 +12,13 @@
                     <form class="relative flex-1" @submit.prevent="executeSearch">
                         <div class="flex items-center gap-2 h-11 px-4 rounded-full bg-surface-2 text-gray-400 focus-within:ring-2 focus-within:ring-purple-400">
                             <Icon name="search" />
-                            <input ref="input" v-model="localQuery" type="search" aria-label="검색어" placeholder="노래, 앨범, 아티스트 검색" autocomplete="off"
+                            <input ref="input" :value="localQuery" @input="localQuery = $event.target.value" type="search" aria-label="검색어" placeholder="노래, 앨범, 아티스트 검색" autocomplete="off"
                                 class="flex-1 min-w-0 bg-transparent text-white placeholder-gray-400 focus:outline-none"
                                 @focus="inputFocused = true" @blur="inputFocused = false" @keydown="onKey">
                         </div>
                         <!-- 결과를 보다가 검색어를 고치는 중이면(지금 검색어와 다르면) 자동완성을 띄운다 -->
                         <SearchSuggest ref="suggest" :query="localQuery" :open="inputFocused && localQuery.trim() !== searchQuery.trim()"
-                            @search="runSearch" @pick-song="pickSong" @pick-artist="pickArtist" />
+                            @search="runSearch" @search-song="searchSong" @pick-song="pickSong" @pick-artist="pickArtist" />
                     </form>
                     <button type="button" class="w-11 h-11 flex items-center justify-center rounded-full text-gray-300 hover:text-white hover:bg-white hover:bg-opacity-5" aria-label="검색 닫기" @click="$emit('close')">
                         <Icon name="x" />
@@ -186,6 +186,11 @@ export default {
         pickArtist(name) {
             if (this.$refs.input) this.$refs.input.blur()
             this.$store.dispatch('search/searchArtist', name)
+        },
+        // 자동완성 곡 줄 = "제목 가수"로 검색. 제목 탭이면 가수가 안 맞으니 '전체' 탭으로
+        searchSong(q) {
+            if (this.$refs.input) this.$refs.input.blur()
+            this.$store.dispatch('search/searchAll', q)
         },
         pickSong(song) {
             addRecent('music', this.localQuery)

@@ -9,6 +9,7 @@
   - 🔴 `<Icon @click>`은 **안 먹는다**(Vue 2 컴포넌트엔 `.native` 필요) — 누르는 아이콘은 `<button>`으로 감쌀 것
 - `components/CoverImg.vue` — 곡 커버. 유튜브 썸네일(`hqdefault`)은 위아래 검은 띠가 박혀 있어 `video` 를 주면 띠만큼 확대해 잘라낸다
 - `components/BackButton.vue` — 뒤로가기(배경 없는 화살표, 올리면 옅은 원). 제목 바로 왼쪽. 돌아갈 곳이 없으면 `fallback`
+- 🔴 **글자 칠 때마다 반응하는 입력칸(검색·자동완성)은 `v-model` 대신 `:value` + `@input`.** Vue 2 `v-model`은 한글 조합 중인 글자를 반영 안 해 한 글자씩 늦는다(2026-11-08, `docs/SEARCH.md`)
 - **체크박스는 `assets/css/global.css`** 에서 전역으로 꾸민다(어두운 테두리 → 체크하면 보라). 클래스 안 붙여도 된다
 - 창(모달)은 같은 틀: 어두운 카드 `bg-surface-2`, 모바일은 아래 시트·데스크탑은 가운데, Esc·바깥 누르면 닫기 — `SongMenuSheet`·`CreatePlaylistModal`·레이아웃의 "담기" 시트
 

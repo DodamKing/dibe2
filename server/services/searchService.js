@@ -186,6 +186,21 @@ async function search(query, type = 'all') {
  * 입력 중 자동완성 — 가수 몇 명 + 곡 몇 개. 색인에 있는 값만 써서 DB를 안 읽는다(타이핑마다 불리므로)
  * 가수 = 가수 필드로 맞은 곡을 가수명별로 묶어 최고 점수·곡 수 순. 커버는 그 가수의 가장 높은 곡
  */
+/**
+ * 자동완성 곡 칸 = 제목으로 맞은 곡 먼저, 모자라면 전체 순위로 채운다.
+ * 전체 순위만 쓰면 "아이"에 아이유·아이오아이 곡이 곡 칸까지 차지해 위의 가수 칸과 겹쳤다(2026-11-08).
+ * 제목만 쓰면 "아이유 좋은"·"newjeans"·오타가 비어서 채우기로
+ */
+function pickSongs(all, byTitle, n) {
+    const out = byTitle.slice(0, n)
+    const seen = new Set(out.map((h) => h.song.id))
+    for (const h of all) {
+        if (out.length >= n) break
+        if (!seen.has(h.song.id)) { out.push(h); seen.add(h.song.id) }
+    }
+    return out
+}
+
 async function suggest(query, { artists: nArtists = 3, songs: nSongs = 5 } = {}) {
     const tokens = parseQuery(query)
     if (!tokens.length) return { artists: [], songs: [], fuzzy: false }
@@ -206,7 +221,8 @@ async function suggest(query, { artists: nArtists = 3, songs: nSongs = 5 } = {})
     return {
         artists: [...groups.values()].sort((a, b) => b.best - a.best || b.count - a.count).slice(0, nArtists)
             .map(({ name, count, coverUrl }) => ({ name, count, coverUrl })),
-        songs: all.slice(0, nSongs).map((h) => ({ _id: h.song.id, ...h.song.raw })),
+        songs: pickSongs(all, fuzzy ? [] : sortHits(rank(index, tokens, ['title'], false)), nSongs)
+            .map((h) => ({ _id: h.song.id, ...h.song.raw })),
         fuzzy,
     }
 }

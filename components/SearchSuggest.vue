@@ -45,7 +45,11 @@
                             <p class="text-sm truncate"><HighlightText :text="it.title" :query="query" /></p>
                             <p class="text-xs text-gray-400 truncate"><HighlightText :text="it.artist" :query="query" /></p>
                         </div>
-                        <Icon name="play" :size="14" filled class="text-gray-500 shrink-0" />
+                        <!-- 줄 = 그 곡으로 검색, ▶ = 바로 재생 -->
+                        <button type="button" class="-mr-2 w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:text-white hover:bg-white hover:bg-opacity-10 shrink-0"
+                            :aria-label="`${it.title} 바로 재생`" @click.stop="$emit('pick-song', it)">
+                            <Icon name="play" :size="16" filled />
+                        </button>
                     </template>
                     <template v-else>
                         <Icon name="search" :size="18" class="text-purple-300 shrink-0" />
@@ -61,6 +65,14 @@
 import HighlightText from '~/components/HighlightText.vue'
 import { getRecent, removeRecent, clearRecent } from '~/utils/recentSearches'
 
+// 자동완성 곡 → 검색어 "제목 가수". 제목이 같은 곡이 많아(사랑…) 가수까지 넣고, 괄호(feat.·영문 병기)는 뺀다
+const stripParens = (s) => String(s || '').replace(/\s*[([].*?[)\]]\s*/g, ' ').replace(/\s+/g, ' ').trim()
+export function songQuery(song) {
+    const title = stripParens(song.title) || String(song.title || '').trim()
+    const artist = stripParens(song.artist) || String(song.artist || '').trim()
+    return [title, artist].filter(Boolean).join(' ')
+}
+
 export default {
     components: { HighlightText },
     props: {
@@ -75,7 +87,11 @@ export default {
     },
     computed: {
         mode() {
-            return this.query.trim() && this.suggest ? 'suggest' : this.query.trim() ? 'none' : 'recent'
+            const q = this.query.trim()
+            if (!q) return 'recent'
+            // 초성 한 글자(ㅇ)는 아무 곡이나 걸려 의미가 없다 → 두 글자부터
+            if (!this.suggest || /^[ㄱ-ㅎ]$/.test(q)) return 'none'
+            return 'suggest'
         },
         items() {
             if (this.mode === 'recent') return this.recent.map((q) => ({ type: 'recent', q, key: 'r' + q }))
@@ -121,7 +137,7 @@ export default {
         choose(it) {
             if (it.type === 'recent') this.$emit('search', it.q)
             else if (it.type === 'artist') this.$emit('pick-artist', it.name)
-            else if (it.type === 'song') this.$emit('pick-song', it)
+            else if (it.type === 'song') this.$emit('search-song', songQuery(it))
             else this.$emit('search', this.query.trim())
         },
         remove(q) {

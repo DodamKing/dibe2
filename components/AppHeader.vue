@@ -23,13 +23,13 @@
                                 <button type="button" class="shrink-0 hover:text-white" aria-label="검색" @click="executeSearch">
                                     <Icon name="search" />
                                 </button>
-                                <input ref="desktopInput" v-model="localSearchQuery" type="search" aria-label="검색어" autocomplete="off"
+                                <input ref="desktopInput" :value="localSearchQuery" @input="localSearchQuery = $event.target.value" type="search" aria-label="검색어" autocomplete="off"
                                     placeholder="노래, 앨범, 아티스트 검색"
                                     class="flex-1 min-w-0 bg-transparent text-white text-sm placeholder-gray-400 focus:outline-none"
                                     @focus="suggestOpen = true" @blur="suggestOpen = false" @keydown="onSearchKey($event, 'desktopSuggest')">
                             </div>
                             <SearchSuggest ref="desktopSuggest" :query="localSearchQuery" :open="suggestOpen"
-                                class="min-w-[20rem] lg:min-w-[24rem]" @search="runSearch" @pick-song="pickSong" @pick-artist="pickArtist" />
+                                class="min-w-[20rem] lg:min-w-[24rem]" @search="runSearch" @search-song="runSearch" @pick-song="pickSong" @pick-artist="pickArtist" />
                         </div>
                         <NuxtLink to="/video" aria-label="유튜브 영상 검색" title="유튜브 영상 검색"
                             class="flex items-center justify-center gap-2 text-white w-11 h-11 sm:w-auto sm:h-10 sm:px-4 sm:rounded-full sm:border sm:border-white sm:border-opacity-10 sm:hover:bg-white sm:hover:bg-opacity-5">
@@ -54,7 +54,7 @@
                     </button>
                     <div class="flex-1 min-w-0 flex items-center gap-2 h-10 px-3 rounded-full bg-surface-2 text-gray-400 focus-within:ring-2 focus-within:ring-purple-400">
                         <Icon name="search" :size="18" />
-                        <input ref="mobileSearchInput" v-model="localSearchQuery" type="search" aria-label="검색어" enterkeyhint="search" autocomplete="off"
+                        <input ref="mobileSearchInput" :value="localSearchQuery" @input="localSearchQuery = $event.target.value" type="search" aria-label="검색어" enterkeyhint="search" autocomplete="off"
                             placeholder="노래, 앨범, 아티스트 검색" class="flex-1 min-w-0 bg-transparent text-white placeholder-gray-400 focus:outline-none"
                             @keydown="onSearchKey($event, 'mobileSuggest')">
                     </div>
@@ -63,7 +63,7 @@
                 <!-- 모바일: 막대 바로 아래 최근 검색어·자동완성 -->
                 <div class="px-2 pt-2" @click.stop>
                     <SearchSuggest ref="mobileSuggest" inline :query="localSearchQuery" :open="showSearch"
-                        @search="runSearch" @pick-song="pickSong" @pick-artist="pickArtist" />
+                        @search="runSearch" @search-song="runSearch" @pick-song="pickSong" @pick-artist="pickArtist" />
                 </div>
             </div>
         </transition>
@@ -122,7 +122,7 @@ export default {
             this.closeInputs()
             this.searchArtist(name)
         },
-        // 자동완성의 곡 = 그 곡 하나 바로 재생(검색 결과 줄 클릭과 같음). 검색어는 최근 검색어에 남긴다
+        // 자동완성 곡의 ▶ = 그 곡 하나 바로 재생(검색 결과 줄 클릭과 같음). 곡 줄 자체는 "제목 가수" 검색(runSearch). 검색어는 최근 검색어에 남긴다
         pickSong(song) {
             addRecent('music', this.localSearchQuery)
             this.closeInputs()

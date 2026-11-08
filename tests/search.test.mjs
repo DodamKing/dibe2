@@ -37,6 +37,7 @@ const rows = [
     { _id: 'b2', title: '참 좋은 날', artist: '이찬원', album: 'Y', playCount: 1 },
     { _id: 'c1', title: '소년만화', artist: 'QWER', album: '2nd Mini', playCount: 9 },
     { _id: 'd1', title: '갑자기', artist: '아이오아이(I.O.I)', album: 'Z', playCount: 9 },
+    { _id: 'e1', title: '아이 좋아', artist: '린(LYn)', album: 'W', playCount: 0 },
 ]
 svc._resetForTest(svc.indexFromRows(rows))
 const ids = async (q, type) => (await svc.search(q, type)).items.map((x) => x.id)
@@ -63,4 +64,13 @@ test('오타는 정확히 맞는 게 없을 때만, 길이가 비슷한 쪽이 �
     assert.equal(r.fuzzy, true)
     assert.notEqual(r.items[0].id, 'd1')
     assert.equal((await svc.search('밤편지')).fuzzy, false)
+})
+
+test('자동완성 곡 칸 — 제목으로 맞은 곡 먼저, 모자라면 가수 등으로 채운다', async () => {
+    const a = await svc.suggest('아이')
+    assert.equal(a.songs[0]._id, 'e1') // 인기 낮아도 제목 일치가 가수로 맞은 곡(아이유·아이오아이)보다 위
+    assert.equal(a.songs.length, 5)
+    assert.equal(a.artists[0].name.includes('아이'), true)
+    const b = await svc.suggest('아이유 좋은')
+    assert.deepEqual(b.songs.map((x) => x._id), ['a2']) // 제목만으론 0곡 → 전체 순위로 채움
 })

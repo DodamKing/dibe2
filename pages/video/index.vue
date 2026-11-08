@@ -15,7 +15,7 @@
             </div>
             <div v-if="activeTab === 'search'" class="max-w-7xl mx-auto px-4 py-3">
                 <div class="relative">
-                    <input ref="searchInput" v-model="query" type="search" placeholder="유튜브에서 검색..." autocomplete="off" enterkeyhint="search"
+                    <input ref="searchInput" :value="query" @input="query = $event.target.value" type="search" placeholder="유튜브에서 검색..." autocomplete="off" enterkeyhint="search"
                         class="w-full bg-white bg-opacity-10 text-white placeholder-gray-400 rounded-full py-3 pl-5 pr-14 focus:outline-none focus:ring-2 focus:ring-white focus:bg-opacity-20 text-base"
                         @focus="recentOpen = true" @blur="recentOpen = false" @keydown="onSearchKey">
                     <button @click="search" aria-label="검색"
