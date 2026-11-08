@@ -103,12 +103,13 @@
 
 | Method | Path | 설명 |
 |--------|------|------|
-| GET | `/` | 활성 테마 목록(order 순). 응답: `{ themes: [{ key, name, songCount, updatedAt, cover }] }`. `cover` = core 점수 1위 국내곡 썸네일(앱 카드 그림, 없으면 null) |
-| GET | `/:key?seed=` | 테마 곡 50개. 응답: `{ theme: {key, name}, seed, updatedAt, songs: [{ videoId, title, artist, duration, thumbnail, tier }] }`. 없는·비활성 테마는 404 |
+| GET | `/` | 활성 테마 목록(order 순). 응답: `{ themes: [{ key, name, songCount, updatedAt, listUpdatedAt, cover }] }`. `cover` = 이번 주 목록 첫 곡(국내곡) 썸네일(앱 카드 그림, 없으면 null) |
+| GET | `/:key?seed=` | 테마 곡 50개. 응답: `{ theme: {key, name}, seed, updatedAt, listUpdatedAt, songs: [{ videoId, title, artist, duration, thumbnail, tier }] }`. 없는·비활성 테마는 404 |
 
 - **결과는 유튜브 영상**이라 `Song`과 무관하다(`songId` 없음). 재생은 `videoId` 그대로, 썸네일은 서버가 `i.ytimg.com/vi/{id}/hqdefault.jpg`로 만들어 준다
-- **`seed`**: 같은 seed면 같은 50곡·같은 순서. 안 보내면 서버가 랜덤으로 정해 응답에 넣는다 → 앱이 "새로고침"은 seed 없이, "아까 그 목록 다시 그리기"는 받은 seed로 요청
-- 구성: 대표곡 15(항상) + 핵심 20(가중 랜덤) + 탐색 15(`tier: 'explore'`, 1개 리스트에만 나온 곡). 해외곡 최대 5
+- **주간 목록(2026-11-08~)**: seed 없이 부르면 **이번 주 목록**(월요일 00:00 KST에 바뀜, 그 주엔 누구나 같은 50곡). `listUpdatedAt` = 이번 주 시작 시각(화면의 "○월 ○일 업데이트"), `updatedAt` = 후보 풀 수집 시각
+- **`seed`**: 같은 seed면 같은 50곡·같은 순서. 응답의 seed를 다시 보내면 재현된다(이번 주 seed면 이번 주 목록). 이전처럼 임의 seed를 보내도 그 seed로 뽑은 목록이 온다(지난주 감점 없음)
+- 구성: 대표곡 5(항상) + 핵심 30(가중 랜덤) + 탐색 15(`tier: 'explore'`, 1개 리스트에만 나온 곡). 해외곡 최대 5. 지난주에 나온 곡은 대표곡 외엔 뽑힐 확률 1/4
 - API는 DB만 읽는다(유튜브 요청 없음). 풀 갱신은 `scripts/refresh-themes.js`
 - `duration`은 초 단위 숫자(비디오 플레이리스트의 `"3:45"` 문자열과 다르다)
 

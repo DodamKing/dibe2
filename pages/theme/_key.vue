@@ -11,7 +11,7 @@
 				<h1 class="text-2xl sm:text-4xl font-bold truncate">{{ name || listName }}</h1>
 				<p class="mt-1.5 text-[13px] text-gray-400 flex items-center gap-1.5">
 					<Icon name="youtube" :size="14" class="text-red-400" />
-					{{ songs.length || 50 }}곡 · 유튜브<template v-if="updatedAt"> · {{ fmt(updatedAt) }} 갱신</template>
+					{{ songs.length || 50 }}곡 · 유튜브<template v-if="listUpdatedAt"> · {{ fmt(listUpdatedAt) }} 업데이트</template>
 				</p>
 			</div>
 		</section>
@@ -62,7 +62,7 @@ export default {
 	components: { SongMenuSheet },
 	layout: 'main',
 	data() {
-		return { name: '', songs: [], seed: null, updatedAt: null, failed: false, menuSong: null }
+		return { name: '', songs: [], seed: null, listUpdatedAt: null, failed: false, menuSong: null }
 	},
 	head() {
 		return { title: `${this.name || '테마'} | DIBE2` }
@@ -71,14 +71,15 @@ export default {
 		key() {
 			return this.$route.params.key
 		},
-		// 목록 카드와 같은 그림(1위 곡). 목록을 아직 안 받았으면 첫 곡
 		listName() {
 			const t = this.$store.state.themes.list.find(x => x.key === this.key)
 			return t ? t.name : ''
 		},
+		// 커버 = 이번 주 목록 첫 곡(목록 카드와 같은 그림). 곡을 받기 전엔 카드 그림
 		cover() {
+			if (this.songs[0]) return this.songs[0].thumbnail
 			const t = this.$store.state.themes.list.find(x => x.key === this.key)
-			return (t && t.cover) || (this.songs[0] && this.songs[0].thumbnail) || ''
+			return (t && t.cover) || ''
 		},
 	},
 	mounted() {
@@ -94,7 +95,7 @@ export default {
 				this.name = res.theme.name
 				this.songs = res.songs || []
 				this.seed = res.seed
-				this.updatedAt = res.updatedAt
+				this.listUpdatedAt = res.listUpdatedAt
 			} catch (err) {
 				this.failed = true
 			}

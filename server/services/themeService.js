@@ -4,7 +4,48 @@ const { Theme, ThemeSong } = require('../models')
 const HALF_LIFE_DAYS = 45 // 수집에서 안 보이게 된 곡의 점수 반감기
 const PRUNE_SCORE = 0.05  // 감쇠로 이 아래가 되면 풀에서 삭제
 
-const LIST = { fixed: 15, core: 20, explore: 15, foreignCap: 5 }
+// 대표곡은 매주 나오므로 적게(15 → 5, 2026-11-08). 나머지는 주마다 바뀐다
+const LIST = { fixed: 5, core: 30, explore: 15, foreignCap: 5, lastWeekWeight: 0.25 }
+
+// ---------- 주간 목록 (2026-11-08) ----------
+// 목록은 한 주(월요일 00:00 KST 시작) 동안 고정 — 누가 언제 들어가도 같은 50곡. 주가 바뀌면 새로 뽑는다.
+// 지난주 목록에 나온 곡은 뽑힐 확률을 lastWeekWeight 배로(대표곡 제외) — 연달아 같은 곡이 덜 나오게
+const WEEK_MS = 7 * 864e5
+const KST_MS = 9 * 36e5
+const MONDAY_OFFSET_MS = 4 * 864e5 // 1970-01-01은 목요일 → 첫 월요일은 1-05
+const weekOf = (now = Date.now()) => Math.floor((now + KST_MS - MONDAY_OFFSET_MS) / WEEK_MS)
+const weekStartOf = (week) => new Date(week * WEEK_MS + MONDAY_OFFSET_MS - KST_MS)
+
+// 테마·주 → seed (테마마다 다른 순서가 나오게 키를 섞는다). 1 ~ 2^31-2
+function weekSeed(themeKey, week) {
+    let h = 2166136261
+    for (const ch of `${themeKey}:${week}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619)
+    return ((h >>> 0) % 2147483646) + 1
+}
+
+// 지난주 목록을 다시 계산해 감점 기준으로 쓴다. 지난주 목록도 그 전주를 감점해 만들었으므로 몇 주 거슬러
+// 올라가서 계산한다(깊이 제한 — 그 이상은 영향이 거의 없다). 풀이 갱신되면 지난주 목록도 새 풀 기준으로 계산된다
+const WEEK_DEPTH = 3
+function buildWeekList(pool, themeKey, week, depth = WEEK_DEPTH) {
+    const prev = depth > 0 ? buildWeekList(pool, themeKey, week - 1, depth - 1) : []
+    return buildList(pool, weekSeed(themeKey, week), LIST, new Set(prev.map((s) => s.videoId)))
+}
+
+// 같은 함수 인스턴스가 살아 있는 동안 주간 목록 캐시 (테마·주·수집 시각이 같으면 같은 목록)
+const weekCache = new Map()
+async function weekListFor(theme, week) {
+    const ck = `${theme.key}:${week}:${theme.lastRefreshedAt ? new Date(theme.lastRefreshedAt).getTime() : 0}`
+    if (weekCache.has(ck)) return weekCache.get(ck)
+    const pool = await loadPool(theme.key)
+    const list = buildWeekList(pool, theme.key, week)
+    if (weekCache.size > 50) weekCache.clear()
+    weekCache.set(ck, list)
+    return list
+}
+
+const loadPool = (key) => ThemeSong.find({ theme: key })
+    .select('videoId title artist duration score tier foreign')
+    .lean()
 
 // 시드 고정 난수 (mulberry32) — 같은 seed면 같은 목록
 function seeded(a) {
@@ -18,14 +59,16 @@ function seeded(a) {
 
 /**
  * 후보 풀에서 50곡 고르기 (순수 함수 — 스크립트 dry-run 샘플에서도 쓴다)
- * 대표곡 15(core 상위, 항상 포함) + 핵심 20(나머지 core 점수 비례 랜덤) + 탐색 15(explore 균등 랜덤)
- * 해외곡은 전체 최대 5. 핵심 2곡 사이에 탐색 1곡꼴로 섞는다.
+ * 대표곡 5(core 상위, 항상 포함) + 핵심 30(나머지 core 점수 비례 랜덤) + 탐색 15(explore 균등 랜덤)
+ * 해외곡은 전체 최대 5. 핵심 2곡 사이에 탐색 1곡꼴로 섞는다. 첫 곡은 국내곡(커버로 쓴다).
+ * avoid(videoId Set) = 지난주에 나온 곡 — 대표곡 외에는 뽑힐 가중치를 opts.lastWeekWeight 배로
  */
-function buildList(pool, seed, opts = LIST) {
+function buildList(pool, seed, opts = LIST, avoid = new Set()) {
     const rnd = seeded(seed)
+    const damp = (s) => (avoid.has(s.videoId) ? (opts.lastWeekWeight == null ? 1 : opts.lastWeekWeight) : 1)
     // 가중 비복원 추출 (Efraimidis-Spirakis): key = u^(1/w) 상위 n개
     const pickWeighted = (arr, n, w) => arr
-        .map((s) => ({ s, k: Math.pow(rnd(), 1 / Math.max(w(s), 1e-6)) }))
+        .map((s) => ({ s, k: Math.pow(rnd(), 1 / Math.max(w(s) * damp(s), 1e-6)) }))
         .sort((a, b) => b.k - a.k).slice(0, n).map((x) => x.s)
     const shuffle = (arr) => arr.map((s) => ({ s, k: rnd() })).sort((a, b) => a.k - b.k).map((x) => x.s)
     let foreignUsed = 0
@@ -54,6 +97,9 @@ function buildList(pool, seed, opts = LIST) {
         for (let k = 0; k < 2 && ci < main.length; k++) push(main[ci++])
         if (ei < explorePicked.length) push(explorePicked[ei++])
     }
+    // 첫 곡 = 커버. 해외곡이면 첫 국내곡을 맨 앞으로
+    const firstDomestic = out.findIndex((s) => !s.foreign)
+    if (firstDomestic > 0) out.unshift(out.splice(firstDomestic, 1)[0])
     return out
 }
 
@@ -71,36 +117,39 @@ function toItem(s) {
 const thumbnailOf = (videoId) => `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
 
 // GET /api/themes
-// cover = 그 테마 core 점수 1위(국내곡)의 썸네일 — 앱 카드 그림. 앱이 테마별 그림을 들고 있지 않아도
-// 정의 추가(배포 없음)만으로 새 테마 카드가 그려진다. 1위는 수집 갱신 때만 바뀌므로 평소엔 같은 그림
-async function listThemes() {
+// cover = 이번 주 목록의 첫 곡(국내곡) 썸네일 — 앱 카드 그림. 앱이 테마별 그림을 들고 있지 않아도
+// 정의 추가(배포 없음)만으로 새 테마 카드가 그려진다. 목록과 함께 매주 바뀐다
+// listUpdatedAt = 이번 주 목록이 바뀐 시각(월요일 00:00 KST) — 화면의 "○월 ○일 업데이트"
+// updatedAt = 후보 풀 수집 시각(관리자용. 예전 앱 호환으로 이름 유지)
+async function listThemes(now = Date.now()) {
     const themes = await Theme.find({ active: true }).sort({ order: 1 }).lean()
-    const tops = await Promise.all(themes.map((t) => ThemeSong
-        .findOne({ theme: t.key, tier: 'core', foreign: { $ne: true } })
-        .sort({ score: -1 }).select('videoId').lean()))
+    const week = weekOf(now)
+    const lists = await Promise.all(themes.map((t) => weekListFor(t, week)))
     return themes.map((t, i) => ({
         key: t.key,
         name: t.name,
         songCount: t.lastStats ? (t.lastStats.core || 0) + (t.lastStats.explore || 0) : 0,
         updatedAt: t.lastRefreshedAt || null,
-        cover: tops[i] ? thumbnailOf(tops[i].videoId) : null,
+        listUpdatedAt: weekStartOf(week),
+        cover: lists[i][0] ? thumbnailOf(lists[i][0].videoId) : null,
     }))
 }
 
 // GET /api/themes/:key?seed= — 없는(또는 비활성) 테마면 null
-async function getThemePlaylist(key, seedParam) {
+// seed 없음 = 이번 주 목록(기본). seed 있음 = 그 seed로 뽑은 목록(앱의 "아까 그 목록" 재현 — 주간 seed도 그대로 재현된다)
+async function getThemePlaylist(key, seedParam, now = Date.now()) {
     const theme = await Theme.findOne({ key, active: true }).lean()
     if (!theme) return null
-    const pool = await ThemeSong.find({ theme: key })
-        .select('videoId title artist duration score tier foreign')
-        .lean()
+    const week = weekOf(now)
     const parsed = parseInt(seedParam, 10)
-    const seed = Number.isFinite(parsed) && parsed > 0 ? parsed : Math.floor(Math.random() * 2147483646) + 1
+    const custom = Number.isFinite(parsed) && parsed > 0 && parsed !== weekSeed(key, week)
+    const songs = custom ? buildList(await loadPool(key), parsed) : await weekListFor(theme, week)
     return {
         theme: { key: theme.key, name: theme.name },
-        seed,
+        seed: custom ? parsed : weekSeed(key, week),
         updatedAt: theme.lastRefreshedAt || null,
-        songs: buildList(pool, seed).map(toItem),
+        listUpdatedAt: weekStartOf(week),
+        songs: songs.map(toItem),
     }
 }
 
@@ -189,6 +238,10 @@ async function applyRefresh(themeKey, songs, { playlists }, now = new Date()) {
 
 module.exports = {
     buildList,
+    buildWeekList,
+    weekOf,
+    weekStartOf,
+    weekSeed,
     listThemes,
     getThemePlaylist,
     syncThemeDefinitions,
