@@ -1,20 +1,24 @@
 <template>
     <div class="min-h-screen bg-gray-100 flex flex-col">
         <!-- 헤더 — 위에 고정. 스크롤하면 탭이 사라져 다른 탭을 누르려면 맨 위로 올라가야 했다(2026-11-08) -->
-        <header class="sticky top-0 bg-white shadow-sm z-30">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 md:py-4 flex justify-between items-center">
-                <h1 class="text-xl sm:text-2xl font-semibold text-gray-900">관리자 패널</h1>
+        <!-- 어두운 헤더 = 데스크탑 사이드바(gray-800)와 같은 색으로 한 덩어리. 사이트 로고 + "관리자" 배지(2026-11-08) -->
+        <header class="sticky top-0 bg-gray-900 z-30">
+            <div class="px-4 sm:px-6 h-14 md:h-[76px] flex justify-between items-center">
+                <h1 class="flex items-center gap-2">
+                    <span class="text-xl sm:text-2xl font-bold text-white tracking-tight">DIBE2</span>
+                    <span class="px-2 py-0.5 rounded-md bg-white bg-opacity-10 text-xs sm:text-sm font-medium text-gray-200">관리자</span>
+                </h1>
                 <button
+                    type="button"
                     @click="exitAdmin"
-                    aria-label="관리자 나가기"
-                    class="w-11 h-11 flex items-center justify-center rounded-md text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                    <Icon name="log-out" />
+                    class="h-10 px-3 flex items-center gap-1.5 rounded-md text-sm text-gray-300 hover:text-white hover:bg-white hover:bg-opacity-10 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                    <Icon name="log-out" :size="18" />사이트로
                 </button>
             </div>
             <!--
                 모바일은 사이드바 대신 탭 3개. 메뉴가 3개뿐인데 햄버거를 열고 → 고르고 → 닫히는 3단계였다(2026-11-07)
             -->
-            <nav class="md:hidden flex border-t border-gray-100" aria-label="관리자 메뉴">
+            <nav class="md:hidden flex bg-white shadow-sm" aria-label="관리자 메뉴">
                 <button v-for="item in menuItems" :key="item.id" type="button" @click="selectMenuItem(item.id)"
                     :aria-current="currentView === item.id ? 'page' : null"
                     :class="['flex-1 h-11 text-sm font-medium border-b-2',
@@ -27,14 +31,14 @@
         <!-- overflow-hidden 이면 그 안의 sticky(사이드바 메뉴)가 안 붙는다 → 가로만 자르는 clip -->
         <div class="flex-1 flex overflow-x-clip">
             <!-- 데스크탑 사이드바 — 메뉴도 헤더 아래에 붙어 따라온다 -->
-            <nav class="hidden md:block bg-gray-800 w-64 shrink-0" aria-label="관리자 메뉴">
+            <nav class="hidden md:block bg-gray-900 w-64 shrink-0" aria-label="관리자 메뉴">
                 <div class="sticky top-[76px] px-4 py-5 flex flex-col">
                     <ul class="flex-1 space-y-2">
                         <li v-for="item in menuItems" :key="item.id">
                             <a href="#" @click.prevent="selectMenuItem(item.id)"
                                 :aria-current="currentView === item.id ? 'page' : null"
                                 :class="['block px-4 py-2 rounded-md text-base font-medium',
-                                    currentView === item.id ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white']">
+                                    currentView === item.id ? 'bg-white bg-opacity-10 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white']">
                                 {{ item.label }}
                             </a>
                         </li>

@@ -152,7 +152,7 @@ router.post('/:id/play', async (req, res, next) => {
     const { source } = req.body || {}
 
     try {
-        const result = await services.statsService.recordPlay(req.user.userId, req.params.id, source)
+        const result = await services.statsService.recordPlay(req.user.userId, req.params.id, source, services.statsService.platformOf(req))
         if (!result) return res.status(404).json({ message: '곡을 찾을 수 없습니다.' })
         res.json(result)
     } catch (err) {

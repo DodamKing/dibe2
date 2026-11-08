@@ -26,7 +26,9 @@ router.post('/:videoId/play', async (req, res, next) => {
     if (!/^[\w-]{11}$/.test(videoId)) return res.status(400).json({ message: '잘못된 영상 ID입니다.' })
     const { title, artist, source, theme } = req.body || {}
     try {
-        res.json(await services.statsService.recordVideoPlay(req.user.userId, { videoId, title, artist, source, theme }))
+        res.json(await services.statsService.recordVideoPlay(req.user.userId, {
+            videoId, title, artist, source, theme, platform: services.statsService.platformOf(req),
+        }))
     } catch (err) {
         next(err)
     }

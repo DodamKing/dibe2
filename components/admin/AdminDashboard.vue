@@ -112,7 +112,8 @@
                 <ul v-else class="text-sm divide-y divide-gray-100">
                     <li v-for="u in data.users.recentActive" :key="u.id" class="py-1.5 flex items-center gap-2 min-w-0">
                         <span class="truncate text-gray-900">{{ userName(u) }}</span>
-                        <span v-if="u.plays7d" class="shrink-0 text-xs text-gray-400">7일 {{ u.plays7d }}회</span>
+                        <span v-if="u.provider" class="shrink-0 text-xs text-gray-400">{{ providerLabel(u.provider) }}</span>
+                        <span v-if="u.plays7d" class="shrink-0 text-xs text-gray-400">· 7일 {{ u.plays7d }}회</span>
                         <span class="ml-auto shrink-0 text-gray-500 tabular-nums">{{ ago(u.lastPlayedAt) }}</span>
                     </li>
                 </ul>
@@ -142,7 +143,12 @@
                 <h3 class="card-title">이용 <span class="card-sub">최근 7일</span></h3>
                 <dl class="stats">
                     <div><dt>재생</dt><dd>{{ fmt(data.usage.plays7d) }}</dd></div>
+                    <div><dt>웹</dt><dd>{{ fmt(data.usage.platform.web) }}</dd></div>
+                    <div><dt>앱</dt><dd>{{ fmt(data.usage.platform.app) }}</dd></div>
                 </dl>
+                <p v-if="data.usage.platform.unknown" class="mt-1 text-xs text-gray-400">
+                    웹·앱 구분은 2026-11-08부터 — 그 전 {{ fmt(data.usage.platform.unknown) }}회는 구분 없음
+                </p>
                 <h4 class="sub-title">많이 들은 곡</h4>
                 <p v-if="!data.usage.top.length" class="text-sm text-gray-400">재생 기록 없음</p>
                 <ol v-else class="text-sm divide-y divide-gray-100">
@@ -193,7 +199,7 @@ export default {
         userName(u) {
             if (u.deleted) return '(삭제된 사용자)'
             const name = u.username || u.email
-            const fallback = `${this.providerLabel(u.provider) || ''} 사용자 …${String(u.id).slice(-4)}`.trim()
+            const fallback = `사용자 …${String(u.id).slice(-4)}` // 가입 방식은 옆에 따로 표시
             return `${name || fallback}${u.isAdmin ? ' (관리자)' : ''}`
         },
         isFailing(c) {

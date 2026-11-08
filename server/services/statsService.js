@@ -26,7 +26,12 @@ function requireUserId(userId) {
     return userId
 }
 
+// 재생 기록의 웹/앱 — 앱(Flutter http)은 User-Agent 를 따로 안 붙여 Dart 기본값 "Dart/3.x (dart:io)"가 간다
+const platformOf = (req) => (/\bDart\//.test((req && req.headers && req.headers['user-agent']) || '') ? 'app' : 'web')
+
 module.exports = {
+    platformOf,
+
     // 좋아요 등록(멱등). 이미 눌러둔 상태면 카운터를 건드리지 않는다.
     // upsert의 upsertedCount로 "이번에 새로 생겼는지"를 판별 → 유니크 인덱스와 함께
     // 동시 요청이 와도 likeCount가 실제 Like 수와 어긋나지 않는다.
@@ -96,7 +101,7 @@ module.exports = {
 
     // 유튜브 영상 재생 1회 기록(테마 곡·영상 페이지) — 곡 기록과 같은 기준(30초/절반)·같은 중복 창.
     // Song 이 없어 제목·아티스트를 같이 남긴다. 반환 counted=false 면 중복으로 무시한 것
-    recordVideoPlay: async (userId, { videoId, title, artist, source, theme }) => {
+    recordVideoPlay: async (userId, { videoId, title, artist, source, theme, platform }) => {
         requireUserId(userId)
         const recent = await db.PlayEvent.findOne({
             user: userId,
@@ -111,12 +116,13 @@ module.exports = {
             artist: artist ? String(artist).slice(0, 200) : undefined,
             source: source === 'theme' ? 'theme' : 'video',
             theme: source === 'theme' && theme ? String(theme).slice(0, 40) : undefined,
+            platform,
         })
         return { counted: true }
     },
 
     // 재생 1회 기록. 앱이 30초/50% 도달 시 호출한다.
-    recordPlay: async (userId, songId, source = 'unknown') => {
+    recordPlay: async (userId, songId, source = 'unknown', platform) => {
         requireUserId(userId)
         const song = await db.Song.findById(songId).select('_id')
         if (!song) return null
@@ -133,7 +139,7 @@ module.exports = {
             return { playCount: current.playCount, counted: false }
         }
 
-        await db.PlayEvent.create({ user: userId, song: songId, source })
+        await db.PlayEvent.create({ user: userId, song: songId, source, platform })
         const updated = await db.Song.findByIdAndUpdate(
             songId,
             { $inc: { playCount: 1 } },

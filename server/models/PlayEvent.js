@@ -14,6 +14,8 @@ const playEventSchema = new mongoose.Schema({
     title: { type: String },  // 영상만 — 그때 제목(Song 이 없어서)
     artist: { type: String }, // 영상만 — 테마 곡은 아티스트, 영상 페이지는 채널명
     theme: { type: String },  // 테마에서 재생했으면 Theme.key
+    // 웹/앱 — 서버가 User-Agent 로 판단(앱은 Dart 기본 UA "Dart/x.y (dart:io)"). 2026-11-08 이전 행엔 없다
+    platform: { type: String, enum: ['web', 'app'] },
     // 어디서 재생됐는지 — 추천 시 유입 경로별 가중치에 쓸 수 있다.
     source: { type: String, enum: ['chart', 'playlist', 'search', 'recent', 'video', 'theme', 'unknown'], default: 'unknown' },
     playedAt: { type: Date, default: Date.now },

@@ -140,7 +140,7 @@ router.get('/google/callback', async (req, res) => {
     try {
         const tokens = await UserService.getGoogleTokens(code)
         const userInfo = await UserService.getGoogleUserInfo(tokens.access_token)
-        const user = await UserService.findOrCreateUser(provider, userInfo.id, userInfo.email)
+        const user = await UserService.findOrCreateUser(provider, userInfo.id, userInfo.email, userInfo.name)
 
         const tokenPayload = {
             userId: user._id,
@@ -187,7 +187,7 @@ router.get('/kakao/callback', async (req, res) => {
     try {
         const tokens = await UserService.getKakaoTokens(code)
         const userInfo = await UserService.getKakaoUserInfo(tokens.access_token)
-        const user = await UserService.findOrCreateUser(provider, userInfo.id, userInfo.kakao_account.email)
+        const user = await UserService.findOrCreateUser(provider, userInfo.id, userInfo.kakao_account.email, userInfo.properties && userInfo.properties.nickname)
 
         const tokenPayload = {
             userId: user._id,
@@ -224,7 +224,7 @@ router.post('/google', async (req, res) => {
         if (!accessToken) return res.json({ message: 'accessToken이 필요합니다.', code: 4 })
 
         const userInfo = await UserService.getGoogleUserInfo(accessToken)
-        const user = await UserService.findOrCreateUser(provider, userInfo.id, userInfo.email)
+        const user = await UserService.findOrCreateUser(provider, userInfo.id, userInfo.email, userInfo.name)
 
         const tokenPayload = {
             userId: user._id,
@@ -253,7 +253,7 @@ router.post('/kakao', async (req, res) => {
 
         const userInfo = await UserService.getKakaoUserInfo(accessToken)
         const email = userInfo.kakao_account?.email
-        const user = await UserService.findOrCreateUser(provider, userInfo.id, email)
+        const user = await UserService.findOrCreateUser(provider, userInfo.id, email, userInfo.properties?.nickname)
 
         const tokenPayload = {
             userId: user._id,

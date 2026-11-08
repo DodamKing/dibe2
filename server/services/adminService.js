@@ -133,20 +133,27 @@ class AdminService {
 	// 이용: 최근 7일 재생 수·많이 들은 곡 (PlayEvent — 곡 + 유튜브 영상)
 	async _usage(now) {
 		const since = new Date(now - 7 * DAY)
-		const [plays7d, top] = await Promise.all([
+		const [plays7d, byPlatform, top] = await Promise.all([
 			db.PlayEvent.countDocuments({ playedAt: { $gte: since } }),
+			// 웹/앱 — platform 은 2026-11-08부터 기록. 그 전 행은 "구분 없음"
+			db.PlayEvent.aggregate([
+				{ $match: { playedAt: { $gte: since } } },
+				{ $group: { _id: '$platform', n: { $sum: 1 } } },
+			]),
 			// 곡은 song, 유튜브 영상(테마·영상 페이지)은 videoId 로 묶는다. 영상 제목·아티스트는 기록 때 같이 남긴 값
 			db.PlayEvent.aggregate([
 				{ $match: { playedAt: { $gte: since } } },
 				{ $group: { _id: { song: '$song', videoId: '$videoId' }, n: { $sum: 1 }, vTitle: { $last: '$title' }, vArtist: { $last: '$artist' }, source: { $last: '$source' } } },
 				{ $sort: { n: -1 } },
-				{ $limit: 5 },
+				{ $limit: 10 },
 				{ $lookup: { from: 'songs', localField: '_id.song', foreignField: '_id', as: 's' } },
 				{ $project: { n: 1, vTitle: 1, vArtist: 1, source: 1, isVideo: { $eq: [{ $ifNull: ['$_id.song', null] }, null] }, title: { $first: '$s.title' }, artist: { $first: '$s.artist' } } },
 			]),
 		])
+		const pf = (k) => (byPlatform.find((p) => p._id === k) || {}).n || 0
 		return {
 			plays7d,
+			platform: { web: pf('web'), app: pf('app'), unknown: plays7d - pf('web') - pf('app') },
 			top: top.map((t) => (t.isVideo
 				? { title: t.vTitle || '(제목 없음)', artist: t.vArtist || '', plays: t.n, kind: t.source === 'theme' ? 'theme' : 'video' }
 				: { title: t.title || '(삭제된 곡)', artist: t.artist || '', plays: t.n, kind: 'song' })),

@@ -57,9 +57,29 @@ class UserService {
         return response.data;
     }
 
-    static async findOrCreateUser(provider, providerId, email) {
+    /**
+     * 소셜 로그인 계정 찾기/만들기 + 로그인할 때마다 이름·이메일을 최신으로 (2026-11-08).
+     * 예전엔 가입 때 이메일만 저장하고 이름은 토큰에만 넣었다 → 관리자 화면에 이름이 없고,
+     * 이메일 저장 코드(2024-10-02)보다 먼저 가입한 계정은 이메일도 영영 비어 있었다.
+     * 🔴 email 은 unique 인덱스 — 같은 이메일을 쓰는 다른 계정(같은 사람이 카카오·구글로 따로 가입)이 있으면
+     * 이메일은 건드리지 않는다. 갱신이 실패해도 로그인은 막지 않는다
+     */
+    static async findOrCreateUser(provider, providerId, email, name) {
         let user = await db.User.findOne({ provider, providerId });
-        if (!user) user = await db.User.create({ provider, providerId, email })
+        if (!user) {
+            const taken = email && await db.User.exists({ email })
+            return db.User.create({ provider, providerId, email: taken ? undefined : email, username: name || undefined })
+        }
+        const set = {}
+        if (name && user.username !== name) set.username = name
+        if (email && user.email !== email && !(await db.User.exists({ email, _id: { $ne: user._id } }))) set.email = email
+        if (Object.keys(set).length) {
+            try {
+                user = await db.User.findByIdAndUpdate(user._id, { $set: set }, { new: true })
+            } catch (err) {
+                console.error('로그인 시 이름·이메일 갱신 실패(로그인은 계속):', err.message)
+            }
+        }
         return user;
     }
 
