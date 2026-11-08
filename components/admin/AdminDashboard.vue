@@ -5,9 +5,9 @@
         "재생한 사용자"(활동 사용자)로 대체했다. 빨강 = 실패·손볼 것, 노랑 = 오래됨
     -->
     <div>
-        <!-- 모바일은 위 탭이 제목 역할이라 제목을 숨긴다 -->
-        <div class="flex items-center justify-end md:justify-between mb-4">
-            <h2 class="hidden md:block text-2xl font-semibold text-gray-900">대시보드</h2>
+        <!-- 모바일은 위 탭이 제목 역할이라 제목을 숨기고, 새로고침도 브라우저의 당겨서 새로고침에 맡긴다 -->
+        <div class="hidden md:flex items-center justify-between mb-4">
+            <h2 class="text-2xl font-semibold text-gray-900">대시보드</h2>
             <button type="button" :disabled="loading"
                 class="h-10 px-4 rounded-md border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                 @click="load">새로고침</button>
@@ -26,10 +26,20 @@
                         <span :class="['badge', statusClass(c.last && c.last.status)]">{{ statusLabel(c.last && c.last.status) }}</span>
                         <!-- 폰에선 시각을 항상 둘째 줄로(폭에 따라 줄마다 꺾이는 자리가 달라 들쭉날쭉했다) -->
                         <span class="order-last basis-full sm:order-none sm:basis-auto text-xs sm:text-sm text-gray-500">{{ c.last ? `${ago(c.last.startedAt)} · ${kst(c.last.startedAt)}` : '7일간 실행 없음' }}</span>
-                        <span class="ml-auto tabular-nums" :class="c.fails7d ? 'text-red-600 font-medium' : 'text-gray-400'">
+                        <!-- 빨강은 마지막 실행이 실패일 때만. 그 뒤 성공한 실패는 회색(해결됨) -->
+                        <span class="ml-auto tabular-nums" :class="isFailing(c) ? 'text-red-600 font-medium' : 'text-gray-400'">
                             {{ c.runs7d }}회<template v-if="c.fails7d"> · 실패 {{ c.fails7d }}</template>
                         </span>
-                        <p v-if="c.last && c.last.error" class="basis-full text-xs text-red-600 truncate">{{ c.last.error }}</p>
+                        <!-- min-w-0: 긴 에러 문구 때문에 목록이 카드 밖으로 밀리지 않게(360px에서 3px 넘침) -->
+                        <ul v-if="c.failures.length" class="order-last basis-full min-w-0 w-full space-y-0.5">
+                            <li v-for="(f, i) in c.failures" :key="i" class="flex items-baseline gap-2 text-xs min-w-0"
+                                :class="f.resolved ? 'text-gray-400' : 'text-red-600'">
+                                <span class="shrink-0 tabular-nums">{{ kst(f.startedAt) }}</span>
+                                <span class="shrink-0">{{ statusLabel(f.status) }}</span>
+                                <span class="min-w-0 break-words sm:truncate">{{ f.error || '' }}</span>
+                                <span class="ml-auto shrink-0 font-medium">{{ f.resolved ? '이후 정상' : '아직 실패 중' }}</span>
+                            </li>
+                        </ul>
                     </div>
                 </div>
                 <p class="mt-2 text-xs text-gray-400">자세한 기록은 <code>node scripts/cron-health.js</code></p>
@@ -56,7 +66,18 @@
                     <b :class="data.music.chartTop.youtube < data.music.chartTop.size ? 'text-red-600' : ''">{{ data.music.chartTop.youtube }}</b>,
                     가사 <b>{{ data.music.chartTop.lyrics }}</b>
                 </p>
-                <p v-if="data.music.gated" class="mt-1 text-xs text-gray-500">연령 게이트는 음원 관리 → 검색 종류 "연령 게이트"</p>
+                <template v-if="data.music.gated">
+                    <h4 class="sub-title">연령 게이트 — 유튜브 주소를 손으로 넣을 곡</h4>
+                    <ul class="text-sm divide-y divide-gray-100">
+                        <li v-for="(s, i) in data.music.gatedSongs" :key="i" class="py-1.5 truncate text-gray-900">
+                            {{ s.title }} <span class="text-gray-500">· {{ s.artist }}</span>
+                        </li>
+                    </ul>
+                    <button type="button" class="mt-2 h-10 px-4 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+                        @click="$router.push({ query: { tab: 'music', type: 'ytgated' } })">
+                        채우러 가기<template v-if="data.music.gated > data.music.gatedSongs.length"> ({{ data.music.gated }}곡)</template>
+                    </button>
+                </template>
             </section>
 
             <!-- 3. 테마 -->
@@ -86,10 +107,20 @@
                 </dl>
                 <p class="mt-1 text-xs text-gray-400">활동 = 그 기간에 곡을 재생한 사용자 (테마·영상만 들은 경우는 안 잡힘)</p>
 
+                <h4 class="sub-title">최근 활동 <span class="font-normal text-gray-400">마지막 재생</span></h4>
+                <p v-if="!data.users.recentActive.length" class="text-sm text-gray-400">재생 기록 없음</p>
+                <ul v-else class="text-sm divide-y divide-gray-100">
+                    <li v-for="u in data.users.recentActive" :key="u.id" class="py-1.5 flex items-center gap-2 min-w-0">
+                        <span class="truncate text-gray-900">{{ userName(u) }}</span>
+                        <span v-if="u.plays7d" class="shrink-0 text-xs text-gray-400">7일 {{ u.plays7d }}회</span>
+                        <span class="ml-auto shrink-0 text-gray-500 tabular-nums">{{ ago(u.lastPlayedAt) }}</span>
+                    </li>
+                </ul>
+
                 <h4 class="sub-title">최근 가입</h4>
                 <ul class="text-sm divide-y divide-gray-100">
                     <li v-for="u in data.users.recent" :key="u.id" class="py-1.5 flex items-center gap-2 min-w-0">
-                        <span class="truncate text-gray-900">{{ u.username || u.email || '(이름 없음)' }}</span>
+                        <span class="truncate text-gray-900">{{ userName(u) }}</span>
                         <span v-if="u.provider" class="shrink-0 text-xs text-gray-400">{{ providerLabel(u.provider) }}</span>
                         <span class="ml-auto shrink-0 text-gray-500 tabular-nums">{{ day(u.createdAt) }}</span>
                     </li>
@@ -99,7 +130,7 @@
                 <p v-if="!data.users.expiring.length" class="text-sm text-gray-400">없음</p>
                 <ul v-else class="text-sm divide-y divide-gray-100">
                     <li v-for="u in data.users.expiring" :key="u.id" class="py-1.5 flex items-center gap-2 min-w-0">
-                        <span class="truncate text-gray-900">{{ u.username || u.email }}</span>
+                        <span class="truncate text-gray-900">{{ userName(u) }}</span>
                         <span class="ml-auto shrink-0 text-red-600 tabular-nums">{{ day(u.expiryDate) }} 만료</span>
                     </li>
                 </ul>
@@ -156,6 +187,16 @@ export default {
             } finally {
                 this.loading = false
             }
+        },
+        // 카카오 계정은 이메일·이름이 비어 있을 수 있다(관리자 계정이 그렇다) → "카카오 사용자 …fa0d" 처럼
+        userName(u) {
+            if (u.deleted) return '(삭제된 사용자)'
+            const name = u.username || u.email
+            const fallback = `${this.providerLabel(u.provider) || ''} 사용자 …${String(u.id).slice(-4)}`.trim()
+            return `${name || fallback}${u.isAdmin ? ' (관리자)' : ''}`
+        },
+        isFailing(c) {
+            return !!(c.last && ['error', 'timeout', 'wiped'].includes(c.last.status))
         },
         statusLabel(s) {
             return s ? (STATUS[s] || [s])[0] : '기록 없음'

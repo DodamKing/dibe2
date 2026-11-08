@@ -490,6 +490,11 @@ export default {
     mounted() {
         this.initAdminPlayer()
         this.updateInterval = setInterval(this.updateCurrentTime, 1000)
+        // 대시보드 "채우러 가기"(?tab=music&type=ytgated) — 연령 게이트 목록을 바로 띄운다
+        if (this.$route.query.type === 'ytgated') {
+            this.searchType = 'ytgated'
+            this.searchSongs()
+        }
     },
     beforeDestroy() {
         const main = this.$el && this.$el.closest('main')

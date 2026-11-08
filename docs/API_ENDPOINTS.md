@@ -73,10 +73,10 @@
 | PUT | `/users/:userId/access` | 사용자 접근 기간 설정 {days} |
 
 `/dashboard` 응답 (`server/services/adminService.js` `getDashboard`):
-- `cron[]`: `{ job, label, runs7d, fails7d, last: { startedAt, status, durationMs, error } }` — `cronruns` 최근 7일. `running`이 2분 넘게 남은 건 `timeout`으로(30초 강제 종료)
-- `music`: `{ total, totalPlays, noYoutube, gated, backlog: { youtube, lyrics, genre }, chartTop: { size, youtube, lyrics } }` — 백로그 조건은 `scripts/cron-health.js`와 같다
+- `cron[]`: `{ job, label, runs7d, fails7d, failures[5]: { startedAt, status, error, resolved }, last: { startedAt, status, durationMs, error } }` — `cronruns` 최근 7일. `running`이 2분 넘게 남은 건 `timeout`으로(30초 강제 종료). `resolved` = 그 뒤 같은 크론이 한 번이라도 성공함
+- `music`: `{ total, totalPlays, noYoutube, gated, gatedSongs[5]: { title, artist }, backlog: { youtube, lyrics, genre }, chartTop: { size, youtube, lyrics } }` — 백로그 조건은 `scripts/cron-health.js`와 같다
 - `themes[]`: `{ key, name, lastRefreshedAt, core, explore, stale }` — `stale` = 90일 넘게 수집 안 함
-- `users`: `{ total, new7d, recent[5], active7d, active30d, expiring[] }` — 활동 = 그 기간 `PlayEvent`가 있는 사용자(벅스 곡 재생만, 테마·영상은 안 잡힘). `expiring` = 이용 기간 7일 안에 끝남
+- `users`: `{ total, new7d, recent[5], active7d, active30d, expiring[], recentActive[5]: { …, lastPlayedAt, plays7d, deleted } }` (사용자 행 = `{ id, username, email, provider, isAdmin, … }` — 카카오 계정은 이메일·이름이 비어 있을 수 있다) — 활동 = 그 기간 `PlayEvent`가 있는 사용자(벅스 곡 재생만, 테마·영상은 안 잡힘). `expiring` = 이용 기간 7일 안에 끝남
 - `usage`: `{ plays7d, top[5]: { title, artist, plays } }` — `PlayEvent` 최근 7일. 웹·앱 합산(앱도 같은 재생 기록 API)
 - 방문자 통계(`visitor_stats` 컬렉션)는 기록 미들웨어가 2026-04 레거시 제거 때 지워져 3-29 이후 비어 있었다 → 삭제(컬렉션 데이터는 남아 있음)
 

@@ -35,13 +35,22 @@ class AdminService {
 		const known = CRON_JOBS.map(([job]) => job)
 		const extra = [...new Set(runs.map((r) => r.job))].filter((j) => !known.includes(j))
 		const status = (r) => (r.status === 'running' && now - new Date(r.startedAt) > 2 * 60e3 ? 'timeout' : r.status)
+		const failed = (r) => ['error', 'timeout', 'wiped'].includes(status(r))
 		return [...CRON_JOBS, ...extra.map((j) => [j, j])].map(([job, label]) => {
-			const mine = runs.filter((r) => r.job === job)
+			const mine = runs.filter((r) => r.job === job) // 최신순
 			const last = mine[0]
+			// 실패마다 "그 뒤에 같은 크론이 성공했나" = 해결됨. 마지막 실행이 실패면 아직 실패 중
+			const failures = mine.filter(failed).map((r) => ({
+				startedAt: r.startedAt,
+				status: status(r),
+				error: r.error || null,
+				resolved: mine.some((x) => x.status === 'ok' && new Date(x.startedAt) > new Date(r.startedAt)),
+			}))
 			return {
 				job, label,
 				runs7d: mine.length,
-				fails7d: mine.filter((r) => ['error', 'timeout', 'wiped'].includes(status(r))).length,
+				fails7d: failures.length,
+				failures: failures.slice(0, 5),
 				last: last ? { startedAt: last.startedAt, status: status(last), durationMs: last.durationMs, error: last.error || null } : null,
 			}
 		})
@@ -50,11 +59,13 @@ class AdminService {
 	// 음원: 크론이 아직 처리할 곡(백로그 — scripts/cron-health.js 와 같은 조건) + 관리자가 손으로 채울 곡
 	async _music() {
 		const noUrl = { youtubeUrl: { $in: [null, ''] } }
-		const [total, plays, noYoutube, gated, ytBacklog, lyBacklog, gnBacklog, head] = await Promise.all([
+		const gatedQ = { ...noUrl, youtubeGatedAt: { $exists: true } }
+		const [total, plays, noYoutube, gated, gatedSongs, ytBacklog, lyBacklog, gnBacklog, head] = await Promise.all([
 			db.Song.estimatedDocumentCount(),
 			db.Song.aggregate([{ $group: { _id: null, total: { $sum: '$playCount' } } }]),
 			db.Song.countDocuments(noUrl),
-			db.Song.countDocuments({ ...noUrl, youtubeGatedAt: { $exists: true } }),
+			db.Song.countDocuments(gatedQ),
+			db.Song.find(gatedQ).sort({ youtubeGatedAt: -1 }).limit(5).select('title artist').lean(),
 			db.Song.countDocuments({ ...noUrl, youtubeCheckedAt: { $exists: false }, youtubeGatedAt: { $exists: false } }),
 			db.Song.countDocuments({ lyrics: { $in: [null, ''] }, lyricsCheckedAt: { $exists: false }, adult: { $ne: true }, detailLink: { $ne: null } }),
 			db.Song.countDocuments({ genre: { $exists: false }, coverUrl: { $ne: null } }),
@@ -67,6 +78,7 @@ class AdminService {
 			totalPlays: (plays[0] && plays[0].total) || 0,
 			noYoutube,
 			gated,
+			gatedSongs: gatedSongs.map((s) => ({ title: s.title, artist: s.artist })),
 			backlog: { youtube: ytBacklog, lyrics: lyBacklog, genre: gnBacklog },
 			chartTop: { size: head.length, youtube: head.filter((s) => s.youtubeUrl).length, lyrics: head.filter((s) => s.lyrics || s.adult).length },
 		}
@@ -87,8 +99,8 @@ class AdminService {
 
 	// 사용자: 신규 가입(누가 들어왔나) + 활동 사용자(트래픽) + 곧 만료(관리자가 기간을 늘려줘야 함)
 	async _users(now) {
-		const pick = 'username email provider createdAt expiryDate'
-		const [total, new7d, recent, active7d, active30d, expiring] = await Promise.all([
+		const pick = 'username email provider isAdmin createdAt expiryDate'
+		const [total, new7d, recent, active7d, active30d, expiring, lastPlays] = await Promise.all([
 			db.User.estimatedDocumentCount(),
 			db.User.countDocuments({ createdAt: { $gte: new Date(now - 7 * DAY) } }),
 			db.User.find().sort({ createdAt: -1 }).limit(5).select(pick).lean(),
@@ -96,9 +108,26 @@ class AdminService {
 			db.PlayEvent.distinct('user', { playedAt: { $gte: new Date(now - 30 * DAY) } }),
 			db.User.find({ expiryDate: { $gte: new Date(now), $lte: new Date(now + EXPIRING_DAYS * DAY) } })
 				.sort({ expiryDate: 1 }).limit(10).select(pick).lean(),
+			// 최근 활동 = 사용자별 마지막 재생 (User 에 접속 기록 필드가 없어 재생 기록으로 본다)
+			db.PlayEvent.aggregate([
+				{ $group: { _id: '$user', lastPlayedAt: { $max: '$playedAt' }, plays7d: { $sum: { $cond: [{ $gte: ['$playedAt', new Date(now - 7 * DAY)] }, 1, 0] } } } },
+				{ $sort: { lastPlayedAt: -1 } },
+				{ $limit: 5 },
+				{ $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'u' } },
+				{
+					$project: {
+						lastPlayedAt: 1, plays7d: 1, found: { $gt: [{ $size: '$u' }, 0] },
+						username: { $first: '$u.username' }, email: { $first: '$u.email' }, provider: { $first: '$u.provider' }, isAdmin: { $first: '$u.isAdmin' },
+					},
+				},
+			]),
 		])
-		const row = (u) => ({ id: u._id, username: u.username, email: u.email, provider: u.provider || null, createdAt: u.createdAt, expiryDate: u.expiryDate })
-		return { total, new7d, recent: recent.map(row), active7d: active7d.length, active30d: active30d.length, expiring: expiring.map(row) }
+		// 카카오 계정은 이메일·이름이 비어 있을 수 있다(관리자 계정이 그렇다) → 화면은 provider·isAdmin으로 이름을 대신 만든다
+		const row = (u) => ({ id: u._id, username: u.username, email: u.email, provider: u.provider || null, isAdmin: !!u.isAdmin, createdAt: u.createdAt, expiryDate: u.expiryDate })
+		return {
+			total, new7d, recent: recent.map(row), active7d: active7d.length, active30d: active30d.length, expiring: expiring.map(row),
+			recentActive: lastPlays.map((p) => ({ ...row(p), deleted: !p.found, lastPlayedAt: p.lastPlayedAt, plays7d: p.plays7d })),
+		}
 	}
 
 	// 이용: 최근 7일 재생 수·많이 들은 곡 (PlayEvent = 벅스 곡 재생만)
