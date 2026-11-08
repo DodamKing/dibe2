@@ -33,7 +33,7 @@
 - `predev`가 3000·3333 포트를 먼저 비운다(`kill-port`). 터미널을 닫아도 netlify가 띄운 자식 프로세스가 남아 포트를 쥐고 있으면 새 dev가 "Could not acquire port 3000"으로 못 뜬다(2026-10-31). 그래서 **dev를 두 개 띄우면 먼저 것이 죽는다**
 - 🔴 **`bcrypt`(네이티브 모듈) 다시 넣지 말 것 — `bcryptjs`를 쓴다.** 네이티브 모듈은 한 프로세스에서 다시 못 읽어서, 서버 파일을 고칠 때마다 netlify dev가 `api` 함수 리로드에서 멈추고 3000번 전체가 응답을 끊었다(2026-10-31 재현·수정, netlify-cli 24.8.1·27.16.1 둘 다 동일)
 - 서버 파일을 여러 번 고친 뒤 API 응답이 이상하면(예: 2026-11-07 플레이리스트 `songs` 가 통째로 빠져 홈이 깨짐 — DB·mongoose 는 정상) **데이터를 의심하기 전에 dev 를 다시 띄울 것**. 함수 리로드가 꼬인 상태였다
-- **검증**: `npm test`(재생 대기열 계산) / 브라우저는 dev 켜고 `GLOBAL_MODULES="$(npm root -g)" node scripts/e2e/player.mjs`(`--only=이름`, `--only=audit` 은 전 화면 스크린샷 → `scripts/e2e/out/`). 운영 DB를 쓰므로 스크립트가 쓰기 요청을 가로채 막는다
+- **검증**: `npm test`(재생 대기열 계산·테마 주간 목록) / 브라우저는 dev 켜고 `GLOBAL_MODULES="$(npm root -g)" node scripts/e2e/player.mjs`(`--only=이름`, `--only=audit` 은 전 화면 스크린샷 → `scripts/e2e/out/`). 운영 DB를 쓰므로 스크립트가 쓰기 요청을 가로채 막는다
 - `netlify.toml`의 `/_nuxt/*`·`/_loading/*`·`/__webpack_hmr/*` 통과 규칙을 지우지 말 것 — 없으면 SPA 폴백이 JS까지 index.html로 바꿔 dev 화면이 "Loading..."에서 멈춘다
 
 ## 작업 규칙
@@ -52,7 +52,7 @@
 - `.env`에 실제 시크릿 있음 (커밋 금지)
 - 🔴 **DB 접속은 반드시 `server/models`의 `connectToMongoDB()`를 쓸 것.** `.env`의 `MONGODB_URI`엔 **DB 이름 경로가 없고**, 실제 DB 지정은 이 함수의 `dbName: 'dibe2'` 옵션이 한다. 스크립트에서 `mongoose.connect(process.env.MONGODB_URI)`를 직접 부르면 **조용히 `test` DB(2024년 방치된 유령 DB)에 붙는다.** 같은 클러스터에 `dibe`/`test`/`dibe2`가 공존하며 **운영은 `dibe2`**
 - **Netlify 스케줄 함수는 30초 제한**(설정 불가). 크론은 대량 백로그를 못 삼키고 타임아웃 시 알림 없이 조용히 죽음(`cronruns`에 `running`으로 남는다) → 대량 작업은 `scripts/`의 로컬 스크립트로. 상세는 `docs/CRON_EXTERNAL.md`
-- **크론 상태 확인은 `node scripts/cron-health.js`** — 맨 위가 실행 기록(`cronruns`). 에러·전멸·타임아웃(30초 강제 종료 — 다음 크론이 대신 알림)은 디스코드(`DISCORD_WEBHOOK_URL`)로 온다. 새 크론은 반드시 `server/utils/runCron.js`로 감쌀 것. 🔴 **Netlify는 같은 크론을 최대 3번 겹쳐 부른다**(끌 수 없음) → 크론 본체는 겹쳐 돌아도 안전해야 한다(`docs/CRON_EXTERNAL.md`)
+- **크론 상태 확인은 `node scripts/cron-health.js`** — 맨 위가 실행 기록(`cronruns`). 관리자 대시보드에도 크론별 마지막 실행·실패 내역·해결 여부가 나온다. 에러·전멸·타임아웃(30초 강제 종료 — 다음 크론이 대신 알림)은 디스코드(`DISCORD_WEBHOOK_URL`)로 온다. 새 크론은 반드시 `server/utils/runCron.js`로 감쌀 것. 🔴 **Netlify는 같은 크론을 최대 3번 겹쳐 부른다**(끌 수 없음) → 크론 본체는 겹쳐 돌아도 안전해야 한다(`docs/CRON_EXTERNAL.md`)
 - **`Song.youtubeUrl`은 곡 저장보다 늦게 채워짐**(08:00 저장 → 08:10 채움). 항상 있다고 가정하지 말 것
 - 크론잡은 프로덕션에서만 실행됨
 - 오디오/비디오 재생은 youtube-nocookie.com 도메인 사용 (사용자 계정 컨텍스트 분리)

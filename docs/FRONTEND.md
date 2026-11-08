@@ -32,7 +32,7 @@
 | `/playlist/:id` | `pages/playlist/_id.vue` | main | 플레이리스트 상세(좋아요·테마 상세와 같은 틀, `SongRow`). 줄 클릭 = 이 플리를 그 곡부터. 곡 빼기는 ⋯ 메뉴(`SongMenuSheet removable`), 이름은 눌러서 고침. 스토어의 `currentPlaylist` 는 지난번 플리일 수 있어 주소 id 와 같을 때만 그린다 |
 | `/theme` | `pages/theme/index.vue` | main | 테마 9개 카드(`GET /api/themes`, `store/themes.js`가 한 번 받아 홈과 공유) |
 | `/theme/:key` | `pages/theme/_key.vue` | main | 테마 50곡(`GET /api/themes/:key`). 곡은 유튜브 영상 — 대기열에 `kind:'video'`로 들어간다. ⋯ 메뉴는 다음에 재생·맨 뒤 추가만(좋아요·담기 없음) |
-| `/admin` | `pages/admin/index.vue` | main | 관리자 대시보드 |
+| `/admin` | `pages/admin/index.vue` | main | 관리자 — 탭(`?tab=`) 대시보드 / 음원 관리 / 사용자 관리. 헤더·탭 sticky, 모바일은 탭이 제목 역할(화면 제목 숨김). 대시보드(`components/admin/AdminDashboard.vue`)는 크론·음원·테마·사용자·이용 다섯 칸, "채우러 가기" → `?tab=music&type=ytgated`(연령 게이트 목록 바로) — 2026-11-08 |
 | `/video` | `pages/video/index.vue` | video | 유튜브 검색 + 영상 재생 (음원과 독립). 내부 탭으로 "검색"/"보관함" 전환 (라우트 이동 없음). "지금 재생 중"은 탭과 분리된 별도 오버레이 |
 
 ## Vuex 스토어
@@ -87,7 +87,7 @@
 - `SongRow.vue`: 곡 한 줄(차트·좋아요 목록 공용). 데스크탑은 하트와 ⋯ 이 **마우스를 올리면** 보이고 좋아요한 곡 하트는 항상 보임 — `@media (hover: hover)`로만 숨겨서 터치 태블릿에선 항상 보인다. ⋯ → `SongMenuSheet`(좋아요 / 다음에 재생 / 대기열 맨 뒤에 추가 / 내 플레이리스트에 담기) — 모바일은 아래 시트, 데스크탑은 가운데 작은 창
 - **색**: `tailwind.config.js`의 `surface` 0(바탕)·1(헤더·플레이어)·2(카드). 순회색 대신 보라 기운을 살짝. 보라 강조(purple-500/400)는 재생 버튼·좋아요 하트에만 — 다 보라면 아무것도 안 튄다(2026-10-31 개편). 설정을 바꾸면 **dev를 다시 켜야** 새 색 클래스가 생긴다(안 그러면 배경이 하얗게 나옴)
 - `AppHeader.vue`: 음원 모드 상단 헤더 (로고, 메뉴 홈·차트·테마·좋아요(md 이상), 음원 검색, "영상" 버튼, UserMenu). 모바일은 메뉴 없이 검색·영상·사용자
-- **검증**: `npm test`(대기열 계산) + `scripts/e2e/player.mjs`(Playwright — `npm run dev` 위에서 실제 재생·대기열·옛 큐 변환·테마·화면 폭별 스크린샷. 로그인은 `scripts/e2e/make-token.js`, 운영 DB 쓰기 요청은 가로채 막는다)
+- **검증**: `npm test`(대기열 계산·테마 주간 목록) + `scripts/e2e/player.mjs`(Playwright — `npm run dev` 위에서 실제 재생·대기열·옛 큐 변환·테마·화면 폭별 스크린샷. 로그인은 `scripts/e2e/make-token.js`, 운영 DB 쓰기 요청은 가로채 막는다)
 - `VideoHeader.vue`: 비디오 모드 전용 헤더 (← 뒤로가기, DIBE2 비디오 로고, UserMenu) — 단순 헤더, 큐 진입점 없음
 - `UserMenu.vue`: 유저 아바타 + 드롭다운 (프로필/설정/관리자/로그아웃). AppHeader/VideoHeader 공통
 - `SearchResultsModal.vue`: 검색 결과(2026-11 새로 — 데스크탑 가운데 창·모바일 전체 화면). 줄은 `SongRow`(하트·⋯), **줄 클릭 = 그 곡 하나만 재생**(source `search` — 검색 결과 전체를 넣으면 수십 곡이 대기열에 들어간다. 업계·앱과 같음), 체크 → 대기열에 추가 / 담기(레이아웃의 담기 시트를 같이 씀). 가사 탭은 `SongRow`의 `below` 칸에 가사 일부(외부 글이라 이스케이프 후 강조). 모바일 검색 팝업은 헤더 자리를 덮는 위쪽 막대(`AppHeader.vue`)

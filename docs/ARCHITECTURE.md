@@ -91,7 +91,7 @@ dibe2/
 │   │   ├── statsService.js   # 좋아요/재생수 (like·unlike·getLikedSongs·recordPlay·attachLikedFlags)
 │   │   ├── playlistService.js
 │   │   ├── videoPlaylistService.js
-│   │   ├── adminService.js   # 통계, 접근 기간 설정
+│   │   ├── adminService.js   # 대시보드(크론·음원·테마·사용자·이용 — GET /api/admin/dashboard), 접근 기간 설정
 │   │   ├── userService.js
 │   │   ├── themeService.js      # 테마 목록·50곡 구성(buildList)·수집 결과 반영(감쇠)
 │   │   ├── themeCollector.js    # 유튜브 플리 수집·곡 묶기·점수 (DB 모름 — 스크립트/향후 크론 공용)
@@ -105,8 +105,9 @@ dibe2/
 │   │                      # ⚠️ DB 접속은 반드시 server/models의 connectToMongoDB() 사용
 │   ├── lib/bugs.js        # 벅스 공용 HTTP 클라이언트(지터·UA·쿠키) + HTML 파서
 │   ├── backfill-genre.js  # 기존 DB 곡에 장르/스타일 백필 (완료됨)
-│   ├── refresh-themes.js  # 테마 플레이리스트 풀 갱신 (주기 실행 — 지금은 수동, 자동화 예정)
+│   ├── refresh-themes.js  # 테마 플레이리스트 풀 갱신 (가끔 수동 — 자동화는 안 하기로 2026-11-08, 수집일은 관리자 대시보드)
 │   │                      #   --dry-run / --theme rain / --cache <dir>. docs/THEME_PLAYLIST.md
+│   ├── drop-email-unique.js  # users.email unique → 일반 인덱스 (2026-11-08 운영 적용 완료, 한 번용)
 │   ├── fix-dirty-titles.js   # DB의 오염된 제목([19금]\n곡명) 정리 + adult 이관 (완료됨, dry-run 기본)
 │   ├── clean-collected-titles.js  # 수집본(data/*.jsonl) 제목 정리 + adult 이관 (완료됨, .bak 백업)
 │   │                              #   ⚠️ 배지 판별은 개행 기준 — `[드포즈 극장] …`은 진짜 제목이다
@@ -166,7 +167,7 @@ dibe2/
 │   ├── youtubePlayer.js # YouTube IFrame API 래퍼
 │   └── audioPlayer.js   # ⚠️ 아무 데서도 안 씀(2026-11 확인) — 정리 대상
 │
-├── tests/queue.test.mjs # npm test (Node 내장 test runner)
+├── tests/               # npm test (Node 내장 test runner) — queue.test.mjs(재생 대기열), theme.test.mjs(테마 주간 목록)
 ├── scripts/e2e/         # Playwright 브라우저 검증 — player.mjs(시나리오, --only=audit 전 화면 스크린샷), make-token.js(로그인 토큰)
 │
 ├── modules/             # ⚠️ 전부 죽은 코드 — nuxt.config.js에서 주석 처리됨
