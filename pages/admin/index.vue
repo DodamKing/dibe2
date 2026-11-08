@@ -1,7 +1,7 @@
 <template>
     <div class="min-h-screen bg-gray-100 flex flex-col">
-        <!-- 헤더 -->
-        <header class="bg-white shadow-sm z-20">
+        <!-- 헤더 — 위에 고정. 스크롤하면 탭이 사라져 다른 탭을 누르려면 맨 위로 올라가야 했다(2026-11-08) -->
+        <header class="sticky top-0 bg-white shadow-sm z-30">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 md:py-4 flex justify-between items-center">
                 <h1 class="text-xl sm:text-2xl font-semibold text-gray-900">관리자 패널</h1>
                 <button
@@ -24,10 +24,11 @@
             </nav>
         </header>
 
-        <div class="flex-1 flex overflow-hidden">
-            <!-- 데스크탑 사이드바 -->
+        <!-- overflow-hidden 이면 그 안의 sticky(사이드바 메뉴)가 안 붙는다 → 가로만 자르는 clip -->
+        <div class="flex-1 flex overflow-x-clip">
+            <!-- 데스크탑 사이드바 — 메뉴도 헤더 아래에 붙어 따라온다 -->
             <nav class="hidden md:block bg-gray-800 w-64 shrink-0" aria-label="관리자 메뉴">
-                <div class="px-4 py-5 flex flex-col h-full">
+                <div class="sticky top-[76px] px-4 py-5 flex flex-col">
                     <ul class="flex-1 space-y-2">
                         <li v-for="item in menuItems" :key="item.id">
                             <a href="#" @click.prevent="selectMenuItem(item.id)"

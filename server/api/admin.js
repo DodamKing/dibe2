@@ -2,31 +2,12 @@ const express = require('express')
 const router = express.Router()
 const services = require('../services')
 
-router.get('/user-stats', async (req, res) => {
+// 대시보드 한 번에 (크론·음원·테마·사용자·이용). 예전 user-stats·visitor-stats·music-stats 를 합쳤다(2026-11-08)
+router.get('/dashboard', async (req, res) => {
     try {
-        const userStats = await services.adminService.getUserStats()
-        res.json(userStats)
+        res.json(await services.adminService.getDashboard())
     } catch (error) {
-        console.error('Error fetching user-stats:', error)
-        res.status(500).json({ error: 'Internal Server Error' })
-    }
-})
-
-router.get('/visitor-stats', async (req, res) => {
-    try {
-        const visitorStats = await services.adminService.getVisitorStats()
-        res.json(visitorStats)
-    } catch (error) {
-        console.error('Error fetching visitor-stats:', error)
-        res.status(500).json({ error: 'Internal Server Error' })
-    }
-})
-
-router.get('/music-stats', async (req, res) => {
-    try {
-        res.json(await services.adminService.getMusicStats())
-    } catch (error) {
-        console.error('Error fetching music-stats:', error)
+        console.error('Error fetching dashboard:', error)
         res.status(500).json({ error: 'Internal Server Error' })
     }
 })

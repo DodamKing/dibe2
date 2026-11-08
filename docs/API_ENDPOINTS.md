@@ -69,11 +69,16 @@
 ## Admin (`/api/admin`) - server/api/admin.js (adminMiddleware 필수)
 | Method | Path | 설명 |
 |--------|------|------|
-| GET | `/user-stats` | 사용자 통계 (총 유저, 신규 유저 등) |
-| GET | `/visitor-stats` | 방문자 통계 (7일) |
-| GET | `/music-stats` | 음원 통계 `{totalTracks, totalPlays, noYoutube, gated}` — 대시보드용. 재생 수는 누적(하루치 기록 없음) |
-| GET | `/system-stats` | 시스템 상태 (CPU/메모리/디스크/uptime) |
+| GET | `/dashboard` | 대시보드 한 번에 `{ cron, music, themes, users, usage, generatedAt }` (2026-11-08 — 예전 `user-stats`·`visitor-stats`·`music-stats`를 합침) |
 | PUT | `/users/:userId/access` | 사용자 접근 기간 설정 {days} |
+
+`/dashboard` 응답 (`server/services/adminService.js` `getDashboard`):
+- `cron[]`: `{ job, label, runs7d, fails7d, last: { startedAt, status, durationMs, error } }` — `cronruns` 최근 7일. `running`이 2분 넘게 남은 건 `timeout`으로(30초 강제 종료)
+- `music`: `{ total, totalPlays, noYoutube, gated, backlog: { youtube, lyrics, genre }, chartTop: { size, youtube, lyrics } }` — 백로그 조건은 `scripts/cron-health.js`와 같다
+- `themes[]`: `{ key, name, lastRefreshedAt, core, explore, stale }` — `stale` = 90일 넘게 수집 안 함
+- `users`: `{ total, new7d, recent[5], active7d, active30d, expiring[] }` — 활동 = 그 기간 `PlayEvent`가 있는 사용자(벅스 곡 재생만, 테마·영상은 안 잡힘). `expiring` = 이용 기간 7일 안에 끝남
+- `usage`: `{ plays7d, top[5]: { title, artist, plays } }` — `PlayEvent` 최근 7일
+- 방문자 통계(`visitor_stats` 컬렉션)는 기록 미들웨어가 2026-04 레거시 제거 때 지워져 3-29 이후 비어 있었다 → 삭제(컬렉션 데이터는 남아 있음)
 
 ## YouTube (`/api/youtube`) - server/api/youtube.js
 | Method | Path | 설명 |
