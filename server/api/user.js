@@ -24,22 +24,10 @@ router.get('/', adminMiddleware, async (req, res) => {
     }
 })
 
-router.post('/register', async (req, res) => {
-    try {
-        const { username, email, password } = req.body
-
-        const existingUser = await db.User.findOne({ email })
-        if (existingUser) return res.status(500).json({ message: '이미 사용 중인 이메일입니다.' })
-
-        const newUser = new db.User({ username, email, password })
-
-        await newUser.save()
-
-        res.status(201).json({ message: '회원가입이 완료되었습니다.' })
-    } catch (err) {
-        console.error('회원가입 에러:', err)
-        res.status(500).json({ message: '서버 오류가 발생했습니다.' })
-    }
+// 아이디(이메일)·비밀번호 가입은 막혀 있다 — 화면에서 지운 지 오래됐고, 서버에서도 닫았다(2026-11-08).
+// 이메일 중복 금지(unique)를 풀면서 "이메일 = 로그인 아이디"인 이 경로가 꼬일 수 있어서. 가입은 소셜 로그인만
+router.post('/register', (req, res) => {
+    res.status(410).json({ message: '회원가입은 구글·카카오 로그인으로만 할 수 있어요.' })
 })
 
 router.post('/login', async (req, res) => {
@@ -164,6 +152,7 @@ router.get('/google/callback', async (req, res) => {
         res.redirect('/')
 
     } catch (error) {
+        if (error.code === 'EMAIL_REQUIRED') return res.redirect('/login?error=email_required')
         console.error('Google login error:', error)
         res.redirect('/login?error=google_login_failed')
     }
@@ -187,15 +176,17 @@ router.get('/kakao/callback', async (req, res) => {
     try {
         const tokens = await UserService.getKakaoTokens(code)
         const userInfo = await UserService.getKakaoUserInfo(tokens.access_token)
-        const user = await UserService.findOrCreateUser(provider, userInfo.id, userInfo.kakao_account.email, userInfo.properties && userInfo.properties.nickname)
+        // 이메일 동의를 안 하면 kakao_account.email 이 없다 → 새 가입이면 EMAIL_REQUIRED
+        const email = userInfo.kakao_account?.email
+        const user = await UserService.findOrCreateUser(provider, userInfo.id, email, userInfo.properties?.nickname)
 
         const tokenPayload = {
             userId: user._id,
             provider,
             providerId: userInfo.id,
-            email: userInfo.kakao_account.email,
-            name: userInfo.properties.nickname,
-            picture: userInfo.properties.profile_image,
+            email,
+            name: userInfo.properties?.nickname,
+            picture: userInfo.properties?.profile_image,
             isAdmin: user.isAdmin,
             expiryDate: user.expiryDate
         }
@@ -210,6 +201,7 @@ router.get('/kakao/callback', async (req, res) => {
         })
         res.redirect('/')
     } catch (error) {
+        if (error.code === 'EMAIL_REQUIRED') return res.redirect('/login?error=email_required')
         console.error('Kakao login error:', error)
         res.redirect('/login?error=kakao_login_failed')
     }
@@ -239,6 +231,7 @@ router.post('/google', async (req, res) => {
 
         res.json(nativeLoginResponse(req, tokenPayload, user))
     } catch (error) {
+        if (error.code === 'EMAIL_REQUIRED') return res.json({ message: error.message, code: 4 })
         console.error('구글 네이티브 로그인 에러:', error?.response?.data || error.message)
         res.json({ message: '구글 로그인에 실패했습니다.', code: 4 })
     }
@@ -268,6 +261,7 @@ router.post('/kakao', async (req, res) => {
 
         res.json(nativeLoginResponse(req, tokenPayload, user))
     } catch (error) {
+        if (error.code === 'EMAIL_REQUIRED') return res.json({ message: error.message, code: 4 })
         console.error('카카오 네이티브 로그인 에러:', error?.response?.data || error.message)
         res.json({ message: '카카오 로그인에 실패했습니다.', code: 4 })
     }

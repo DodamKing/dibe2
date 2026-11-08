@@ -3,7 +3,10 @@ const bcrypt = require('bcryptjs')
 
 const userSchema = new mongoose.Schema({
     username: String,
-    email: { type: String, unique: true },
+    // unique 아님(2026-11-08) — 사람 구분은 provider + providerId. 같은 이메일로 카카오·구글 각각 가입하면 별개 계정.
+    // 예전 unique 는 이메일이 로그인 아이디였던 아이디·비밀번호 가입의 흔적이라, 소셜 로그인에선 같은 이메일 재가입과
+    // "이메일 없는 계정은 하나만"이 깨졌다. 운영 DB 인덱스도 scripts/drop-email-unique.js 로 바꿨다
+    email: { type: String, index: true },
     password: String,
     provider: { type: String, enum: ['google', 'kakao'] },
     providerId: String,

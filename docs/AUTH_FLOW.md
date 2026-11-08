@@ -4,7 +4,8 @@
 - **JWT 토큰 기반**: jsonwebtoken (Authorization: Bearer 헤더)
 - **소셜 로그인**: Google, Kakao
 - 일반 회원가입은 현재 막혀 있음 (register 기능 비활성)
-- 일반 로그인(아이디/비밀번호) UI도 `pages/login.vue`에서 제거됨 — 구글/카카오만 노출. 단, 서버 `/api/users/login`, `/api/users/register` 엔드포인트 자체는 그대로 살아있음(프론트에서만 막은 상태)
+- 일반 로그인(아이디/비밀번호) UI도 `pages/login.vue`에서 제거됨 — 구글/카카오만 노출. **`/api/users/register`는 서버에서도 닫았다**(2026-11-08, 410). `/api/users/login`은 살아 있다(쓰는 곳 없음)
+- **소셜 가입은 이메일 필수**(2026-11-08): 새 계정인데 이메일이 없으면(카카오 이메일 동의 안 함) 거부 — 웹은 `/login?error=email_required` 토스트, 앱은 `{code:4, message}`. 카카오 콘솔 "카카오계정(이메일)"을 필수 동의로 두는 것과 이중으로 막는다. 로그인마다 이름·이메일을 DB에 갱신(`UserService.findOrCreateUser`) — 상세는 `DATA_MODELS.md` User
 
 ## JWT 토큰 구조
 ```

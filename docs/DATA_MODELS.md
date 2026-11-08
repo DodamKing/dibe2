@@ -4,7 +4,7 @@
 ```
 {
   username: String,
-  email: String (unique),
+  email: String (index, unique 아님 — 2026-11-08),
   password: String (bcrypt hashed),
   provider: 'google' | 'kakao',
   providerId: String,
@@ -13,8 +13,10 @@
   createdAt, updatedAt (timestamps)
 }
 ```
-- **소셜 로그인은 로그인할 때마다 `username`(구글 이름·카카오 닉네임)과 `email`을 최신으로 저장**(2026-11-08, `UserService.findOrCreateUser`). 그 전엔 가입 때 이메일만 저장했다 — 이메일 저장 코드(2024-10-02)보다 먼저 가입한 구글 계정은 이메일이 비어 있다. 같은 이메일을 쓰는 다른 계정(같은 사람이 카카오·구글로 따로 가입)이 있으면 이메일은 안 넣는다
-- 🔴 `email` 인덱스는 **unique 인데 sparse 가 아니다** → 이메일 없는 계정은 DB 전체에 하나만 있을 수 있다(지금 구글 …fa0d 가 차지). 이메일을 안 주는 카카오 사용자의 새 가입은 중복 키로 실패한다 — 인덱스를 sparse/partial 로 바꿀지 미정(2026-11-08)
+- **사람 구분은 `provider + providerId`** — 구글·카카오가 보장한다. 같은 이메일로 카카오·구글 각각 가입하면 **별개 계정**(사용자 결정, 합치지 않음)
+- **소셜 로그인은 로그인할 때마다 `username`(구글 이름·카카오 닉네임)과 `email`을 최신으로 저장**(2026-11-08, `UserService.findOrCreateUser`). 그 전엔 가입 때 이메일만 저장하고 이름은 토큰에만 넣었다
+- **새 가입은 이메일 필수**(2026-11-08) — 없으면 가입 거부(`EMAIL_REQUIRED` → 웹 `/login?error=email_required`, 앱 `{code:4, message}`). 카카오 콘솔 "이메일 필수 동의"와 이중으로. 기존 계정은 이메일이 없어도 로그인된다(이메일 저장 코드 2024-10-02 이전 가입 구글 계정 1개)
+- `email`은 **unique 아님**(2026-11-08 `scripts/drop-email-unique.js`로 운영 인덱스 교체). 예전 unique 는 이메일이 로그인 아이디였던 아이디·비밀번호 가입의 흔적이라 ① 같은 이메일로 다른 방식 가입이 중복 키로 실패하고 ② 이메일 없는 계정은 DB 전체에 하나만 가능했다. 아이디·비밀번호 가입(`/register`)은 서버에서도 닫았다. ⚠️ 같은 이메일 계정이 생긴 뒤엔 unique 로 못 되돌린다
 - `canAccess()`: expiryDate 기준 접근 가능 여부
 - `comparePassword()`: bcrypt 비교
 - 첫 가입 시 24시간 무료 사용

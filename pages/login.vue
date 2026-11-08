@@ -68,6 +68,8 @@ export default {
                     return 'Google 로그인에 실패했습니다. 다시 시도해 주세요.'
                 case 'kakao_login_failed':
                     return 'Kakao 로그인에 실패했습니다. 다시 시도해 주세요.'
+                case 'email_required':
+                    return '이메일 제공에 동의해야 가입할 수 있어요.'
                 default:
                     return '로그인 중 오류가 발생했습니다. 다시 시도해 주세요.'
             }

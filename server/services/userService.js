@@ -59,20 +59,25 @@ class UserService {
 
     /**
      * 소셜 로그인 계정 찾기/만들기 + 로그인할 때마다 이름·이메일을 최신으로 (2026-11-08).
-     * 예전엔 가입 때 이메일만 저장하고 이름은 토큰에만 넣었다 → 관리자 화면에 이름이 없고,
-     * 이메일 저장 코드(2024-10-02)보다 먼저 가입한 계정은 이메일도 영영 비어 있었다.
-     * 🔴 email 은 unique 인덱스 — 같은 이메일을 쓰는 다른 계정(같은 사람이 카카오·구글로 따로 가입)이 있으면
-     * 이메일은 건드리지 않는다. 갱신이 실패해도 로그인은 막지 않는다
+     * - 사람 구분은 provider + providerId(구글·카카오가 보장). 이메일은 사용자를 알아보는 정보일 뿐이라
+     *   **중복을 막지 않는다** — 같은 이메일로 카카오·구글 각각 가입하면 별개 계정(사용자 결정)
+     * - **새 가입은 이메일 필수** — 없으면 EMAIL_REQUIRED 에러(호출부가 안내). 카카오 콘솔 "이메일 필수 동의"와 이중으로 막는다.
+     *   기존 계정은 이메일이 없어도 로그인된다(2024-10-02 이전 가입 구글 계정)
+     * - 예전엔 가입 때 이메일만 저장하고 이름은 토큰에만 넣었다 → 관리자 화면에 이름이 없었다
      */
     static async findOrCreateUser(provider, providerId, email, name) {
         let user = await db.User.findOne({ provider, providerId });
         if (!user) {
-            const taken = email && await db.User.exists({ email })
-            return db.User.create({ provider, providerId, email: taken ? undefined : email, username: name || undefined })
+            if (!email) {
+                const err = new Error('이메일 제공에 동의해야 가입할 수 있어요.')
+                err.code = 'EMAIL_REQUIRED'
+                throw err
+            }
+            return db.User.create({ provider, providerId, email, username: name || undefined })
         }
         const set = {}
         if (name && user.username !== name) set.username = name
-        if (email && user.email !== email && !(await db.User.exists({ email, _id: { $ne: user._id } }))) set.email = email
+        if (email && user.email !== email) set.email = email
         if (Object.keys(set).length) {
             try {
                 user = await db.User.findByIdAndUpdate(user._id, { $set: set }, { new: true })

@@ -91,7 +91,7 @@
 |--------|------|------|
 | POST | `/login` | 로그인 |
 | POST | `/logout` | 로그아웃 |
-| POST | `/register` | 회원가입 |
+| POST | `/register` | ~~회원가입~~ 닫음(2026-11-08) — 항상 410. 가입은 소셜 로그인만 |
 | POST | `/google` | 구글 소셜 로그인. 본문 `refresh: true`면 접근(1h)+리프레시(90d) 토큰 쌍 |
 | POST | `/kakao` | 카카오 소셜 로그인. 〃 |
 | POST | `/refresh` | `{refreshToken}` → `{token, refreshToken, user}`. 권한을 DB에서 새로 읽음. 옛 30일 토큰도 1회 교환. 상세 `AUTH_FLOW.md` |
