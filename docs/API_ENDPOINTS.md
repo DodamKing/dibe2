@@ -20,7 +20,7 @@
 | POST | `/` | 곡 추가 |
 | PUT | `/:id` | 곡 수정 (관리자만) |
 | DELETE | `/delete/:id` | 곡 삭제 |
-| GET | `/suggest?q=` | 입력 중 자동완성(2026-11-08) `{ artists[3]: {name, count, coverUrl}, songs[5]: {_id, title, artist, coverUrl}, fuzzy }` — 검색 색인만 읽는다. 곡은 제목 일치 먼저. `docs/SEARCH.md` |
+| GET | `/suggest?q=` | 입력 중 자동완성(2026-11-08) `{ artists[3]: {name, count, coverUrl}, songs[5]: {_id, title, artist, coverUrl}, fuzzy }` — 검색 색인만 읽는다(색인이 아직 없으면 글자 그대로 맞는 곡만 DB 에서 읽어 바로 답함). 곡은 제목 일치 먼저. `docs/SEARCH.md` |
 | GET | `/search-bugs?query=` | Bugs Music 검색 |
 | GET | `/search-youtube?query=` | YouTube 검색. **길이로 안 거른다**(2026-08-16) — 관리자가 눈으로 보고 고르는 화면이라 후보를 좁히지 않는다. 예전 2~6분 상한 탓에 6분 넘는 곡은 손으로도 못 찾았다. 자동 판정(크론·lazy fill)만 곡 길이 ±5초 → `docs/CRON_EXTERNAL.md`. 연령 게이트면 `{success:false, gated:true}` |
 

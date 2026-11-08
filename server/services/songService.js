@@ -497,7 +497,9 @@ module.exports = {
         // 응답 모양 {items, total, hasMore}는 그대로라 앱(dibe2-app)은 수정 없이 결과만 좋아진다.
         // 가사·연령 게이트(관리자)는 아래 예전 정규식 방식
         if (searchService.FIELDS_BY_TYPE[type || 'all'] && String(query || '').trim()) {
-            const { items: hits, total, fuzzy } = await searchService.search(query, type || 'all')
+            // 색인이 없을 때 임시 색인(글자 그대로 맞는 곡만)으로 먼저 답하는 건 첫 페이지만 —
+            // 다음 페이지까지 임시 색인으로 넘기면 순서가 진짜 색인과 어긋난다
+            const { items: hits, total, fuzzy } = await searchService.search(query, type || 'all', { quick: skip === 0 })
             const pageIds = hits.slice(skip, skip + limit).map((h) => h.id)
             const docs = await db.Song.find({ _id: { $in: pageIds } }).select('-__v').lean()
             const byId = new Map(docs.map((d) => [String(d._id), d]))

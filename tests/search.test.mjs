@@ -74,3 +74,64 @@ test('자동완성 곡 칸 — 제목으로 맞은 곡 먼저, 모자라면 가�
     const b = await svc.suggest('아이유 좋은')
     assert.deepEqual(b.songs.map((x) => x._id), ['a2']) // 제목만으론 0곡 → 전체 순위로 채움
 })
+
+// 색인이 아직 없을 때(콜드 스타트 첫 요청) — DB 를 가짜로 바꿔 끼운다.
+// 전체 읽기(all)는 손으로 풀 때까지 안 끝난다 → 끝나기 전에 답이 오면 임시 색인으로 답한 것
+function coldStart() {
+    let release
+    const state = { loaded: false, quickCalls: 0 }
+    svc._resetForTest(null)
+    svc._source.all = () => new Promise((resolve) => { release = () => { state.loaded = true; resolve(rows) } })
+    svc._source.matching = async (filter, limit) => {
+        state.quickCalls++
+        const hit = (r) => filter.$and.every((c) => c.$or.some((o) => {
+            const [f, { $regex }] = Object.entries(o)[0]
+            return $regex.test(String(r[f] || ''))
+        }))
+        return rows.filter(hit).sort((a, b) => (b.playCount || 0) - (a.playCount || 0)).slice(0, limit)
+    }
+    state.release = () => release()
+    return state
+}
+
+test('색인 없을 때 — 글자 그대로 맞으면 색인을 안 기다리고 바로 답한다', async () => {
+    const s = coldStart()
+    const r = await svc.search('좋은 날')
+    assert.equal(s.loaded, false)
+    assert.equal(r.items[0].id, 'a2') // 임시 색인도 같은 점수 규칙
+    assert.ok(r.items.some((x) => x.id === 'b2'))
+    const sg = await svc.suggest('밤편')
+    assert.equal(s.loaded, false)
+    assert.deepEqual(sg.songs.map((x) => x._id), ['a1'])
+    assert.equal(sg.artists.length, 0)
+    s.release()
+})
+
+test('색인 없을 때 — 초성·한영·오타처럼 임시 색인이 못 찾으면 진짜 색인을 기다린다', async () => {
+    const s = coldStart()
+    const p = svc.search('ㅂㅍㅈ')
+    setTimeout(() => s.release(), 20)
+    assert.deepEqual((await p).items.map((x) => x.id), ['a1'])
+    assert.equal(s.loaded, true)
+    // 색인이 생긴 뒤엔 DB 를 안 읽는다
+    const before = s.quickCalls
+    assert.deepEqual(await ids('dkdldb').then((x) => x.slice(0, 3).sort()), ['a1', 'a2', 'a3'])
+    assert.equal(s.quickCalls, before)
+})
+
+test('색인 없을 때 — 다음 페이지(quick:false)는 임시 색인을 안 쓴다', async () => {
+    const s = coldStart()
+    const p = svc.search('좋은', 'all', { quick: false })
+    setTimeout(() => s.release(), 20)
+    await p
+    assert.equal(s.quickCalls, 0)
+    assert.equal(s.loaded, true)
+})
+
+test('검색어의 정규식 특수문자는 글자로 본다', async () => {
+    const s = coldStart()
+    const r = await svc.suggest('(IU')
+    assert.equal(s.loaded, false)
+    assert.ok(r.songs.length > 0)
+    s.release()
+})
