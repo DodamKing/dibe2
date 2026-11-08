@@ -12,5 +12,6 @@ module.exports = {
     userService,
     adminService,
     statsService,
-    themeService
+    themeService,
+    searchService: require('./searchService'),
 }

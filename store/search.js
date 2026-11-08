@@ -1,3 +1,6 @@
+import { addRecent } from '~/utils/recentSearches'
+
+// 검색(2026-11-08 개편 — docs/SEARCH.md). 기본 탭은 '전체'(제목·가수·앨범). fuzzy = 정확히 맞는 게 없어 오타로 찾은 결과
 export const state = () => ({
     searchQuery: '',
     searchResults: [],
@@ -7,7 +10,9 @@ export const state = () => ({
     error: null,
     currentPage: 1,
     hasMore: true,
-    activeTab: 'title'
+    activeTab: 'all',
+    fuzzy: false,
+    total: 0,
 })
 
 export const mutations = {
@@ -46,7 +51,11 @@ export const mutations = {
     },
     SET_ACTIVE_TAB(state, tab) {
         state.activeTab = tab
-    }
+    },
+    SET_META(state, { fuzzy, total }) {
+        state.fuzzy = !!fuzzy
+        state.total = total || 0
+    },
 }
 
 export const actions = {
@@ -56,8 +65,21 @@ export const actions = {
 
         commit('RESET_SEARCH_STATE')
         commit('SET_SHOW_SEARCH_RESULTS', true)
+        addRecent('music', query)
 
         await dispatch('fetchResults')
+    },
+    // 자동완성·가수 칩에서 가수 고르기 → 가수 탭으로 그 이름 검색
+    async searchArtist({ commit, dispatch }, name) {
+        commit('SET_SEARCH_QUERY', name)
+        commit('SET_ACTIVE_TAB', 'artist')
+        await dispatch('performSearch')
+    },
+    // 헤더·모바일 검색창에서 새로 검색 → 탭은 '전체'로
+    async searchAll({ commit, dispatch }, query) {
+        commit('SET_SEARCH_QUERY', query)
+        commit('SET_ACTIVE_TAB', 'all')
+        await dispatch('performSearch')
     },
     async fetchResults({ commit, state }) {
         if (!state.hasMore) return
@@ -80,6 +102,7 @@ export const actions = {
                 append: state.currentPage > 1 
             })
             commit('SET_HAS_MORE', response.hasMore)
+            if (state.currentPage === 1) commit('SET_META', response)
             commit('INCREMENT_PAGE')
         } catch (error) {
             console.error('검색 중 오류 발생:', error)

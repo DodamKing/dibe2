@@ -9,10 +9,16 @@
             <!-- max-h + flex-col: 카드가 뷰포트를 넘지 않고 결과 영역만 늘어난다(예전 h-[calc(100vh-300px)] 매직넘버는 모바일에서 화면 밖으로 나갔다) -->
             <div class="bg-surface-1 w-full sm:max-w-3xl sm:max-h-[85vh] sm:rounded-2xl shadow-2xl overflow-hidden text-white flex flex-col" role="dialog" aria-label="검색 결과">
                 <div class="flex items-center gap-2 px-3 sm:px-5 pt-3 sm:pt-5 pb-2 shrink-0">
-                    <form class="flex-1 flex items-center gap-2 h-11 px-4 rounded-full bg-surface-2 text-gray-400 focus-within:ring-2 focus-within:ring-purple-400" @submit.prevent="executeSearch">
-                        <Icon name="search" />
-                        <input v-model="localQuery" type="search" aria-label="검색어" placeholder="노래, 앨범, 아티스트 검색"
-                            class="flex-1 min-w-0 bg-transparent text-white placeholder-gray-400 focus:outline-none">
+                    <form class="relative flex-1" @submit.prevent="executeSearch">
+                        <div class="flex items-center gap-2 h-11 px-4 rounded-full bg-surface-2 text-gray-400 focus-within:ring-2 focus-within:ring-purple-400">
+                            <Icon name="search" />
+                            <input ref="input" v-model="localQuery" type="search" aria-label="검색어" placeholder="노래, 앨범, 아티스트 검색" autocomplete="off"
+                                class="flex-1 min-w-0 bg-transparent text-white placeholder-gray-400 focus:outline-none"
+                                @focus="inputFocused = true" @blur="inputFocused = false" @keydown="onKey">
+                        </div>
+                        <!-- 결과를 보다가 검색어를 고치는 중이면(지금 검색어와 다르면) 자동완성을 띄운다 -->
+                        <SearchSuggest ref="suggest" :query="localQuery" :open="inputFocused && localQuery.trim() !== searchQuery.trim()"
+                            @search="runSearch" @pick-song="pickSong" @pick-artist="pickArtist" />
                     </form>
                     <button type="button" class="w-11 h-11 flex items-center justify-center rounded-full text-gray-300 hover:text-white hover:bg-white hover:bg-opacity-5" aria-label="검색 닫기" @click="$emit('close')">
                         <Icon name="x" />
@@ -48,16 +54,37 @@
                 </div>
 
                 <div ref="scrollContainer" class="flex-1 min-h-0 overflow-y-auto overscroll-contain px-1 sm:px-3 py-2 custom-scrollbar" @scroll="handleScroll">
+                    <!-- '전체' 탭: 맞는 가수를 먼저(누르면 가수 탭으로 그 가수 곡) -->
+                    <div v-if="activeTab === 'all' && artists.length" class="flex gap-2 overflow-x-auto px-2 pb-3 pt-1 no-scrollbar">
+                        <button v-for="a in artists" :key="a.name" type="button"
+                            class="shrink-0 flex items-center gap-2 h-11 pl-1 pr-4 rounded-full bg-white bg-opacity-5 hover:bg-opacity-10 text-sm"
+                            @click="pickArtist(a.name)">
+                            <img :src="a.coverUrl || '/default-album-cover.jpg'" alt="" class="w-9 h-9 rounded-full object-cover bg-gray-700">
+                            <span class="max-w-[12rem] truncate"><HighlightText :text="a.name" :query="searchQuery" /></span>
+                            <span class="text-xs text-gray-400">{{ a.count }}곡</span>
+                        </button>
+                    </div>
+                    <p v-if="fuzzy && searchResults.length" class="mx-2 mb-2 px-3 py-2 rounded-lg bg-amber-400 bg-opacity-10 text-[13px] text-amber-200">
+                        "{{ searchQuery }}"와 정확히 맞는 곡이 없어 비슷한 결과를 보여드려요.
+                    </p>
                     <SongRow v-for="song in searchResults" :key="song._id" :song="song" :song-id="String(song._id)"
                         selectable :selected="isSelected(song)" :show-album="activeTab === 'album'"
+                        :highlight="activeTab === 'lyrics' ? '' : searchQuery"
                         @toggle-select="toggleSongSelection" @play="playOne(song)" @menu="menuSong = $event">
                         <template v-if="activeTab === 'lyrics'" #below>
                             <p class="text-[13px] text-gray-300 mt-1 lyrics-clamp" v-html="highlightLyrics(song.lyrics)"></p>
                         </template>
                     </SongRow>
-                    <p v-if="!searchResults.length && !loading" class="text-center text-sm text-gray-400 py-10">
-                        {{ error ? '검색하지 못했어요. 잠시 후 다시 시도해 주세요.' : '검색 결과가 없어요.' }}
-                    </p>
+                    <div v-if="!searchResults.length && !loading" class="text-center text-sm text-gray-400 py-10 px-4">
+                        <p>{{ error ? '검색하지 못했어요. 잠시 후 다시 시도해 주세요.' : `"${searchQuery}" 검색 결과가 없어요.` }}</p>
+                        <template v-if="!error">
+                            <p class="mt-1 text-[13px] text-gray-500">초성(ㅂㅍㅈ)이나 가수·앨범 이름으로도 찾을 수 있어요.</p>
+                            <button type="button" class="mt-4 inline-flex items-center gap-2 h-10 px-4 rounded-full border border-gray-600 text-gray-200 hover:bg-white hover:bg-opacity-5"
+                                @click="searchYoutube">
+                                <Icon name="youtube" :size="16" class="text-red-400" />유튜브 영상에서 찾아보기
+                            </button>
+                        </template>
+                    </div>
                     <div v-if="loading" class="flex justify-center py-6 text-purple-400" role="status" aria-label="불러오는 중">
                         <Icon name="loader" :size="24" class="animate-spin" />
                     </div>
@@ -74,9 +101,12 @@
 import { mapState, mapActions } from 'vuex'
 import SongRow from '~/components/SongRow.vue'
 import SongMenuSheet from '~/components/SongMenuSheet.vue'
+import SearchSuggest from '~/components/SearchSuggest.vue'
+import HighlightText from '~/components/HighlightText.vue'
+import { addRecent } from '~/utils/recentSearches'
 
 export default {
-    components: { SongRow, SongMenuSheet },
+    components: { SongRow, SongMenuSheet, SearchSuggest, HighlightText },
     // 담기 시트는 레이아웃 것을 같이 쓴다(차트 "선택 곡 담기"와 같은 창)
     inject: { layoutMethods: { default: null } },
     props: {
@@ -85,6 +115,7 @@ export default {
     data() {
         return {
             tabs: [
+                { key: 'all', label: '전체' },
                 { key: 'title', label: '제목' },
                 { key: 'artist', label: '가수' },
                 { key: 'album', label: '앨범' },
@@ -94,14 +125,21 @@ export default {
             selectAll: false,
             localQuery: '',
             menuSong: null,
+            inputFocused: false,
+            artists: [], // '전체' 탭 위 가수 칩 — /api/songs/suggest 의 가수
         }
     },
     computed: {
-        ...mapState('search', ['searchQuery', 'searchResults', 'loading', 'error', 'hasMore', 'activeTab']),
+        ...mapState('search', ['searchQuery', 'searchResults', 'loading', 'error', 'hasMore', 'activeTab', 'fuzzy']),
     },
     watch: {
+        // 새 검색마다 입력칸을 맞추고 가수 칩을 다시 받는다
+        searchQuery(q) {
+            this.localQuery = q
+            this.loadArtists()
+        },
         show(newVal) {
-            if (newVal) this.localQuery = this.searchQuery
+            if (newVal) { this.localQuery = this.searchQuery; this.loadArtists() }
             // 모달이 떠 있는 동안 배경을 잠근다. 안 잠그면 결과 목록을 넘기려다
             // 뒤의 차트가 같이 밀려서 "모달이 떠내려가는" 것처럼 보인다(모바일에서 특히 심함).
             this.lockBackground(newVal)
@@ -134,10 +172,45 @@ export default {
             this.$store.commit('player/SET_NOTICE', message)
         },
         executeSearch() {
-            if (this.localQuery.trim() !== '') {
-                this.updateSearchQuery(this.localQuery)
-                this.performSearch()
+            this.runSearch(this.localQuery)
+        },
+        // 결과 창 안에서 다시 검색 — 지금 탭 그대로
+        runSearch(q) {
+            const query = String(q || '').trim()
+            if (!query) return
+            this.localQuery = query
+            if (this.$refs.input) this.$refs.input.blur()
+            this.updateSearchQuery(query)
+            this.performSearch()
+        },
+        pickArtist(name) {
+            if (this.$refs.input) this.$refs.input.blur()
+            this.$store.dispatch('search/searchArtist', name)
+        },
+        pickSong(song) {
+            addRecent('music', this.localQuery)
+            if (this.$refs.input) this.$refs.input.blur()
+            this.playOne(song)
+        },
+        onKey(e) {
+            if (this.$refs.suggest && this.$refs.suggest.onKey(e)) { e.preventDefault(); return }
+            if (e.key === 'Escape' && this.localQuery !== this.searchQuery) { this.localQuery = this.searchQuery; e.stopPropagation() }
+        },
+        async loadArtists() {
+            const q = this.searchQuery.trim()
+            if (!this.show || !q) { this.artists = []; return }
+            try {
+                const r = await this.$axios.$get('/api/songs/suggest', { params: { q } })
+                if (q === this.searchQuery.trim()) this.artists = r.artists || []
+            } catch (e) {
+                this.artists = []
             }
+        },
+        // 결과가 없으면 유튜브 영상 검색으로 — 영상 탭이 ?q= 를 받아 바로 검색한다
+        searchYoutube() {
+            const q = this.searchQuery.trim()
+            this.$emit('close')
+            this.$router.push({ path: '/video', query: { q } })
         },
         handleScroll() {
             const container = this.$refs.scrollContainer
@@ -213,6 +286,8 @@ export default {
     scrollbar-width: thin;
     scrollbar-color: rgba(155, 155, 155, 0.4) transparent;
 }
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
 .lyrics-clamp {
     display: -webkit-box;
     -webkit-line-clamp: 2;

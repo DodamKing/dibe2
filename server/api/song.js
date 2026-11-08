@@ -80,6 +80,15 @@ router.get('/search', async (req, res) => {
     }
 })
 
+// GET /api/songs/suggest?q= — 입력 중 자동완성(가수 3 + 곡 5). 색인만 읽어 빠르다 — docs/SEARCH.md
+router.get('/suggest', async (req, res, next) => {
+    try {
+        res.json(await services.searchService.suggest(String(req.query.q || '').slice(0, 100)))
+    } catch (err) {
+        next(err)
+    }
+})
+
 router.get('/youtubeId/:songId', async (req, res, next) => {
     const { songId } = req.params
 

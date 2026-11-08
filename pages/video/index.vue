@@ -15,12 +15,15 @@
             </div>
             <div v-if="activeTab === 'search'" class="max-w-7xl mx-auto px-4 py-3">
                 <div class="relative">
-                    <input v-model="query" @keyup.enter="search" type="text" placeholder="유튜브에서 검색..."
-                        class="w-full bg-white bg-opacity-10 text-white placeholder-gray-400 rounded-full py-3 pl-5 pr-14 focus:outline-none focus:ring-2 focus:ring-white focus:bg-opacity-20 text-base">
+                    <input ref="searchInput" v-model="query" type="search" placeholder="유튜브에서 검색..." autocomplete="off" enterkeyhint="search"
+                        class="w-full bg-white bg-opacity-10 text-white placeholder-gray-400 rounded-full py-3 pl-5 pr-14 focus:outline-none focus:ring-2 focus:ring-white focus:bg-opacity-20 text-base"
+                        @focus="recentOpen = true" @blur="recentOpen = false" @keydown="onSearchKey">
                     <button @click="search" aria-label="검색"
                         class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-gray-300 hover:text-white">
                         <Icon name="search" />
                     </button>
+                    <!-- 최근 검색어만(영상 검색은 유튜브 결과라 우리 자동완성이 없다). 음원과 따로 저장 — 2026-11-08 -->
+                    <SearchSuggest ref="recent" kind="video" :suggest="false" :query="query" :open="recentOpen" @search="searchFromRecent" />
                 </div>
             </div>
         </div>
@@ -209,11 +212,13 @@ import VideoPlaylistDetailPanel from '~/components/VideoPlaylistDetailPanel.vue'
 import CreateVideoPlaylistModal from '~/components/CreateVideoPlaylistModal.vue'
 import VideoAddModal from '~/components/VideoAddModal.vue'
 import VideoQueueList from '~/components/VideoQueueList.vue'
+import SearchSuggest from '~/components/SearchSuggest.vue'
+import { addRecent } from '~/utils/recentSearches'
 
 export default {
     layout: 'video',
     components: {
-        MyVideoPlaylistSection, VideoPlaylistDetailPanel, CreateVideoPlaylistModal, VideoAddModal, VideoQueueList
+        MyVideoPlaylistSection, VideoPlaylistDetailPanel, CreateVideoPlaylistModal, VideoAddModal, VideoQueueList, SearchSuggest
     },
     head() {
         const base = 'DIBE2 비디오'
@@ -228,6 +233,7 @@ export default {
             loading: false,
             hasSearched: false,
             player: null,
+            recentOpen: false,
             playTally: null, // 재생 수 기록용 { id, seconds, counted } — 반응형 필요 없음
             isBlocked: false,
             tabs: [
@@ -411,9 +417,19 @@ export default {
                 this.timeUpdateInterval = null
             }
         },
+        onSearchKey(e) {
+            if (this.$refs.recent && this.$refs.recent.onKey(e)) { e.preventDefault(); return }
+            if (e.key === 'Enter') { e.preventDefault(); this.search() }
+        },
+        searchFromRecent(q) {
+            this.query = q
+            this.search()
+        },
         async search() {
             const q = this.query.trim()
             if (!q) return
+            addRecent('video', q)
+            if (this.$refs.searchInput) this.$refs.searchInput.blur()
             this.loading = true
             this.hasSearched = true
             try {
@@ -567,6 +583,12 @@ export default {
         },
     },
     mounted() {
+        // 음원 검색 결과가 없을 때 "유튜브 영상에서 찾아보기"(/video?q=) — 그 검색어로 바로 검색
+        if (this.$route.query.q) {
+            this.activeTab = 'search'
+            this.query = String(this.$route.query.q)
+            this.search()
+        }
         const volumeKey = this.getVolumeStorageKey()
         if (volumeKey) {
             const saved = localStorage.getItem(volumeKey)

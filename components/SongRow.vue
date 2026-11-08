@@ -11,9 +11,9 @@ v-if="selectable" type="checkbox" :checked="selected" :aria-label="`${song.title
             <p class="flex items-center gap-1 text-sm sm:text-[15px] font-medium leading-tight">
                 <!-- 모바일은 하트 버튼이 없으니 좋아요한 곡을 제목 앞 작은 하트로 표시 -->
                 <Icon name="heart" :size="10" filled class="text-purple-400 sm:hidden" v-if="liked" aria-label="좋아요한 곡" />
-                <span class="truncate">{{ song.title }}</span>
+                <span class="truncate"><HighlightText v-if="highlight" :text="song.title" :query="highlight" /><template v-else>{{ song.title }}</template></span>
             </p>
-            <p class="text-xs sm:text-[13px] text-gray-400 truncate leading-tight mt-0.5">{{ song.artist }}</p>
+            <p class="text-xs sm:text-[13px] text-gray-400 truncate leading-tight mt-0.5"><HighlightText v-if="highlight" :text="song.artist" :query="highlight" /><template v-else>{{ song.artist }}</template></p>
             <!-- 줄 아래 덧붙일 내용(검색의 가사 일부 등) -->
             <slot name="below" />
         </div>
@@ -46,6 +46,8 @@ export default {
         selectable: { type: Boolean, default: false },
         selected: { type: Boolean, default: false },
         showAlbum: { type: Boolean, default: false },
+        // 검색어 — 주면 제목·가수에서 맞은 글자를 강조한다(검색 결과)
+        highlight: { type: String, default: '' },
     },
     computed: {
         liked() {

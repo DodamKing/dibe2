@@ -17,13 +17,19 @@
                         <button @click="toggleSearch" class="sm:hidden w-11 h-11 flex items-center justify-center text-white" aria-label="검색">
                             <Icon name="search" />
                         </button>
-                        <div class="hidden sm:flex items-center gap-2 w-56 lg:w-80 h-10 px-3 rounded-full bg-surface-2 text-gray-400 focus-within:ring-2 focus-within:ring-purple-400">
-                            <button type="button" class="shrink-0 hover:text-white" aria-label="검색" @click="executeSearch">
-                                <Icon name="search" />
-                            </button>
-                            <input v-model="localSearchQuery" @keyup.enter="executeSearch" type="search" aria-label="검색어"
-                                placeholder="노래, 앨범, 아티스트 검색"
-                                class="flex-1 min-w-0 bg-transparent text-white text-sm placeholder-gray-400 focus:outline-none">
+                        <!-- 데스크탑 검색창 + 자동완성·최근 검색어 드롭다운(2026-11-08) -->
+                        <div class="relative hidden sm:block w-56 lg:w-80">
+                            <div class="flex items-center gap-2 h-10 px-3 rounded-full bg-surface-2 text-gray-400 focus-within:ring-2 focus-within:ring-purple-400">
+                                <button type="button" class="shrink-0 hover:text-white" aria-label="검색" @click="executeSearch">
+                                    <Icon name="search" />
+                                </button>
+                                <input ref="desktopInput" v-model="localSearchQuery" type="search" aria-label="검색어" autocomplete="off"
+                                    placeholder="노래, 앨범, 아티스트 검색"
+                                    class="flex-1 min-w-0 bg-transparent text-white text-sm placeholder-gray-400 focus:outline-none"
+                                    @focus="suggestOpen = true" @blur="suggestOpen = false" @keydown="onSearchKey($event, 'desktopSuggest')">
+                            </div>
+                            <SearchSuggest ref="desktopSuggest" :query="localSearchQuery" :open="suggestOpen"
+                                class="min-w-[20rem] lg:min-w-[24rem]" @search="runSearch" @pick-song="pickSong" @pick-artist="pickArtist" />
                         </div>
                         <NuxtLink to="/video" aria-label="유튜브 영상 검색" title="유튜브 영상 검색"
                             class="flex items-center justify-center gap-2 text-white w-11 h-11 sm:w-auto sm:h-10 sm:px-4 sm:rounded-full sm:border sm:border-white sm:border-opacity-10 sm:hover:bg-white sm:hover:bg-opacity-5">
@@ -48,11 +54,17 @@
                     </button>
                     <div class="flex-1 min-w-0 flex items-center gap-2 h-10 px-3 rounded-full bg-surface-2 text-gray-400 focus-within:ring-2 focus-within:ring-purple-400">
                         <Icon name="search" :size="18" />
-                        <input ref="mobileSearchInput" v-model="localSearchQuery" type="search" aria-label="검색어" enterkeyhint="search"
-                            placeholder="노래, 앨범, 아티스트 검색" class="flex-1 min-w-0 bg-transparent text-white placeholder-gray-400 focus:outline-none">
+                        <input ref="mobileSearchInput" v-model="localSearchQuery" type="search" aria-label="검색어" enterkeyhint="search" autocomplete="off"
+                            placeholder="노래, 앨범, 아티스트 검색" class="flex-1 min-w-0 bg-transparent text-white placeholder-gray-400 focus:outline-none"
+                            @keydown="onSearchKey($event, 'mobileSuggest')">
                     </div>
                     <button type="submit" class="h-10 px-3 text-sm font-semibold text-purple-300 shrink-0">검색</button>
                 </form>
+                <!-- 모바일: 막대 바로 아래 최근 검색어·자동완성 -->
+                <div class="px-2 pt-2" @click.stop>
+                    <SearchSuggest ref="mobileSuggest" inline :query="localSearchQuery" :open="showSearch"
+                        @search="runSearch" @pick-song="pickSong" @pick-artist="pickArtist" />
+                </div>
             </div>
         </transition>
 
@@ -63,16 +75,20 @@
 <script>
 import { mapState, mapActions } from 'vuex'
 import SearchResultsModal from './SearchResultsModal.vue';
+import SearchSuggest from './SearchSuggest.vue';
 import UserMenu from './UserMenu.vue';
+import { addRecent } from '~/utils/recentSearches'
 
 export default {
     components: {
         SearchResultsModal,
+        SearchSuggest,
         UserMenu
     },
     data() {
         return {
             localSearchQuery: '',
+            suggestOpen: false,
         }
     },
     computed: {
@@ -87,16 +103,47 @@ export default {
         },
     },
     methods: {
-        ...mapActions('search', ['performSearch', 'closeSearchResults', 'toggleSearch', 'updateSearchQuery']),
+        ...mapActions('search', ['performSearch', 'closeSearchResults', 'toggleSearch', 'updateSearchQuery', 'searchAll', 'searchArtist']),
         isActive(m) {
             return m.exact ? this.$route.path === m.to : this.$route.path.startsWith(m.to)
         },
         executeSearch() {
-            if (this.localSearchQuery.trim() !== '') {
-                this.updateSearchQuery(this.localSearchQuery)
-                this.performSearch()
-                if (this.showSearch) this.toggleSearch()  // 검색 실행 후 모바일 검색창 닫기
-            }
+            this.runSearch(this.localSearchQuery)
+        },
+        // 검색 실행(엔터·최근 검색어·"전체 결과 보기") — 결과 창은 '전체' 탭으로 연다
+        runSearch(q) {
+            const query = String(q || '').trim()
+            if (!query) return
+            this.localSearchQuery = query
+            this.closeInputs()
+            this.searchAll(query)
+        },
+        pickArtist(name) {
+            this.closeInputs()
+            this.searchArtist(name)
+        },
+        // 자동완성의 곡 = 그 곡 하나 바로 재생(검색 결과 줄 클릭과 같음). 검색어는 최근 검색어에 남긴다
+        pickSong(song) {
+            addRecent('music', this.localSearchQuery)
+            this.closeInputs()
+            this.$store.dispatch('player/playList', {
+                source: { type: 'search', id: String(song._id), name: `"${this.localSearchQuery.trim()}" 검색` },
+                songs: [song],
+                idKey: '_id',
+                index: 0,
+            })
+        },
+        closeInputs() {
+            this.suggestOpen = false
+            if (this.$refs.desktopInput) this.$refs.desktopInput.blur()
+            if (this.showSearch) this.toggleSearch() // 모바일 검색 막대 닫기
+        },
+        // ↑↓ Enter 는 제안 목록에 먼저 묻고, 안 쓰면 Enter = 검색. Esc = 닫기
+        onSearchKey(e, ref) {
+            const panel = this.$refs[ref]
+            if (panel && panel.onKey(e)) { e.preventDefault(); return }
+            if (e.key === 'Enter') { e.preventDefault(); this.executeSearch() }
+            else if (e.key === 'Escape') this.closeInputs()
         },
         closeSearchOnOutsideClick(event) {
             if (event.target === event.currentTarget) {
@@ -112,6 +159,10 @@ export default {
         }
     },
     watch: {
+        // 결과 창·가수 칩에서 검색어가 바뀌면 헤더 입력칸도 따라간다(예전 검색어가 남아 있었다)
+        searchQuery(q) {
+            this.localSearchQuery = q
+        },
         showSearch(newVal) {
             if (newVal) {
                 this.focusSearchInput()

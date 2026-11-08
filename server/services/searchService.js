@@ -54,7 +54,7 @@ function buildAliases(rows) {
 }
 
 async function buildIndex() {
-    const rows = await db.Song.find({}, 'title artist album playCount chartHits').lean()
+    const rows = await db.Song.find({}, 'title artist album coverUrl playCount chartHits').lean()
     return indexFromRows(rows)
 }
 
@@ -71,6 +71,7 @@ function indexFromRows(rows) {
         }
         return {
             id: r._id,
+            raw: { title: r.title, artist: r.artist, coverUrl: r.coverUrl || null }, // 자동완성 표시용(DB 다시 안 읽게)
             pop: Math.log10(1 + (r.playCount || 0)) * 3 + Math.min(r.chartHits || 0, 50) * 0.2,
             f: {
                 title: keyOf(r.title),
@@ -181,6 +182,35 @@ async function search(query, type = 'all') {
     return { items: hits.map((h) => ({ id: h.song.id, score: h.score })), total: hits.length, fuzzy }
 }
 
+/**
+ * 입력 중 자동완성 — 가수 몇 명 + 곡 몇 개. 색인에 있는 값만 써서 DB를 안 읽는다(타이핑마다 불리므로)
+ * 가수 = 가수 필드로 맞은 곡을 가수명별로 묶어 최고 점수·곡 수 순. 커버는 그 가수의 가장 높은 곡
+ */
+async function suggest(query, { artists: nArtists = 3, songs: nSongs = 5 } = {}) {
+    const tokens = parseQuery(query)
+    if (!tokens.length) return { artists: [], songs: [], fuzzy: false }
+    const index = await getIndex()
+    const sortHits = (h) => h.sort((a, b) => b.score - a.score || a.song.f.title.n.length - b.song.f.title.n.length)
+    let all = rank(index, tokens, FIELDS_BY_TYPE.all, false)
+    let fuzzy = false
+    if (!all.length) { all = rank(index, tokens, FIELDS_BY_TYPE.all, true); fuzzy = all.length > 0 }
+    sortHits(all)
+    const byArtist = sortHits(rank(index, tokens, ['artist'], fuzzy))
+    const groups = new Map()
+    for (const h of byArtist) {
+        const name = h.song.raw.artist
+        const g = groups.get(name)
+        if (g) g.count++
+        else groups.set(name, { name, count: 1, best: h.score, coverUrl: h.song.raw.coverUrl })
+    }
+    return {
+        artists: [...groups.values()].sort((a, b) => b.best - a.best || b.count - a.count).slice(0, nArtists)
+            .map(({ name, count, coverUrl }) => ({ name, count, coverUrl })),
+        songs: all.slice(0, nSongs).map((h) => ({ _id: h.song.id, ...h.song.raw })),
+        fuzzy,
+    }
+}
+
 const _resetForTest = (c = null) => { cache = c }
 
-module.exports = { search, buildIndex, indexFromRows, buildAliases, parseQuery, getIndex, _resetForTest, FIELDS_BY_TYPE }
+module.exports = { search, suggest, buildIndex, indexFromRows, buildAliases, parseQuery, getIndex, _resetForTest, FIELDS_BY_TYPE }

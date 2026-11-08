@@ -22,6 +22,8 @@ dibe2/
 │   ├── AppHeader.vue         # 헤더(메뉴·검색·영상·UserMenu) + 모바일 검색 막대
 │   ├── UserMenu.vue          # 사용자 메뉴(AppHeader·VideoHeader 공통)
 │   ├── SearchResultsModal.vue
+│   ├── SearchSuggest.vue     # 검색창 아래 패널 — 최근 검색어 / 가수·곡 자동완성(헤더·모바일·결과 창·영상 탭) — docs/SEARCH.md
+│   ├── HighlightText.vue     # 검색어와 맞은 글자 강조(utils/highlight.js)
 │   ├── CreatePlaylistModal.vue
 │   ├── SocialLoginButton.vue
 │   │  ── 영상 모드 (예전 디자인 — 다음 단계에서 손볼 예정) ──
@@ -167,6 +169,8 @@ dibe2/
 ├── utils/               # 클라이언트 유틸
 │   ├── queue.js         # 재생 대기열 계산(순수 함수) — tests/queue.test.mjs
 │   ├── youtubePlayer.js # YouTube IFrame API 래퍼
+│   ├── recentSearches.js # 최근 검색어(localStorage, 음원·영상 따로)
+│   ├── highlight.js     # 검색어 강조 조각 나누기
 │   └── audioPlayer.js   # ⚠️ 아무 데서도 안 씀(2026-11 확인) — 정리 대상
 │
 ├── tests/               # npm test (Node 내장 test runner) — queue.test.mjs(재생 대기열), theme.test.mjs(테마 주간 목록), search.test.mjs(음원 검색)
