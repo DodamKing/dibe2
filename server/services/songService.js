@@ -1,5 +1,6 @@
 const db = require('../models')
 const helper = require('../utils/helper')
+const searchService = require('./searchService')
 const YouTubeSearch = require('youtube-search-api')
 
 // simpleText 형식의 duration을 초 단위로 변환
@@ -491,6 +492,18 @@ module.exports = {
 
     searchSong: async (query, type, page = 1, limit = 20) => {
         const skip = (page - 1) * limit;
+
+        // 전체·제목·가수·앨범 = 새 검색 엔진(초성·한영 자판·오타·자동 별칭·정확도순, 2026-11-08 — docs/SEARCH.md).
+        // 응답 모양 {items, total, hasMore}는 그대로라 앱(dibe2-app)은 수정 없이 결과만 좋아진다.
+        // 가사·연령 게이트(관리자)는 아래 예전 정규식 방식
+        if (searchService.FIELDS_BY_TYPE[type || 'all'] && String(query || '').trim()) {
+            const { items: hits, total, fuzzy } = await searchService.search(query, type || 'all')
+            const pageIds = hits.slice(skip, skip + limit).map((h) => h.id)
+            const docs = await db.Song.find({ _id: { $in: pageIds } }).select('-__v').lean()
+            const byId = new Map(docs.map((d) => [String(d._id), d]))
+            const items = pageIds.map((id) => byId.get(String(id))).filter(Boolean) // 색인 후 지워진 곡은 빠진다
+            return { items, total, hasMore: skip + pageIds.length < total, fuzzy }
+        }
         const flexibleRegex = createFlexibleRegex(query);
         let searchCriteria;
 

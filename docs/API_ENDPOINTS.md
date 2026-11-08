@@ -13,7 +13,7 @@
 - `liked`는 사용자마다 다르므로 **차트를 로컬 캐시할 땐 빼고 저장**(웹 `dibe2_chart_cache`가 그렇게 한다)
 | GET | `/songdata?title=&artist=` | 제목+아티스트로 곡 조회 |
 | POST | `/songsdata` | body: {songs[]} → 복수 곡 조회. ⚠️ **2026-11부터 아무도 안 부른다**(웹은 재생 직전 `/songdata` 한 곡씩, 앱은 원래 안 씀) — 곡마다 순차 조회라 느리다. 정리 대상 |
-| GET | `/search?query=&type=&page=&limit=` | 곡 검색 (type: all/title/artist/lyrics/ytgated). **ytgated**=유튜브 연령 게이트 곡(관리자 필터, 검색어 없어도 됨). **all=공백 토큰 AND**(각 토큰이 title∪artist 어디든 매칭) → "아이유 좋은날"처럼 가수+제목 조합도 잡힘. 단일 토큰은 종전과 동일 |
+| GET | `/search?query=&type=&page=&limit=` | 곡 검색 (type: all/title/artist/album/lyrics/ytgated). 응답 `{items, total, hasMore, fuzzy}`. **all·title·artist·album = 검색 엔진**(2026-11-08 — 초성·한영 자판 변환·오타·자동 별칭·앨범·정확도순, `fuzzy:true`면 정확히 맞는 게 없어 오타로 찾은 결과. 상세 `docs/SEARCH.md`). all = 제목·가수·앨범, 공백 토큰 AND. **lyrics·ytgated = 예전 정규식**(ytgated=유튜브 연령 게이트 곡, 관리자 필터, 검색어 없어도 됨) |
 | GET | `/youtubeId/:songId` | songId → YouTube 비디오 ID |
 | POST | `/by-ids` | body: {ids[]} → ID 배열로 일괄 조회 (lyrics 제외, 캐시 갱신용). 응답에 `liked`/`likeCount`/`playCount` 포함 |
 | GET | `/lyrics/:songId` | songId → `{lyrics, adult}`. **비어 있으면 즉석에서 채운다(lazy fill)** — 상세는 아래 |

@@ -88,6 +88,7 @@ dibe2/
 │   ├── services/
 │   │   ├── index.js     # 서비스 export hub
 │   │   ├── songService.js    # 차트/곡/유튜브/검색 로직
+│   │   ├── searchService.js  # 음원 검색 엔진(메모리 색인·점수 — 초성·자판 변환·오타·자동 별칭) — docs/SEARCH.md
 │   │   ├── statsService.js   # 좋아요/재생수 (like·unlike·getLikedSongs·recordPlay·attachLikedFlags)
 │   │   ├── playlistService.js
 │   │   ├── videoPlaylistService.js
@@ -98,6 +99,7 @@ dibe2/
 │   │   └── themeDefinitions.js  # 테마 9개 + 검색어 (원본)
 │   └── utils/
 │       ├── helper.js              # Bugs 크롤링(parseTitleCell/getLyrics/getAlbumGenre), 디스코드 알림
+│       ├── searchText.js          # 검색 글자 처리(정규화·초성·자모·두벌식 변환·오타 거리, 순수 함수)
 │       ├── runCron.js             # 크론 공통 래퍼 — cronruns 기록 + 전멸·에러·타임아웃 디스코드 알림
 │       └── chartCron.js           # 차트 크론(국내·해외) 공통 본체 — 곡 저장 → 차트 저장 → 등장 기록, 단계별 소요시간
 │
@@ -167,7 +169,7 @@ dibe2/
 │   ├── youtubePlayer.js # YouTube IFrame API 래퍼
 │   └── audioPlayer.js   # ⚠️ 아무 데서도 안 씀(2026-11 확인) — 정리 대상
 │
-├── tests/               # npm test (Node 내장 test runner) — queue.test.mjs(재생 대기열), theme.test.mjs(테마 주간 목록)
+├── tests/               # npm test (Node 내장 test runner) — queue.test.mjs(재생 대기열), theme.test.mjs(테마 주간 목록), search.test.mjs(음원 검색)
 ├── scripts/e2e/         # Playwright 브라우저 검증 — player.mjs(시나리오, --only=audit 전 화면 스크린샷), make-token.js(로그인 토큰)
 │
 ├── modules/             # ⚠️ 전부 죽은 코드 — nuxt.config.js에서 주석 처리됨
