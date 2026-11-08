@@ -5,8 +5,9 @@
         "재생한 사용자"(활동 사용자)로 대체했다. 빨강 = 실패·손볼 것, 노랑 = 오래됨
     -->
     <div>
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="text-2xl font-semibold text-gray-900">대시보드</h2>
+        <!-- 모바일은 위 탭이 제목 역할이라 제목을 숨긴다 -->
+        <div class="flex items-center justify-end md:justify-between mb-4">
+            <h2 class="hidden md:block text-2xl font-semibold text-gray-900">대시보드</h2>
             <button type="button" :disabled="loading"
                 class="h-10 px-4 rounded-md border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                 @click="load">새로고침</button>
@@ -23,7 +24,8 @@
                     <div v-for="c in data.cron" :key="c.job" class="py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                         <span class="w-28 font-medium text-gray-900 truncate">{{ c.label }}</span>
                         <span :class="['badge', statusClass(c.last && c.last.status)]">{{ statusLabel(c.last && c.last.status) }}</span>
-                        <span class="text-gray-500">{{ c.last ? `${ago(c.last.startedAt)} · ${kst(c.last.startedAt)}` : '7일간 실행 없음' }}</span>
+                        <!-- 폰에선 시각을 항상 둘째 줄로(폭에 따라 줄마다 꺾이는 자리가 달라 들쭉날쭉했다) -->
+                        <span class="order-last basis-full sm:order-none sm:basis-auto text-xs sm:text-sm text-gray-500">{{ c.last ? `${ago(c.last.startedAt)} · ${kst(c.last.startedAt)}` : '7일간 실행 없음' }}</span>
                         <span class="ml-auto tabular-nums" :class="c.fails7d ? 'text-red-600 font-medium' : 'text-gray-400'">
                             {{ c.runs7d }}회<template v-if="c.fails7d"> · 실패 {{ c.fails7d }}</template>
                         </span>
@@ -78,9 +80,9 @@
             <section class="card">
                 <h3 class="card-title">사용자</h3>
                 <dl class="stats">
-                    <div><dt>전체</dt><dd>{{ fmt(data.users.total) }}</dd></div>
-                    <div><dt>신규 <span class="text-[11px] font-normal">7일</span></dt><dd>{{ fmt(data.users.new7d) }}</dd></div>
-                    <div><dt>활동 <span class="text-[11px] font-normal">7일 / 30일</span></dt><dd>{{ data.users.active7d }} / {{ data.users.active30d }}</dd></div>
+                    <div><dt>전체 <span class="block text-[11px] font-normal">&nbsp;</span></dt><dd>{{ fmt(data.users.total) }}</dd></div>
+                    <div><dt>신규 <span class="block text-[11px] font-normal">7일</span></dt><dd>{{ fmt(data.users.new7d) }}</dd></div>
+                    <div><dt>활동 <span class="block text-[11px] font-normal">7일 / 30일</span></dt><dd>{{ data.users.active7d }} / {{ data.users.active30d }}</dd></div>
                 </dl>
                 <p class="mt-1 text-xs text-gray-400">활동 = 그 기간에 곡을 재생한 사용자 (테마·영상만 들은 경우는 안 잡힘)</p>
 

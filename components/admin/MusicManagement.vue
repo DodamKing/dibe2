@@ -2,7 +2,7 @@
     <div>
         <div id="admin-preview-player" class="hidden"></div>
 
-        <h2 class="text-3xl font-bold text-gray-900 mb-8">음원 관리</h2>
+        <h2 class="hidden md:block text-3xl font-bold text-gray-900 mb-8">음원 관리</h2>
         <div class="bg-white shadow-md rounded-lg overflow-hidden">
             <div class="p-6">
                 <!-- 모바일은 검색바 한 줄 + [필터/검색/추가] 한 줄. 세로로 쌓으면 스크롤만 길어진다. -->

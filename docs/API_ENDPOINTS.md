@@ -77,7 +77,7 @@
 - `music`: `{ total, totalPlays, noYoutube, gated, backlog: { youtube, lyrics, genre }, chartTop: { size, youtube, lyrics } }` — 백로그 조건은 `scripts/cron-health.js`와 같다
 - `themes[]`: `{ key, name, lastRefreshedAt, core, explore, stale }` — `stale` = 90일 넘게 수집 안 함
 - `users`: `{ total, new7d, recent[5], active7d, active30d, expiring[] }` — 활동 = 그 기간 `PlayEvent`가 있는 사용자(벅스 곡 재생만, 테마·영상은 안 잡힘). `expiring` = 이용 기간 7일 안에 끝남
-- `usage`: `{ plays7d, top[5]: { title, artist, plays } }` — `PlayEvent` 최근 7일
+- `usage`: `{ plays7d, top[5]: { title, artist, plays } }` — `PlayEvent` 최근 7일. 웹·앱 합산(앱도 같은 재생 기록 API)
 - 방문자 통계(`visitor_stats` 컬렉션)는 기록 미들웨어가 2026-04 레거시 제거 때 지워져 3-29 이후 비어 있었다 → 삭제(컬렉션 데이터는 남아 있음)
 
 ## YouTube (`/api/youtube`) - server/api/youtube.js

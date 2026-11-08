@@ -1,6 +1,6 @@
 <template>
     <div>
-        <h2 class="text-2xl font-semibold text-gray-900 mb-4">사용자 관리</h2>
+        <h2 class="hidden md:block text-2xl font-semibold text-gray-900 mb-4">사용자 관리</h2>
         <div class="bg-white shadow rounded-lg p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row justify-between mb-4">
                 <!-- 모바일에서 버튼 글자가 "검/색" 세로로 쪼개지던 것 — 칸은 min-w-0 로 줄고 버튼은 줄바꿈 금지 -->
